@@ -1,8 +1,17 @@
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Fraunces:opsz,wght@9..144,700;9..144,800&display=swap");
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-monserrat-black: #0b0909;
+  --color-monserrat-red: #9f171b;
+  --color-monserrat-redDark: #4f090c;
+  --color-monserrat-gold: #d8a842;
+  --color-monserrat-goldDark: #6f4b14;
+  --color-monserrat-cream: #f7f0df;
+  --color-monserrat-ink: #1f1b18;
+  --shadow-gold: 0 18px 60px rgb(216 168 66 / 0.18);
+}
 
 :root {
   color: #1f1b18;

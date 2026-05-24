@@ -20,7 +20,7 @@ type SocketPayload = {
 const initialMessage: ChatMessage = {
   id: 1,
   sender: "bot",
-  text: "Hola, soy el Asistente Monserrat. Puedo ayudarte con matricula, uniforme, horario, ingresantes, ubicacion y pensiones."
+  text: "Hola, soy el **Asistente Monserrat**. Puedo ayudarte con **matricula**, **uniforme**, **horario**, **ingresantes**, **ubicacion** y **pensiones**."
 };
 
 export function useChatbot() {
@@ -101,12 +101,14 @@ export function useChatbot() {
     };
   }, [conversationId]);
 
-  const sendMessage = () => {
-    const trimmed = input.trim();
+  const sendMessage = (messageOverride?: string) => {
+    const trimmed = (messageOverride ?? input).trim();
     if (!trimmed || !conversationId || socketRef.current?.readyState !== WebSocket.OPEN) return;
 
     socketRef.current.send(JSON.stringify({ conversationId, message: trimmed }));
-    setInput("");
+    if (!messageOverride) {
+      setInput("");
+    }
   };
 
   return {

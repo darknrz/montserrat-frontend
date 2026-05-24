@@ -110,6 +110,7 @@ function App() {
           isTyping={chatbot.isTyping}
           onInputChange={chatbot.setInput}
           onSend={chatbot.sendMessage}
+          onQuickSend={chatbot.sendMessage}
           onClose={() => chatbot.setIsOpen(false)}
         />
       ) : (

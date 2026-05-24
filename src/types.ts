@@ -13,6 +13,7 @@ export type Institution = {
   vision: string;
   descripcion: string;
   logoUrl?: string;
+  bannerUrl?: string;
   horarioAtencion: string;
 };
 
