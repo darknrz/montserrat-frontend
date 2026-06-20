@@ -1,4 +1,4 @@
-import type { ChatbotConversationResponse, ChatbotMessageDTO, Ingresante, Institution, LoginResponse, MediaUploadResponse, RedSocial, Video } from "../types";
+import type { AsignacionAcademica, AsistenciaAcademica, ChatbotConversationResponse, ChatbotMessageDTO, Ingresante, Institution, LoginResponse, MediaUploadResponse, NotaAcademica, PensionEstado, PerfilAcademico, RedSocial, UsuarioAcademico, Video } from "../types";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -37,6 +37,24 @@ async function getJson<T>(path: string): Promise<T> {
     throw new Error(await getErrorMessage(response, `Error ${response.status} al cargar ${path}`));
   }
 
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  return (await response.json()) as T;
+}
+
+async function getJsonAuth<T>(path: string, token: string): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, `Error ${response.status} al cargar ${path}`));
+  }
+
   return (await response.json()) as T;
 }
 
@@ -52,6 +70,10 @@ async function sendJson<T>(path: string, method: string, body: unknown, token?: 
 
   if (!response.ok) {
     throw new Error(await getErrorMessage(response, `Error ${response.status} al guardar ${path}`));
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
   }
 
   return (await response.json()) as T;
@@ -120,5 +142,38 @@ export const monserratApi = {
   deleteRedSocial: (id: number, token: string) => deleteRequest(`/redes-sociales/${id}`, token),
   uploadMedia: (file: File, folder: string, token: string) => uploadFile(file, folder, token),
   deleteMedia: (publicId: string, resourceType: string, token: string) =>
-    deleteRequest(`/media?publicId=${encodeURIComponent(publicId)}&resourceType=${encodeURIComponent(resourceType)}`, token)
+    deleteRequest(`/media?publicId=${encodeURIComponent(publicId)}&resourceType=${encodeURIComponent(resourceType)}`, token),
+  usuariosAcademicos: (token: string) => getJsonAuth<UsuarioAcademico[]>("/academico/usuarios", token),
+  asignacionesAcademicas: (token: string) => getJsonAuth<AsignacionAcademica[]>("/academico/asignaciones", token),
+  asignacionesDocente: (token: string) => getJsonAuth<AsignacionAcademica[]>("/academico/docente/asignaciones", token),
+  asignacionesAlumno: (token: string) => getJsonAuth<AsignacionAcademica[]>("/academico/alumno/asignaciones", token),
+  alumnosDocenteAcademicos: (token: string) => getJsonAuth<UsuarioAcademico[]>("/academico/docente/alumnos", token),
+  createUsuarioAcademico: (data: Omit<UsuarioAcademico, "id">, token: string) =>
+    sendJson<UsuarioAcademico>("/academico/usuarios", "POST", data, token),
+  updateUsuarioAcademico: (id: number, data: Partial<UsuarioAcademico>, token: string) =>
+    sendJson<UsuarioAcademico>(`/academico/usuarios/${id}`, "PUT", data, token),
+  deleteUsuarioAcademico: (id: number, token: string) => deleteRequest(`/academico/usuarios/${id}`, token),
+  createAsignacionAcademica: (data: { docenteDni: string; alumnoDni: string; curso: string; nivelEducativo: string; grado: string; seccion: string; activo?: boolean }, token: string) =>
+    sendJson<AsignacionAcademica>("/academico/asignaciones", "POST", data, token),
+  createAsignacionAula: (data: { docenteDni: string; curso?: string; nivelEducativo: string; grado: string; seccion: string; activo?: boolean }, token: string) =>
+    sendJson<AsignacionAcademica[]>("/academico/asignaciones/aula", "POST", data, token),
+  updateAsignacionAcademica: (id: number, data: { docenteDni: string; alumnoDni: string; curso: string; nivelEducativo: string; grado: string; seccion: string; activo?: boolean }, token: string) =>
+    sendJson<AsignacionAcademica>(`/academico/asignaciones/${id}`, "PUT", data, token),
+  deleteAsignacionAcademica: (id: number, token: string) => deleteRequest(`/academico/asignaciones/${id}`, token),
+  perfilAcademico: (token: string) => getJsonAuth<PerfilAcademico>("/academico/me", token),
+  updatePerfilAcademico: (data: Partial<PerfilAcademico>, token: string) =>
+    sendJson<PerfilAcademico>("/academico/me", "PUT", data, token),
+  cambiarPasswordAcademico: (currentPassword: string, newPassword: string, token: string) =>
+    sendJson<void>("/academico/me/password", "POST", { currentPassword, newPassword }, token),
+  alumnosAcademicos: (token: string) => getJsonAuth<UsuarioAcademico[]>("/academico/alumnos", token),
+  asistenciasDocente: (token: string) => getJsonAuth<AsistenciaAcademica[]>("/academico/docente/asistencias", token),
+  createAsistencia: (data: { alumnoDni: string; fecha: string; estado: string; observacion?: string }, token: string) =>
+    sendJson<AsistenciaAcademica>("/academico/docente/asistencias", "POST", data, token),
+  notasDocente: (token: string) => getJsonAuth<NotaAcademica[]>("/academico/docente/notas", token),
+  createNota: (data: { alumnoDni: string; curso: string; periodo: string; tipoEvaluacion: string; valor: number; observacion?: string }, token: string) =>
+    sendJson<NotaAcademica>("/academico/docente/notas", "POST", data, token),
+  updateNota: (id: number, data: { alumnoDni: string; curso: string; periodo: string; tipoEvaluacion: string; valor: number; observacion?: string }, token: string) =>
+    sendJson<NotaAcademica>(`/academico/docente/notas/${id}`, "PUT", data, token),
+  notasAlumno: (token: string) => getJsonAuth<NotaAcademica[]>("/academico/alumno/notas", token),
+  pensionAlumno: (token: string) => getJsonAuth<PensionEstado>("/academico/alumno/pension", token)
 };

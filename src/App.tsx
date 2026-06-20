@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useState } from "react";
+﻿import { useCallback, useEffect, useState } from "react";
 import { monserratApi } from "./api/monserrat";
 import { ChatbotButton } from "./components/chatbot/ChatbotButton";
 import { ChatbotWindow } from "./components/chatbot/ChatbotWindow";
 import { Layout } from "./components/layout/Layout";
+import { AccessGatewayPage } from "./components/sections/AccessGatewayPage";
 import { AdminPage } from "./components/sections/AdminPage";
 import { Carrusel } from "./components/sections/Carrusel";
 import { DatosGenerales } from "./components/sections/DatosGenerales";
 import { Hero } from "./components/sections/Hero";
 import { Ingresantes } from "./components/sections/Ingresantes";
+import { PortalAcademicoPage } from "./components/sections/PortalAcademicoPage";
 import { Ubicacion } from "./components/sections/Ubicacion";
 import { useChatbot } from "./hooks/useChatbot";
 import type { Ingresante, Institution, RedSocial, Video } from "./types";
@@ -35,6 +37,16 @@ function App() {
     setVideos(videosData.filter((item) => item.activo !== false).sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0)));
     setRedes(redesData.filter((item) => item.activo !== false).sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0)));
     setError(null);
+  }, []);
+
+  const navigateTo = useCallback((path: string) => {
+    window.history.pushState({}, "", path);
+    setPathname(path);
+  }, []);
+
+  const readSession = useCallback((key: string) => {
+    const stored = window.localStorage.getItem(key);
+    return stored ? JSON.parse(stored) as { rol?: string } : null;
   }, []);
 
   useEffect(() => {
@@ -81,16 +93,26 @@ function App() {
     );
   }
 
-  if (pathname === "/admin") {
-    return (
-      <AdminPage
-        institution={institution}
-        ingresantes={ingresantes}
-        videos={videos}
-        redes={redes}
-        onRefresh={loadPageData}
-      />
-    );
+  if (pathname === "/portal") {
+    const adminSession = readSession("monserrat_admin_session");
+    if (adminSession?.rol === "ADMIN") {
+      return (
+        <AdminPage
+          institution={institution}
+          ingresantes={ingresantes}
+          videos={videos}
+          redes={redes}
+          onRefresh={loadPageData}
+        />
+      );
+    }
+
+    const academicSession = readSession("monserrat_academic_session");
+    if (academicSession?.rol === "DOCENTE" || academicSession?.rol === "ALUMNO") {
+      return <PortalAcademicoPage />;
+    }
+
+    return <AccessGatewayPage onNavigate={navigateTo} />;
   }
 
   return (

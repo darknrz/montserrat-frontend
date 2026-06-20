@@ -1,4 +1,4 @@
-import { Menu, MessageCircle, X } from "lucide-react";
+﻿import { Menu, MessageCircle, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { Institution } from "../../types";
 
@@ -103,9 +103,9 @@ export function Navbar({ institution, onChatbotOpen }: NavbarProps) {
 
         {/* Acciones derecha */}
         <div className="ml-auto hidden items-center gap-2 lg:flex">
-          <a href="/admin"
+          <a href="/portal"
             className={`rounded-full border px-3 py-[5px] text-[11px] font-bold transition-colors duration-300 ${adminCls}`}>
-            Portal Admin
+            Portal
           </a>
           <button type="button" onClick={onChatbotOpen}
             className="inline-flex items-center gap-1.5 rounded-full bg-monserrat-red px-3.5 py-[6px] text-[11px] font-black text-white transition hover:bg-monserrat-red/85">
@@ -138,9 +138,9 @@ export function Navbar({ institution, onChatbotOpen }: NavbarProps) {
               </a>
             ))}
             <div className={`mt-3 flex gap-2 border-t pt-3 ${dark ? "border-white/8" : "border-monserrat-ink/8"}`}>
-              <a href="/admin"
+              <a href="/portal"
                 className={`flex-1 rounded-full border py-2 text-center text-[12px] font-bold transition-colors duration-300 ${adminCls}`}>
-                Portal Admin
+                Portal
               </a>
               <button type="button" onClick={() => { onChatbotOpen(); setMobileOpen(false); }}
                 className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-monserrat-red py-2 text-[12px] font-black text-white">
