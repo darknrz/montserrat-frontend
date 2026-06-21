@@ -1,23 +1,48 @@
-import { BookOpen, CreditCard, Download, Edit3, FileSpreadsheet, GraduationCap, ImagePlus, LogOut, Plus, Save, School, ShieldCheck, Trash2, Upload, UserPlus, Users, X } from "lucide-react";
+import { BookOpen, CreditCard, Download, Edit3, FileSpreadsheet, GraduationCap, LogOut, Plus, Save, School, ShieldCheck, Trash2, Upload, UserPlus, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { monserratApi } from "../../api/monserrat";
 import type { AsignacionAcademica, Ingresante, Institution, LoginResponse, PensionMensual, RedSocial, UsuarioAcademico, Video } from "../../types";
+import { FeedbackModal } from "../ui/FeedbackModal";
 import { SectionHeader } from "../ui/SectionHeader";
-
-// ── Constante tipos de ingreso ──────────────────────────────
-const TIPOS_SELECCION = ["Ordinario", "Primera Selección", "Ingreso Especial"] as const;
-type TipoSeleccion = typeof TIPOS_SELECCION[number];
-
-const YEARS = ["2025", "2024", "2023", "2022", "2021"];
-const NIVELES = ["PRIMARIA", "SECUNDARIA"];
-const GRADOS_PRIMARIA = ["PRIMERO_PRIMARIA", "SEGUNDO_PRIMARIA", "TERCERO_PRIMARIA", "CUARTO_PRIMARIA", "QUINTO_PRIMARIA", "SEXTO_PRIMARIA"];
-const GRADOS_SECUNDARIA = ["PRIMERO_SECUNDARIA", "SEGUNDO_SECUNDARIA", "TERCERO_SECUNDARIA", "CUARTO_SECUNDARIA", "QUINTO_SECUNDARIA"];
-const SECCIONES = ["A", "B", "C", "D"];
-const CURSOS = ["MATEMATICA", "COMUNICACION", "CIENCIA_TECNOLOGIA", "HISTORIA", "INGLES"];
-const ESTADOS_USUARIO = ["ACTIVO", "INACTIVO", "SUSPENDIDO"];
-const ESTADOS_MATRICULA = ["MATRICULADO", "RETIRADO", "TRASLADADO", "EGRESADO"];
-const MESES_PENSION = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Set", "Oct", "Nov", "Dic"];
+import { ConfirmForceDeleteModal } from "../ui/ConfirmForceDeleteModal";
+import {
+  ADMIN_TAB_STORAGE_KEY,
+  ESTADOS_MATRICULA,
+  ESTADOS_USUARIO,
+  GRADOS_PRIMARIA,
+  GRADOS_SECUNDARIA,
+  MESES_PENSION,
+  NIVELES,
+  SECCIONES,
+  TIPOS_SELECCION,
+  YEARS,
+  type AcademicoConfig,
+  type ConfigView,
+  type SalonItem,
+  type Tab,
+  aulaPorGradoSeccion,
+  defaultAcademicoConfig,
+  defaultGrado,
+  isAdminTab,
+  labelFromEnum,
+  mergeAcademicoConfig,
+  normalizeGrado,
+  normalizeNivel,
+  parseBooleanCell
+} from "./admin/adminShared";
+import {
+  AdminField,
+  AdminFormBtn,
+  AdminMetric,
+  AdminTable,
+  ConfigPanel,
+  ConfirmDeleteModal,
+  MediaPicker,
+  MiniStat,
+  RosterPanel,
+  SalonConfigPanel
+} from "./admin/adminComponents";
 
 type AdminSectionProps = {
   institution: Institution;
@@ -25,40 +50,6 @@ type AdminSectionProps = {
   videos: Video[];
   redes: RedSocial[];
   onRefresh: () => Promise<void>;
-};
-
-type Tab = "institucion" | "ingresantes" | "videos" | "redes" | "academico" | "asignaciones" | "pensiones" | "configuracion";
-type CatalogItem = { id: string; label: string; active: boolean };
-type SalonItem = { nivel: string; grado: string; seccion: string; aula: string; active: boolean };
-type ConfigView = "primaria-cursos" | "primaria-grados" | "primaria-secciones" | "primaria-salones" | "secundaria-cursos" | "secundaria-grados" | "secundaria-secciones" | "secundaria-salones";
-type AcademicoConfig = {
-  cursosPrimaria: CatalogItem[];
-  cursosSecundaria: CatalogItem[];
-  gradosPrimaria: CatalogItem[];
-  gradosSecundaria: CatalogItem[];
-  seccionesPrimaria: CatalogItem[];
-  seccionesSecundaria: CatalogItem[];
-  salones: SalonItem[];
-};
-
-const ADMIN_TAB_STORAGE_KEY = "monserrat_admin_active_tab";
-
-const defaultAcademicoConfig: AcademicoConfig = {
-  cursosPrimaria: [
-    "MATEMATICA",
-    "COMUNICACION",
-    "CIENCIA_TECNOLOGIA",
-    "ARTE_CULTURA",
-    "PERSONAL_SOCIAL",
-    "EDUCACION_FISICA"
-  ].map((id) => ({ id, label: labelFromEnum(id), active: true })),
-  cursosSecundaria: CURSOS.map((id) => ({ id, label: labelFromEnum(id), active: true })),
-  gradosPrimaria: GRADOS_PRIMARIA.map((id) => ({ id, label: labelFromEnum(id), active: true })),
-  gradosSecundaria: GRADOS_SECUNDARIA.map((id) => ({ id, label: labelFromEnum(id), active: true })),
-  seccionesPrimaria: SECCIONES.map((id) => ({ id, label: id, active: true })),
-  seccionesSecundaria: SECCIONES.map((id) => ({ id, label: id, active: true })),
-  salones: [...GRADOS_PRIMARIA.map((grado) => ({ nivel: "PRIMARIA", grado })), ...GRADOS_SECUNDARIA.map((grado) => ({ nivel: "SECUNDARIA", grado }))]
-    .flatMap(({ nivel, grado }) => SECCIONES.map((seccion) => ({ nivel, grado, seccion, aula: aulaPorGradoSeccion(nivel, grado, seccion), active: true })))
 };
 
 const emptyIngresante: Omit<Ingresante, "id"> = {
@@ -131,6 +122,8 @@ export function AdminSection({ institution, ingresantes, videos, redes, onRefres
   const [academicoSearch, setAcademicoSearch] = useState("");
   const [academicoNivelFiltro, setAcademicoNivelFiltro] = useState("TODOS");
   const [importSummary, setImportSummary] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [forceDeleteTarget, setForceDeleteTarget] = useState<{ id: number; name: string; message: string } | null>(null);
   const [pensiones, setPensiones] = useState<PensionMensual[]>([]);
   const [pensionYear, setPensionYear] = useState(new Date().getFullYear());
   const [pensionSearch, setPensionSearch] = useState("");
@@ -166,7 +159,7 @@ export function AdminSection({ institution, ingresantes, videos, redes, onRefres
     if (session && !isAdmin) {
       window.localStorage.removeItem("monserrat_admin_session");
       setSession(null);
-      setStatus("Este acceso es solo para administradores");
+      setErrorMessage("Este acceso es solo para administradores");
     }
   }, [isAdmin, session]);
 
@@ -177,7 +170,7 @@ export function AdminSection({ institution, ingresantes, videos, redes, onRefres
         setUsuariosAcademicos(usuariosData);
         setAsignacionesAcademicas(asignacionesData);
       })
-      .catch((error: unknown) => setStatus(error instanceof Error ? error.message : "No se pudieron cargar datos academicos"));
+      .catch((error: unknown) => setErrorMessage(error instanceof Error ? error.message : "No se pudieron cargar datos academicos"));
   }, [token]);
 
   const sortedIngresantes = useMemo(() =>
@@ -204,21 +197,47 @@ export function AdminSection({ institution, ingresantes, videos, redes, onRefres
     if (!token) return;
     void monserratApi.academicoConfiguracion<AcademicoConfig>(token)
       .then((config) => setAcademicoConfig(mergeAcademicoConfig(config)))
-      .catch((error: unknown) => setStatus(error instanceof Error ? error.message : "No se pudo cargar la configuracion academica"));
+      .catch((error: unknown) => setErrorMessage(error instanceof Error ? error.message : "No se pudo cargar la configuracion academica"));
   }, [token]);
 
   useEffect(() => {
     if (!token) return;
     void monserratApi.pensionesAcademicas(pensionYear, token)
       .then(setPensiones)
-      .catch((error: unknown) => setStatus(error instanceof Error ? error.message : "No se pudo cargar pensiones"));
+      .catch((error: unknown) => setErrorMessage(error instanceof Error ? error.message : "No se pudo cargar pensiones"));
   }, [pensionYear, token]);
 
   const runAdminAction = async (action: () => Promise<void>, successMessage: string) => {
     setIsBusy(true); setStatus(null);
+    setErrorMessage(null);
     try { await action(); await onRefresh(); setStatus(successMessage); }
-    catch (e) { setStatus(e instanceof Error ? e.message : "Error al completar la operación"); }
+    catch (e) {
+      setStatus(e instanceof Error ? e.message : "Error al completar la operacion");
+      setErrorMessage(e instanceof Error ? e.message : "Error al completar la operacion");
+    }
     finally { setIsBusy(false); }
+  };
+
+  const eliminarUsuarioAcademico = async (usuario: Pick<UsuarioAcademico, "id" | "nombre">, force = false) => {
+    setIsBusy(true);
+    setStatus(null);
+    setErrorMessage(null);
+    try {
+      await monserratApi.deleteUsuarioAcademico(usuario.id, token, force);
+      setUsuariosAcademicos((prev) => prev.filter((item) => item.id !== usuario.id));
+      await onRefresh();
+      setStatus("Usuario academico eliminado");
+      setForceDeleteTarget(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No se pudo eliminar el usuario academico";
+      if (!force && /datos vinculados|no se puede eliminar|dependencias/i.test(message)) {
+        setForceDeleteTarget({ id: usuario.id, name: usuario.nombre, message });
+      } else {
+        setErrorMessage(message);
+      }
+    } finally {
+      setIsBusy(false);
+    }
   };
 
   const logout = () => {
@@ -509,10 +528,14 @@ export function AdminSection({ institution, ingresantes, videos, redes, onRefres
       .find((item) => item.id === id)?.label ?? labelFromEnum(id);
   const saveAcademicoConfig = (next: AcademicoConfig) => {
     setAcademicoConfig(next);
+    setErrorMessage(null);
     if (!token) return;
     void monserratApi.updateAcademicoConfiguracion(next, token)
       .then((saved) => setAcademicoConfig(mergeAcademicoConfig(saved as AcademicoConfig)))
-      .catch((error: unknown) => setStatus(error instanceof Error ? error.message : "No se pudo guardar la configuracion academica"));
+      .catch((error: unknown) => {
+        setStatus(error instanceof Error ? error.message : "No se pudo guardar la configuracion academica");
+        setErrorMessage(error instanceof Error ? error.message : "No se pudo guardar la configuracion academica");
+      });
   };
   const updateSalonConfig = (target: SalonItem, patch: Partial<SalonItem>) => {
     saveAcademicoConfig({
@@ -661,6 +684,24 @@ export function AdminSection({ institution, ingresantes, videos, redes, onRefres
           eyebrow="Administración"
           title="Panel Administrador"
           description="Gestiona la información publicada en la página institucional."
+        />
+
+        <FeedbackModal
+          isOpen={Boolean(errorMessage)}
+          title="No se pudo completar la accion"
+          message={errorMessage ?? ""}
+          onClose={() => setErrorMessage(null)}
+        />
+
+        <ConfirmForceDeleteModal
+          isOpen={Boolean(forceDeleteTarget)}
+          title={forceDeleteTarget?.name ?? "Usuario academico"}
+          message={forceDeleteTarget?.message ?? ""}
+          onClose={() => setForceDeleteTarget(null)}
+          onForceDelete={() => {
+            if (!forceDeleteTarget) return;
+            void eliminarUsuarioAcademico({ id: forceDeleteTarget.id, nombre: forceDeleteTarget.name }, true);
+          }}
         />
 
         <div className="mt-10 overflow-hidden rounded-[24px] border border-monserrat-ink/8 bg-white shadow-[0_4px_24px_rgba(28,20,16,0.07)]">
@@ -1038,7 +1079,7 @@ export function AdminSection({ institution, ingresantes, videos, redes, onRefres
                     </div>
                   </form>
                     <div className="grid gap-4">
-                      <div className="rounded-[16px] border border-monserrat-ink/8 bg-monserrat-cream/35 p-4">
+                      <div className="rounded-[16px] border border-monserrat-ink/8 bg-monserrat-cream/35 p-2">
                         <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/45">Vista del aula seleccionada</p>
                         <h4 className="mt-1 font-serif text-[20px] font-black text-monserrat-ink">Aula {aulaNumero} - {labelFromEnum(asignacionAcademicaForm.grado ?? "")} {asignacionAcademicaForm.seccion}</h4>
                         <div className={`mt-3 grid gap-2 ${asignacionAcademicaForm.nivelEducativo === "SECUNDARIA" ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
@@ -1269,10 +1310,7 @@ export function AdminSection({ institution, ingresantes, videos, redes, onRefres
                             setUsuarioAcademicoForm({ ...u });
                             setUsuarioAcademicoPhotoFile(null);
                           },
-                          onDelete: () => void runAdminAction(async () => {
-                            await monserratApi.deleteUsuarioAcademico(u.id, token);
-                            setUsuariosAcademicos(await monserratApi.usuariosAcademicos(token));
-                          }, "Usuario academico desactivado"),
+                          onDelete: () => void eliminarUsuarioAcademico(u),
                         }))} />
                     </div>
                   </div>
@@ -1460,420 +1498,4 @@ export function AdminSection({ institution, ingresantes, videos, redes, onRefres
 
 /* ── Helpers UI ─────────────────────────────────────────── */
 
-function AdminField({ label, children, className = "" }: { label: string; children: React.ReactNode; className?: string }) {
-  return (
-    <div className={`grid gap-1.5 ${className}`}>
-      <label className="text-[11px] font-black uppercase tracking-[0.08em] text-monserrat-ink/50">{label}</label>
-      {children}
-    </div>
-  );
-}
 
-function AdminFormBtn({ isBusy }: { isBusy: boolean }) {
-  return (
-    <button disabled={isBusy}
-      className="inline-flex items-center gap-2 rounded-[12px] bg-monserrat-red px-6 py-2.5 text-[13px] font-black text-white transition hover:bg-monserrat-red/85 disabled:opacity-60">
-      <Save size={15} /> Guardar cambios
-    </button>
-  );
-}
-
-function AdminMetric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-3 rounded-[16px] border border-monserrat-ink/8 bg-white p-4 shadow-sm">
-      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[10px] bg-monserrat-red/8 text-monserrat-red">
-        {icon}
-      </div>
-      <div className="min-w-0">
-        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">{label}</p>
-        <p className="mt-0.5 text-xl font-black text-monserrat-ink">{value}</p>
-      </div>
-    </div>
-  );
-}
-
-function MiniStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[12px] bg-white px-3 py-2">
-      <p className="text-[10px] font-black uppercase tracking-[0.1em] text-monserrat-ink/40">{label}</p>
-      <p className="mt-1 text-lg font-black text-monserrat-ink">{value}</p>
-    </div>
-  );
-}
-
-function RosterPanel({ title, empty, rows }: { title: string; empty: string; rows: { id: string; title: string; detail: string }[] }) {
-  return (
-    <div className="overflow-hidden rounded-[16px] border border-monserrat-ink/8 bg-white shadow-sm">
-      <div className="border-b border-monserrat-ink/8 bg-monserrat-ink px-4 py-3">
-        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-cream/70">{title}</p>
-      </div>
-      <div className="max-h-[420px] overflow-y-auto p-3">
-        {rows.length === 0 ? (
-          <p className="py-8 text-center text-sm font-semibold text-monserrat-ink/40">{empty}</p>
-        ) : rows.map((row) => (
-          <div key={row.id} className="border-b border-monserrat-ink/6 px-2 py-3 last:border-b-0">
-            <p className="truncate text-sm font-black text-monserrat-ink">{row.title}</p>
-            <p className="mt-1 truncate text-[12px] font-semibold text-monserrat-ink/50">{row.detail}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ConfigPanel({ title, items, onChange }: { title: string; items: CatalogItem[]; onChange: (items: CatalogItem[]) => void }) {
-  const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
-  const updateItem = (index: number, patch: Partial<CatalogItem>) => {
-    onChange(items.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item));
-  };
-  const addItem = () => {
-    const label = `Nuevo ${title.toLowerCase()} ${items.length + 1}`;
-    onChange([...items, { id: createCatalogId(label, items), label, active: true }]);
-  };
-  const deleteItem = (index: number) => {
-    onChange(items.filter((_, itemIndex) => itemIndex !== index));
-    setDeleteIndex(null);
-  };
-  const itemToDelete = deleteIndex === null ? null : items[deleteIndex];
-
-  return (
-    <div className="overflow-hidden rounded-[16px] border border-monserrat-ink/8 bg-white shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-monserrat-ink/8 bg-monserrat-ink px-5 py-4">
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-cream/70">Configuracion</p>
-          <h4 className="font-serif text-xl font-black text-white">{title}</h4>
-        </div>
-        <button type="button" onClick={addItem} className="inline-flex items-center gap-1 rounded-[10px] bg-white/10 px-3 py-2 text-[11px] font-black text-monserrat-cream hover:bg-white/18">
-          <Plus size={12} /> Agregar
-        </button>
-      </div>
-      <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
-        {items.map((item, index) => (
-          <div key={item.id} className={`rounded-[14px] border p-4 transition ${item.active ? "border-monserrat-ink/8 bg-monserrat-cream/25" : "border-monserrat-ink/8 bg-white opacity-60"}`}>
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">{item.id}</p>
-                <input value={item.label} onChange={(e) => updateItem(index, { label: e.target.value })} className="mt-2 w-full rounded-[10px] border border-monserrat-ink/10 bg-white px-3 py-2 text-sm font-black text-monserrat-ink outline-none focus:border-monserrat-red" />
-              </div>
-              <button type="button" onClick={() => setDeleteIndex(index)} className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[8px] bg-monserrat-red/8 text-monserrat-red hover:bg-monserrat-red/16">
-                <Trash2 size={13} />
-              </button>
-            </div>
-            <button type="button" onClick={() => updateItem(index, { active: !item.active })}
-              className={`mt-3 w-full rounded-[10px] px-3 py-2 text-[11px] font-black ${item.active ? "bg-emerald-600 text-white" : "bg-monserrat-ink/8 text-monserrat-ink/55"}`}>
-              {item.active ? "Activo" : "Inactivo"}
-            </button>
-          </div>
-        ))}
-      </div>
-      {itemToDelete && (
-        <ConfirmDeleteModal
-          title="Eliminar configuracion"
-          message={`Vas a eliminar "${itemToDelete.label}". Si hay alumnos, docentes, salones o asignaciones vinculadas, pueden quedar afectados.`}
-          onCancel={() => setDeleteIndex(null)}
-          onConfirm={() => {
-            if (deleteIndex !== null) deleteItem(deleteIndex);
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-function SalonConfigPanel({
-  nivel,
-  salones,
-  addSalon,
-  updateSalon,
-  deleteSalon,
-  gradosActivosPorNivel,
-  seccionesActivas,
-  labelAcademico
-}: {
-  nivel: string;
-  salones: SalonItem[];
-  addSalon: () => void;
-  updateSalon: (salon: SalonItem, patch: Partial<SalonItem>) => void;
-  deleteSalon: (salon: SalonItem) => void;
-  gradosActivosPorNivel: (nivel?: string) => string[];
-  seccionesActivas: string[];
-  labelAcademico: (id: string) => string;
-}) {
-  const [deleteTarget, setDeleteTarget] = useState<SalonItem | null>(null);
-  return (
-    <div className="overflow-hidden rounded-[16px] border border-monserrat-ink/8 bg-white shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-monserrat-ink/8 bg-monserrat-ink px-5 py-4">
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-cream/70">Configuracion</p>
-          <h4 className="font-serif text-xl font-black text-white">Salones de {labelAcademico(nivel)}</h4>
-        </div>
-        <button type="button" onClick={addSalon} className="inline-flex items-center gap-1 rounded-[10px] bg-white/10 px-3 py-2 text-[11px] font-black text-monserrat-cream hover:bg-white/18">
-          <Plus size={12} /> Agregar
-        </button>
-      </div>
-      <div className="grid gap-3 p-4 xl:grid-cols-2">
-        {salones.map((salon) => (
-          <div key={`${salon.nivel}-${salon.grado}-${salon.seccion}-${salon.aula}`} className={`rounded-[14px] border p-4 ${salon.active ? "border-monserrat-ink/8 bg-monserrat-cream/25" : "border-monserrat-ink/8 bg-white opacity-60"}`}>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">{labelAcademico(salon.nivel)}</p>
-                <h5 className="mt-1 font-serif text-lg font-black text-monserrat-ink">Aula {salon.aula}</h5>
-              </div>
-              <button type="button" onClick={() => setDeleteTarget(salon)} className="flex h-8 w-8 items-center justify-center rounded-[8px] bg-monserrat-red/8 text-monserrat-red hover:bg-monserrat-red/16">
-                <Trash2 size={13} />
-              </button>
-            </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <AdminField label="Nivel">
-                <input value={labelAcademico(salon.nivel)} className="admin-input" disabled />
-              </AdminField>
-              <AdminField label="Aula">
-                <input value={salon.aula} onChange={(e) => updateSalon(salon, { aula: e.target.value })} className="admin-input" />
-              </AdminField>
-              <AdminField label="Grado">
-                <select value={salon.grado} onChange={(e) => updateSalon(salon, { grado: e.target.value })} className="admin-input">
-                  {gradosActivosPorNivel(salon.nivel).map((grado) => <option key={grado} value={grado}>{labelAcademico(grado)}</option>)}
-                </select>
-              </AdminField>
-              <AdminField label="Seccion">
-                <select value={salon.seccion} onChange={(e) => updateSalon(salon, { seccion: e.target.value })} className="admin-input">
-                  {seccionesActivas.map((seccion) => <option key={seccion} value={seccion}>{labelAcademico(seccion)}</option>)}
-                </select>
-              </AdminField>
-            </div>
-            <button type="button" onClick={() => updateSalon(salon, { active: !salon.active })}
-              className={`mt-3 w-full rounded-[10px] px-3 py-2 text-[11px] font-black ${salon.active ? "bg-emerald-600 text-white" : "bg-monserrat-ink/8 text-monserrat-ink/55"}`}>
-              {salon.active ? "Activo" : "Inactivo"}
-            </button>
-          </div>
-        ))}
-      </div>
-      {deleteTarget && (
-        <ConfirmDeleteModal
-          title="Eliminar salon"
-          message={`Vas a eliminar el aula ${deleteTarget.aula}. Si hay alumnos, docentes o asignaciones vinculadas, pueden quedar afectados.`}
-          onCancel={() => setDeleteTarget(null)}
-          onConfirm={() => {
-            deleteSalon(deleteTarget);
-            setDeleteTarget(null);
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-function ConfirmDeleteModal({ title, message, onCancel, onConfirm }: { title: string; message: string; onCancel: () => void; onConfirm: () => void }) {
-  return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-[420px] overflow-hidden rounded-[18px] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
-        <div className="border-b border-monserrat-ink/8 bg-monserrat-cream px-5 py-4">
-          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-red">Confirmacion requerida</p>
-          <h3 className="mt-1 font-serif text-xl font-black text-monserrat-ink">{title}</h3>
-        </div>
-        <div className="grid gap-4 p-5">
-          <p className="text-sm font-semibold leading-6 text-monserrat-ink/70">{message}</p>
-          <div className="flex justify-end gap-2">
-            <button type="button" onClick={onCancel} className="rounded-[10px] border border-monserrat-ink/12 px-4 py-2 text-[12px] font-black text-monserrat-ink/60 hover:border-monserrat-ink/30">
-              Cancelar
-            </button>
-            <button type="button" onClick={onConfirm} className="rounded-[10px] bg-monserrat-red px-4 py-2 text-[12px] font-black text-white hover:bg-monserrat-red/85">
-              Si, eliminar
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function mergeAcademicoConfig(config: Partial<AcademicoConfig>) {
-  const legacy = config as Partial<AcademicoConfig> & { cursos?: CatalogItem[]; secciones?: CatalogItem[] };
-  const hasSavedConfig = [
-    config.cursosPrimaria,
-    config.cursosSecundaria,
-    config.gradosPrimaria,
-    config.gradosSecundaria,
-    config.seccionesPrimaria,
-    config.seccionesSecundaria,
-    config.salones,
-    legacy.cursos,
-    legacy.secciones
-  ].some((items) => Array.isArray(items));
-
-  if (!hasSavedConfig) return defaultAcademicoConfig;
-
-  return {
-    cursosPrimaria: config.cursosPrimaria ?? legacy.cursos ?? defaultAcademicoConfig.cursosPrimaria,
-    cursosSecundaria: config.cursosSecundaria ?? legacy.cursos ?? defaultAcademicoConfig.cursosSecundaria,
-    gradosPrimaria: config.gradosPrimaria ?? defaultAcademicoConfig.gradosPrimaria,
-    gradosSecundaria: config.gradosSecundaria ?? defaultAcademicoConfig.gradosSecundaria,
-    seccionesPrimaria: config.seccionesPrimaria ?? legacy.secciones ?? defaultAcademicoConfig.seccionesPrimaria,
-    seccionesSecundaria: config.seccionesSecundaria ?? legacy.secciones ?? defaultAcademicoConfig.seccionesSecundaria,
-    salones: config.salones ?? defaultAcademicoConfig.salones
-  };
-}
-
-function isAdminTab(value: string | null): value is Tab {
-  return value === "institucion"
-    || value === "ingresantes"
-    || value === "videos"
-    || value === "redes"
-    || value === "academico"
-    || value === "asignaciones"
-    || value === "pensiones"
-    || value === "configuracion";
-}
-
-function createCatalogId(label: string, existing: CatalogItem[]) {
-  const base = label
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "") || "NUEVO";
-  let id = base;
-  let counter = 1;
-  while (existing.some((item) => item.id === id)) {
-    counter += 1;
-    id = `${base}_${counter}`;
-  }
-  return id;
-}
-
-function gradosPorNivel(nivel?: string) {
-  return nivel === "SECUNDARIA" ? GRADOS_SECUNDARIA : GRADOS_PRIMARIA;
-}
-
-function defaultGrado(nivel: string) {
-  return nivel === "SECUNDARIA" ? "PRIMERO_SECUNDARIA" : "PRIMERO_PRIMARIA";
-}
-
-function aulasPorNivel(nivel?: string) {
-  const grados = nivel === "SECUNDARIA" ? GRADOS_SECUNDARIA : GRADOS_PRIMARIA;
-  return grados.flatMap((grado) => SECCIONES.map((seccion) => aulaPorGradoSeccion(nivel, grado, seccion)));
-}
-
-function aulaPorGradoSeccion(nivel: string | undefined, grado: string, seccion: string) {
-  const grados = nivel === "SECUNDARIA" ? GRADOS_SECUNDARIA : GRADOS_PRIMARIA;
-  const base = nivel === "SECUNDARIA" ? 700 : 100;
-  const gradoIndex = Math.max(grados.indexOf(grado), 0) + 1;
-  const seccionIndex = Math.max(SECCIONES.indexOf(seccion), 0) + 1;
-  return String(base + gradoIndex * 10 + seccionIndex);
-}
-
-function labelFromEnum(value: string) {
-  return value
-    .toLowerCase()
-    .split("_")
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
-function normalizeNivel(value: unknown) {
-  const normalized = String(value ?? "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .toUpperCase();
-  if (normalized.includes("SECUNDARIA")) return "SECUNDARIA";
-  if (normalized.includes("PRIMARIA")) return "PRIMARIA";
-  return "";
-}
-
-function normalizeGrado(value: unknown, nivel: string) {
-  const raw = String(value ?? "").trim();
-  if (!raw) return "";
-  const normalized = raw
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-  const grados = nivel === "SECUNDARIA" ? GRADOS_SECUNDARIA : GRADOS_PRIMARIA;
-  const exact = grados.find((grado) => grado === normalized);
-  if (exact) return exact;
-  const ordinalMap: Record<string, string> = {
-    "1": "PRIMERO",
-    "01": "PRIMERO",
-    PRIMERO: "PRIMERO",
-    PRIMER: "PRIMERO",
-    "2": "SEGUNDO",
-    "02": "SEGUNDO",
-    SEGUNDO: "SEGUNDO",
-    "3": "TERCERO",
-    "03": "TERCERO",
-    TERCERO: "TERCERO",
-    TERCER: "TERCERO",
-    "4": "CUARTO",
-    "04": "CUARTO",
-    CUARTO: "CUARTO",
-    "5": "QUINTO",
-    "05": "QUINTO",
-    QUINTO: "QUINTO",
-    "6": "SEXTO",
-    "06": "SEXTO",
-    SEXTO: "SEXTO"
-  };
-  const token = normalized.split("_").find((part) => ordinalMap[part]);
-  const ordinal = token ? ordinalMap[token] : "";
-  return grados.find((grado) => grado.startsWith(ordinal)) ?? "";
-}
-
-function parseBooleanCell(value: unknown) {
-  const normalized = String(value ?? "").trim().toUpperCase();
-  return normalized === "SI" || normalized === "SÍ" || normalized === "TRUE" || normalized === "1" || normalized === "PAGADA";
-}
-
-function MediaPicker({ label, accept, previewUrl, previewType, onFileChange }: { label: string; accept: string; previewUrl?: string; previewType?: string; onFileChange: (f: File | null) => void }) {
-  return (
-    <div className="grid gap-2">
-      <p className="text-[11px] font-black uppercase tracking-[0.08em] text-monserrat-ink/50">{label}</p>
-      <label className="flex cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-dashed border-monserrat-ink/18 bg-white py-2.5 text-[12px] font-bold text-monserrat-ink/60 transition hover:border-monserrat-red hover:text-monserrat-red">
-        <Upload size={14} /> Subir archivo
-        <input type="file" accept={accept} onChange={(e) => onFileChange(e.target.files?.[0] ?? null)} className="hidden" />
-      </label>
-      {previewUrl ? (
-        <div className="overflow-hidden rounded-[10px] border border-monserrat-ink/8">
-          {previewType === "video"
-            ? <video src={previewUrl} controls className="h-40 w-full bg-black object-cover" />
-            : <img src={previewUrl} alt="" className="h-40 w-full object-cover" />}
-        </div>
-      ) : (
-        <div className="flex h-32 items-center justify-center rounded-[10px] border border-dashed border-monserrat-ink/10 bg-white text-[12px] font-semibold text-monserrat-ink/40">
-          <ImagePlus size={16} className="mr-2" /> Sin archivo
-        </div>
-      )}
-    </div>
-  );
-}
-
-function AdminTable({ headers, rows }: { headers: string[]; rows: { id: number; values: string[]; onEdit: () => void; onDelete: () => void }[] }) {
-  return (
-    <div className="overflow-hidden rounded-[16px] border border-monserrat-ink/8">
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-left text-[12.5px]">
-          <thead className="bg-monserrat-ink">
-            <tr>{headers.map((h) => <th key={h} className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.1em] text-monserrat-cream/70">{h}</th>)}
-              <th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.1em] text-monserrat-cream/70"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id} className="border-t border-monserrat-ink/6 hover:bg-monserrat-cream/20">
-                {row.values.map((v, i) => <td key={i} className="max-w-[220px] truncate px-4 py-3 text-monserrat-ink/80">{v}</td>)}
-                <td className="px-4 py-3">
-                  <div className="flex gap-1.5">
-                    <button type="button" onClick={row.onEdit} className="flex h-8 w-8 items-center justify-center rounded-[8px] border border-monserrat-ink/12 bg-white hover:border-monserrat-ink/30"><Edit3 size={13} /></button>
-                    <button type="button" onClick={row.onDelete} className="flex h-8 w-8 items-center justify-center rounded-[8px] bg-monserrat-red/8 text-monserrat-red hover:bg-monserrat-red/16"><Trash2 size={13} /></button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}

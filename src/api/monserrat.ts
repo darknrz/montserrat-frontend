@@ -155,7 +155,8 @@ export const monserratApi = {
     sendJson<UsuarioAcademico>("/academico/usuarios", "POST", data, token),
   updateUsuarioAcademico: (id: number, data: Partial<UsuarioAcademico>, token: string) =>
     sendJson<UsuarioAcademico>(`/academico/usuarios/${id}`, "PUT", data, token),
-  deleteUsuarioAcademico: (id: number, token: string) => deleteRequest(`/academico/usuarios/${id}`, token),
+  deleteUsuarioAcademico: (id: number, token: string, force = false) =>
+    deleteRequest(`/academico/usuarios/${id}${force ? "?force=true" : ""}`, token),
   createAsignacionAcademica: (data: { docenteDni: string; alumnoDni: string; curso: string; nivelEducativo: string; grado: string; seccion: string; activo?: boolean }, token: string) =>
     sendJson<AsignacionAcademica>("/academico/asignaciones", "POST", data, token),
   createAsignacionAula: (data: { docenteDni: string; curso?: string; nivelEducativo: string; grado: string; seccion: string; activo?: boolean }, token: string) =>

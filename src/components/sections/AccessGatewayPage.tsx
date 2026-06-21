@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { monserratApi } from "../../api/monserrat";
 import type { LoginResponse } from "../../types";
+import { FeedbackModal } from "../ui/FeedbackModal";
 import { SectionHeader } from "../ui/SectionHeader";
 
 type AccessGatewayPageProps = {
@@ -12,7 +13,7 @@ type AccessGatewayPageProps = {
 export function AccessGatewayPage({ onNavigate }: AccessGatewayPageProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [status, setStatus] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isBusy, setIsBusy] = useState(false);
 
   useEffect(() => {
@@ -31,7 +32,7 @@ export function AccessGatewayPage({ onNavigate }: AccessGatewayPageProps) {
   const handleLogin = async (event: FormEvent) => {
     event.preventDefault();
     setIsBusy(true);
-    setStatus(null);
+    setErrorMessage(null);
 
     try {
       const response = await monserratApi.login(username, password);
@@ -60,7 +61,7 @@ export function AccessGatewayPage({ onNavigate }: AccessGatewayPageProps) {
 
       throw new Error("Rol no permitido");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Credenciales incorrectas");
+      setErrorMessage(error instanceof Error ? error.message : "Credenciales incorrectas");
     } finally {
       setIsBusy(false);
     }
@@ -75,6 +76,13 @@ export function AccessGatewayPage({ onNavigate }: AccessGatewayPageProps) {
         <SectionHeader eyebrow="Montserrat" title="Acceso institucional" description="Ingresa con tus credenciales y el sistema te enviara a tu interfaz segun el rol." />
 
         <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+          <FeedbackModal
+            isOpen={Boolean(errorMessage)}
+            title="No fue posible ingresar"
+            message={errorMessage ?? ""}
+            onClose={() => setErrorMessage(null)}
+          />
+
           <form onSubmit={handleLogin} className="grid gap-4 rounded-[20px] border border-monserrat-ink/10 bg-white p-7 shadow-sm">
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-[12px] bg-monserrat-red text-white">
@@ -99,8 +107,6 @@ export function AccessGatewayPage({ onNavigate }: AccessGatewayPageProps) {
               <ShieldCheck size={16} />
               Entrar
             </button>
-
-            {status && <p className="rounded-[12px] border border-monserrat-red/15 bg-monserrat-red/6 px-4 py-2.5 text-xs font-bold text-monserrat-red">{status}</p>}
           </form>
 
           <div className="grid gap-4">

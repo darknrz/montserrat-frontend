@@ -1,4 +1,4 @@
-ï»¿import { CheckCircle2, ClipboardCheck, GraduationCap, LogOut, Save, ShieldCheck, UserRound, WalletCards } from "lucide-react";
+import { BadgeCheck, BookOpen, CheckCircle2, ClipboardCheck, GraduationCap, LogOut, Save, School, ShieldCheck, UserRound, WalletCards } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { monserratApi } from "../../api/monserrat";
@@ -42,6 +42,7 @@ export function PortalAcademicoPage() {
   const token = session?.token ?? "";
   const isDocente = session?.rol === "DOCENTE";
   const isAlumno = session?.rol === "ALUMNO";
+  const nivelActual = perfil.nivelEducativo || (isDocente ? "SECUNDARIA" : "PRIMARIA");
 
   const cursosDisponibles = useMemo(() => {
     return asignaciones.reduce<string[]>((items, asignacion) => {
@@ -51,6 +52,49 @@ export function PortalAcademicoPage() {
       return items;
     }, []);
   }, [asignaciones]);
+
+  const salonActualDetalle = useMemo(() => {
+    const grado = labelFromEnum(perfil.grado ?? "");
+    const seccion = perfil.seccion ?? "";
+    const titulo = grado || seccion ? `${grado} ${seccion}`.trim() : "Sin salon asignado";
+    const nivel = perfil.nivelEducativo ? labelFromEnum(perfil.nivelEducativo) : (isDocente ? "Docente" : "Alumno");
+    return { titulo, nivel };
+  }, [isDocente, perfil.grado, perfil.nivelEducativo, perfil.seccion]);
+
+  const salonRows = useMemo(() => {
+    const grouped = new Map<string, { nivel: string; grado?: string; seccion?: string; alumnos: string[]; cursos: string[] }>();
+    asignaciones.forEach((item) => {
+      const key = `${item.nivelEducativo ?? ""}-${item.grado ?? ""}-${item.seccion ?? ""}`;
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          nivel: item.nivelEducativo ?? "",
+          grado: item.grado,
+          seccion: item.seccion,
+          alumnos: [],
+          cursos: []
+        });
+      }
+      const current = grouped.get(key)!;
+      if (item.alumnoNombre && !current.alumnos.includes(item.alumnoNombre)) current.alumnos.push(item.alumnoNombre);
+      if (item.curso && !current.cursos.includes(item.curso)) current.cursos.push(item.curso);
+    });
+    return Array.from(grouped.values()).map((item) => ({
+      ...item,
+      salon: `${labelFromEnum(item.grado ?? "")} ${item.seccion ?? ""}`.trim(),
+      nivelLabel: item.nivel ? labelFromEnum(item.nivel) : "Sin nivel"
+    }));
+  }, [asignaciones]);
+
+  const cursosDelAlumno = useMemo(() => {
+    const unique = new Map<string, string>();
+    asignaciones.forEach((item) => {
+      if (!unique.has(item.curso)) unique.set(item.curso, item.docenteNombre);
+    });
+    return Array.from(unique.entries()).map(([curso, docente]) => ({ curso, docente }));
+  }, [asignaciones]);
+
+  const ultimaNota = notas[0] ?? null;
+  const ultimaAsistencia = asistencias[0] ?? null;
 
   useEffect(() => {
     if (session?.debeCambiarContrasena) {
@@ -225,33 +269,82 @@ export function PortalAcademicoPage() {
         <div className="p-5">
           {status && <Alert>{status}</Alert>}
 
+          <div className="mb-5 grid gap-3 rounded-[18px] border border-monserrat-ink/8 bg-monserrat-cream/35 p-4 lg:grid-cols-[1.3fr_1fr_1fr_1fr]">
+            <div className="rounded-[14px] bg-white px-4 py-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">Mi salon</p>
+              <p className="mt-1 text-lg font-black text-monserrat-ink">{salonActualDetalle.titulo}</p>
+              <p className="text-[11px] font-semibold text-monserrat-ink/50">{salonActualDetalle.nivel}</p>
+            </div>
+            <div className="rounded-[14px] bg-white px-4 py-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">Nivel</p>
+              <p className="mt-1 text-lg font-black text-monserrat-ink">{labelFromEnum(nivelActual)}</p>
+              <p className="text-[11px] font-semibold text-monserrat-ink/50">{isDocente ? "Docente" : "Alumno"}</p>
+            </div>
+            <div className="rounded-[14px] bg-white px-4 py-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">Ultima nota</p>
+              <p className="mt-1 text-lg font-black text-monserrat-ink">{ultimaNota ? `${labelFromEnum(ultimaNota.curso)} ${ultimaNota.valor}` : "Sin notas"}</p>
+              <p className="text-[11px] font-semibold text-monserrat-ink/50">{ultimaNota?.docenteNombre ?? ""}</p>
+            </div>
+            <div className="rounded-[14px] bg-white px-4 py-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">Ultima asistencia</p>
+              <p className="mt-1 text-lg font-black text-monserrat-ink">{ultimaAsistencia ? labelFromEnum(ultimaAsistencia.estado) : "Sin registro"}</p>
+              <p className="text-[11px] font-semibold text-monserrat-ink/50">{ultimaAsistencia?.fecha ?? ""}</p>
+            </div>
+          </div>
+
           {tab === "perfil" && (
-            <form onSubmit={submitPerfil} className="grid gap-4 md:grid-cols-2">
-              <Field label="Nombre"><input value={perfil.nombre ?? ""} onChange={(event) => setPerfil({ ...perfil, nombre: event.target.value })} className="admin-input" required /></Field>
-              <Field label="Telefono"><input value={perfil.telefono ?? ""} onChange={(event) => setPerfil({ ...perfil, telefono: event.target.value })} className="admin-input" /></Field>
-              <Field label="Foto URL"><input value={perfil.fotoUrl ?? ""} onChange={(event) => setPerfil({ ...perfil, fotoUrl: event.target.value })} className="admin-input" /></Field>
-              {isDocente && <Field label="Materia"><input value={perfil.materia ?? ""} onChange={(event) => setPerfil({ ...perfil, materia: event.target.value })} className="admin-input" /></Field>}
-              {isAlumno && <Field label="Grado"><input value={perfil.grado ?? ""} onChange={(event) => setPerfil({ ...perfil, grado: event.target.value })} className="admin-input" /></Field>}
-              {isAlumno && <Field label="Seccion"><input value={perfil.seccion ?? ""} onChange={(event) => setPerfil({ ...perfil, seccion: event.target.value })} className="admin-input" /></Field>}
-              <div className="md:col-span-2 flex flex-wrap gap-3">
-                <button disabled={isBusy} className="inline-flex items-center gap-2 rounded-[12px] bg-monserrat-red px-5 py-2.5 text-sm font-black text-white disabled:opacity-60"><Save size={16} /> Guardar perfil</button>
+            <div className="grid gap-5 lg:grid-cols-[320px_1fr]">
+              <div className="grid content-start gap-4 rounded-[18px] border border-monserrat-ink/8 bg-monserrat-cream/35 p-5">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/45">Ficha rapida</p>
+                  <h3 className="mt-1 font-serif text-2xl font-black text-monserrat-ink">{perfil.nombre || session.nombre}</h3>
+                  <p className="mt-1 text-sm font-semibold text-monserrat-ink/55">{isDocente ? "Docente" : "Alumno"} · {labelFromEnum(nivelActual)}</p>
+                </div>
+                <div className="grid gap-3">
+                  <SummaryItem label="Salon" value={salonActualDetalle.titulo} />
+                  <SummaryItem label="Telefono" value={perfil.telefono || "No registrado"} />
+                  <SummaryItem label="Asignaciones" value={String(asignaciones.length)} />
+                </div>
               </div>
-            </form>
+
+              <form onSubmit={submitPerfil} className="grid gap-4 rounded-[18px] border border-monserrat-ink/8 bg-white p-5 shadow-sm md:grid-cols-2">
+                <Field label="Nombre"><input value={perfil.nombre ?? ""} onChange={(event) => setPerfil({ ...perfil, nombre: event.target.value })} className="admin-input" required /></Field>
+                <Field label="Telefono"><input value={perfil.telefono ?? ""} onChange={(event) => setPerfil({ ...perfil, telefono: event.target.value })} className="admin-input" /></Field>
+                <Field label="Foto URL"><input value={perfil.fotoUrl ?? ""} onChange={(event) => setPerfil({ ...perfil, fotoUrl: event.target.value })} className="admin-input" /></Field>
+                {isDocente && <Field label="Materia"><input value={perfil.materia ?? ""} onChange={(event) => setPerfil({ ...perfil, materia: event.target.value })} className="admin-input" /></Field>}
+                {isAlumno && <Field label="Grado"><input value={perfil.grado ?? ""} onChange={(event) => setPerfil({ ...perfil, grado: event.target.value })} className="admin-input" /></Field>}
+                {isAlumno && <Field label="Seccion"><input value={perfil.seccion ?? ""} onChange={(event) => setPerfil({ ...perfil, seccion: event.target.value })} className="admin-input" /></Field>}
+                <div className="md:col-span-2 flex flex-wrap gap-3">
+                  <button disabled={isBusy} className="inline-flex items-center gap-2 rounded-[12px] bg-monserrat-red px-5 py-2.5 text-sm font-black text-white disabled:opacity-60"><Save size={16} /> Guardar perfil</button>
+                </div>
+              </form>
+            </div>
           )}
 
           {tab === "cursos" && (
-            <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
-              <SimpleTable
-                title={isDocente ? "Alumnos asignados" : "Mis cursos"}
-                headers={isDocente ? ["Alumno", "Curso"] : ["Curso", "Docente"]}
-                rows={asignaciones.map((item) => isDocente ? [item.alumnoNombre, labelFromEnum(item.curso)] : [labelFromEnum(item.curso), item.docenteNombre])}
-              />
+            <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
+              <div className="grid gap-4">
+                {isDocente ? (
+                  <SimpleTable
+                    title="Salones que atiendo"
+                    headers={["Salon", "Nivel", "Alumnos", "Cursos"]}
+                    rows={salonRows.map((item) => [item.salon || "Sin salon", item.nivelLabel, String(item.alumnos.length), String(item.cursos.length)])}
+                  />
+                ) : (
+                  <SimpleTable
+                    title="Mis cursos"
+                    headers={["Curso", "Docente"]}
+                    rows={cursosDelAlumno.map((item) => [labelFromEnum(item.curso), item.docente])}
+                  />
+                )}
+              </div>
               <div className="grid gap-4 rounded-[16px] border border-monserrat-ink/8 bg-monserrat-cream/35 p-5">
-                <p className="text-xs font-black uppercase tracking-[0.12em] text-monserrat-ink/50">{isDocente ? "Cursos activos" : "Resumen"}</p>
+                <p className="text-xs font-black uppercase tracking-[0.12em] text-monserrat-ink/50">{isDocente ? "Resumen docente" : "Resumen alumno"}</p>
                 <div className="grid gap-3">
-                  <SummaryItem label="Asignaciones activas" value={String(asignaciones.length)} />
-                  {isDocente && <SummaryItem label="Alumnos visibles" value={String(alumnos.length)} />}
-                  {isAlumno && <SummaryItem label="Docentes visibles" value={String(new Set(asignaciones.map((item) => item.docenteDni)).size)} />}
+                  <SummaryItem label={isDocente ? "Alumnos" : "Cursos"} value={String(isDocente ? alumnos.length : cursosDelAlumno.length)} />
+                  <SummaryItem label="Nivel" value={labelFromEnum(nivelActual)} />
+                  <SummaryItem label="Salon" value={salonActualDetalle.titulo} />
+                  {isAlumno && <SummaryItem label="Pagos" value={pension?.pagada ? "Al dia" : "Pendiente"} />}
                 </div>
               </div>
             </div>
@@ -402,3 +495,8 @@ function SimpleTable({ title, headers, rows, onRowClick }: { title?: string; hea
     </div>
   );
 }
+
+
+
+
+
