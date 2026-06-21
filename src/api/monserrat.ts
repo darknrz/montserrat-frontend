@@ -1,4 +1,4 @@
-import type { AsignacionAcademica, AsistenciaAcademica, ChatbotConversationResponse, ChatbotMessageDTO, Ingresante, Institution, LoginResponse, MediaUploadResponse, NotaAcademica, PensionEstado, PerfilAcademico, RedSocial, UsuarioAcademico, Video } from "../types";
+import type { AsignacionAcademica, AsistenciaAcademica, ChatbotConversationResponse, ChatbotMessageDTO, Ingresante, Institution, LoginResponse, MediaUploadResponse, NotaAcademica, PensionEstado, PensionMensual, PerfilAcademico, RedSocial, UsuarioAcademico, Video } from "../types";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -144,6 +144,9 @@ export const monserratApi = {
   deleteMedia: (publicId: string, resourceType: string, token: string) =>
     deleteRequest(`/media?publicId=${encodeURIComponent(publicId)}&resourceType=${encodeURIComponent(resourceType)}`, token),
   usuariosAcademicos: (token: string) => getJsonAuth<UsuarioAcademico[]>("/academico/usuarios", token),
+  academicoConfiguracion: <T>(token: string) => getJsonAuth<T>("/academico/configuracion", token),
+  updateAcademicoConfiguracion: <T>(data: T, token: string) =>
+    sendJson<T>("/academico/configuracion", "PUT", data, token),
   asignacionesAcademicas: (token: string) => getJsonAuth<AsignacionAcademica[]>("/academico/asignaciones", token),
   asignacionesDocente: (token: string) => getJsonAuth<AsignacionAcademica[]>("/academico/docente/asignaciones", token),
   asignacionesAlumno: (token: string) => getJsonAuth<AsignacionAcademica[]>("/academico/alumno/asignaciones", token),
@@ -166,6 +169,10 @@ export const monserratApi = {
   cambiarPasswordAcademico: (currentPassword: string, newPassword: string, token: string) =>
     sendJson<void>("/academico/me/password", "POST", { currentPassword, newPassword }, token),
   alumnosAcademicos: (token: string) => getJsonAuth<UsuarioAcademico[]>("/academico/alumnos", token),
+  pensionesAcademicas: (anio: number, token: string) =>
+    getJsonAuth<PensionMensual[]>(`/academico/pensiones?anio=${encodeURIComponent(String(anio))}`, token),
+  updatePensionAcademica: (data: { alumnoDni: string; anio: number; mes: number; pagada: boolean; observacion?: string }, token: string) =>
+    sendJson<PensionMensual>("/academico/pensiones", "PUT", data, token),
   asistenciasDocente: (token: string) => getJsonAuth<AsistenciaAcademica[]>("/academico/docente/asistencias", token),
   createAsistencia: (data: { alumnoDni: string; fecha: string; estado: string; observacion?: string }, token: string) =>
     sendJson<AsistenciaAcademica>("/academico/docente/asistencias", "POST", data, token),

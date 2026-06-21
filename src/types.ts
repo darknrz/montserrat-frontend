@@ -139,6 +139,20 @@ export type PensionEstado = {
   observacion?: string;
 };
 
+export type PensionMensual = {
+  alumnoDni: string;
+  alumnoCodigo?: string;
+  alumnoNombre: string;
+  nivelEducativo?: string;
+  grado?: string;
+  seccion?: string;
+  anio: number;
+  mes: number;
+  pagada: boolean;
+  observacion?: string;
+  actualizadoEn?: string;
+};
+
 export type ChatbotConversationResponse = {
   conversationId: number;
   status: string;
