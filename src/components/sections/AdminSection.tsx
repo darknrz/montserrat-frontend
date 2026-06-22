@@ -1078,36 +1078,56 @@ export function AdminSection({ institution, ingresantes, videos, redes, onRefres
                       {editingAsignacionAcademica && <button type="button" onClick={() => { setEditingAsignacionAcademica(null); setAsignacionAcademicaForm(emptyAsignacion); }} className="rounded-[10px] border border-monserrat-ink/12 px-3 hover:border-monserrat-ink/25"><X size={14} /></button>}
                     </div>
                   </form>
-                    <div className="grid gap-4">
-                      <div className="rounded-[16px] border border-monserrat-ink/8 bg-monserrat-cream/35 p-2">
+                    <div className="grid min-h-[390px] grid-rows-[auto_minmax(280px,1fr)] gap-4">
+                      <div className="rounded-[16px] border border-monserrat-ink/8 bg-monserrat-cream/35 p-3">
                         <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/45">Vista del aula seleccionada</p>
-                        <h4 className="mt-1 font-serif text-[20px] font-black text-monserrat-ink">Aula {aulaNumero} - {labelFromEnum(asignacionAcademicaForm.grado ?? "")} {asignacionAcademicaForm.seccion}</h4>
-                        <div className={`mt-3 grid gap-2 ${asignacionAcademicaForm.nivelEducativo === "SECUNDARIA" ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
-                          <MiniStat label="Alumnos" value={String(alumnosDelAula.length)} />
-                          {asignacionAcademicaForm.nivelEducativo === "SECUNDARIA" && <MiniStat label="Tutor" value={tutorSecundariaVisible} />}
-                          {asignacionAcademicaForm.nivelEducativo === "SECUNDARIA" && <MiniStat label="Cursos cubiertos" value={String(new Set(asignacionesDelAula.map((a) => a.curso)).size)} />}
-                          {asignacionAcademicaForm.nivelEducativo !== "SECUNDARIA" && <MiniStat label="Docente asignado" value={docentePrimariaVisible} />}
+                        <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+                          <h4 className="font-serif text-[18px] font-black text-monserrat-ink">Aula {aulaNumero} - {labelFromEnum(asignacionAcademicaForm.grado ?? "")} {asignacionAcademicaForm.seccion}</h4>
+                          <div className="flex flex-wrap gap-2">
+                            <div className="rounded-[10px] bg-white px-3 py-1.5">
+                              <p className="text-[9px] font-black uppercase tracking-[0.1em] text-monserrat-ink/40">Alumnos</p>
+                              <p className="text-sm font-black text-monserrat-ink">{alumnosDelAula.length}</p>
+                            </div>
+                            {asignacionAcademicaForm.nivelEducativo === "SECUNDARIA" && (
+                              <div className="rounded-[10px] bg-white px-3 py-1.5">
+                                <p className="text-[9px] font-black uppercase tracking-[0.1em] text-monserrat-ink/40">Tutor</p>
+                                <p className="max-w-[180px] truncate text-sm font-black text-monserrat-ink">{tutorSecundariaVisible}</p>
+                              </div>
+                            )}
+                            {asignacionAcademicaForm.nivelEducativo === "SECUNDARIA" && (
+                              <div className="rounded-[10px] bg-white px-3 py-1.5">
+                                <p className="text-[9px] font-black uppercase tracking-[0.1em] text-monserrat-ink/40">Cursos</p>
+                                <p className="text-sm font-black text-monserrat-ink">{new Set(asignacionesDelAula.map((a) => a.curso)).size}</p>
+                              </div>
+                            )}
+                            {asignacionAcademicaForm.nivelEducativo !== "SECUNDARIA" && (
+                              <div className="rounded-[10px] bg-white px-3 py-1.5">
+                                <p className="text-[9px] font-black uppercase tracking-[0.1em] text-monserrat-ink/40">Docente</p>
+                                <p className="max-w-[220px] truncate text-sm font-black text-monserrat-ink">{docentePrimariaVisible}</p>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                       {asignacionAcademicaForm.nivelEducativo === "SECUNDARIA" ? (
-                        <div className="grid gap-4 lg:grid-cols-2">
+                        <div className="grid min-h-0 gap-4 lg:grid-cols-2">
                           <RosterPanel title="Alumnos del aula" empty="No hay alumnos en esta aula" rows={alumnosDelAula.map((alumno) => ({
                             id: alumno.dni,
                             title: alumno.nombre,
                             detail: `${alumno.codigo || alumno.dni} - ${labelAcademico(alumno.grado ?? "")} ${labelAcademico(alumno.seccion ?? "")}`
-                          }))} />
+                          }))} className="h-full min-h-[280px]" bodyClassName="max-h-none" />
                           <RosterPanel title="Cursos y docente a cargo" empty="Aun no hay cursos asignados" rows={cursosDelAula.map((curso) => ({
                             id: curso.id,
                             title: curso.title,
                             detail: curso.detail
-                          }))} />
+                          }))} className="h-full min-h-[280px]" bodyClassName="max-h-none" />
                         </div>
                       ) : (
                         <RosterPanel title="Alumnos del salon" empty="No hay alumnos en esta aula" rows={alumnosDelAula.map((alumno) => ({
                           id: alumno.dni,
                           title: alumno.nombre,
                           detail: `${alumno.codigo || alumno.dni} - ${labelAcademico(alumno.grado ?? "")} ${labelAcademico(alumno.seccion ?? "")}`
-                        }))} />
+                        }))} className="h-full min-h-[280px]" bodyClassName="max-h-none min-h-[220px]" />
                       )}
                     </div>
                   </div>
@@ -1256,21 +1276,21 @@ export function AdminSection({ institution, ingresantes, videos, redes, onRefres
                       </p>
                     </form>
 
-                    <div className="grid gap-4">
-                      <div className="grid gap-3 rounded-[16px] border border-monserrat-ink/8 bg-white p-4 shadow-sm">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="grid min-h-[520px] grid-rows-[auto_minmax(360px,1fr)] gap-4">
+                      <div className="grid gap-3 rounded-[16px] border border-monserrat-ink/8 bg-white p-3 shadow-sm">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
                             <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">Padron academico</p>
                             <p className="mt-1 text-sm font-black text-monserrat-ink">Alumnos y docentes registrados</p>
                           </div>
                           <div className="flex flex-wrap gap-2">
-                            <button type="button" onClick={() => void descargarPlantillaAlumnos()} className="inline-flex items-center gap-1.5 rounded-[10px] border border-monserrat-ink/12 px-3 py-2 text-[12px] font-black text-monserrat-ink/65 hover:border-monserrat-ink/30">
+                            <button type="button" onClick={() => void descargarPlantillaAlumnos()} className="inline-flex items-center gap-1.5 rounded-[9px] border border-monserrat-ink/12 px-2.5 py-1.5 text-[11px] font-black text-monserrat-ink/65 hover:border-monserrat-ink/30">
                               <FileSpreadsheet size={14} /> Plantilla
                             </button>
-                            <button type="button" onClick={() => void exportarAlumnosExcel()} className="inline-flex items-center gap-1.5 rounded-[10px] border border-monserrat-ink/12 px-3 py-2 text-[12px] font-black text-monserrat-ink/65 hover:border-monserrat-ink/30">
+                            <button type="button" onClick={() => void exportarAlumnosExcel()} className="inline-flex items-center gap-1.5 rounded-[9px] border border-monserrat-ink/12 px-2.5 py-1.5 text-[11px] font-black text-monserrat-ink/65 hover:border-monserrat-ink/30">
                               <Download size={14} /> Exportar alumnos
                             </button>
-                            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-[10px] bg-monserrat-ink px-3 py-2 text-[12px] font-black text-white hover:bg-monserrat-ink/90">
+                            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-[9px] bg-monserrat-ink px-2.5 py-1.5 text-[11px] font-black text-white hover:bg-monserrat-ink/90">
                               <Upload size={14} /> Importar alumnos
                               <input type="file" accept=".csv,.xls,.xlsx" className="hidden" onChange={(e) => {
                                 const file = e.target.files?.[0];
@@ -1280,7 +1300,7 @@ export function AdminSection({ institution, ingresantes, videos, redes, onRefres
                             </label>
                           </div>
                         </div>
-                        <div className="grid gap-3 md:grid-cols-[1fr_180px]">
+                        <div className="grid gap-2 md:grid-cols-[1fr_170px]">
                           <AdminField label="Buscar usuario">
                             <input value={academicoSearch} onChange={(e) => setAcademicoSearch(e.target.value)} className="admin-input" placeholder="Nombre, DNI, aula o curso" />
                           </AdminField>
@@ -1311,7 +1331,7 @@ export function AdminSection({ institution, ingresantes, videos, redes, onRefres
                             setUsuarioAcademicoPhotoFile(null);
                           },
                           onDelete: () => void eliminarUsuarioAcademico(u),
-                        }))} />
+                        }))} className="h-full min-h-[360px] bg-white shadow-sm" bodyClassName="max-h-[620px] overflow-auto" />
                     </div>
                   </div>
                 </div>
@@ -1497,5 +1517,3 @@ export function AdminSection({ institution, ingresantes, videos, redes, onRefres
 }
 
 /* ── Helpers UI ─────────────────────────────────────────── */
-
-

@@ -44,13 +44,25 @@ export function MiniStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function RosterPanel({ title, empty, rows }: { title: string; empty: string; rows: { id: string; title: string; detail: string }[] }) {
+export function RosterPanel({
+  title,
+  empty,
+  rows,
+  className = "",
+  bodyClassName = ""
+}: {
+  title: string;
+  empty: string;
+  rows: { id: string; title: string; detail: string }[];
+  className?: string;
+  bodyClassName?: string;
+}) {
   return (
-    <div className="overflow-hidden rounded-[16px] border border-monserrat-ink/8 bg-white shadow-sm">
+    <div className={`overflow-hidden rounded-[16px] border border-monserrat-ink/8 bg-white shadow-sm ${className}`}>
       <div className="border-b border-monserrat-ink/8 bg-monserrat-ink px-4 py-3">
         <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-cream/70">{title}</p>
       </div>
-      <div className="max-h-[420px] overflow-y-auto p-3">
+      <div className={`max-h-[420px] overflow-y-auto p-3 ${bodyClassName}`}>
         {rows.length === 0 ? (
           <p className="py-8 text-center text-sm font-semibold text-monserrat-ink/40">{empty}</p>
         ) : rows.map((row) => (
@@ -253,10 +265,20 @@ export function MediaPicker({ label, accept, previewUrl, previewType, onFileChan
   );
 }
 
-export function AdminTable({ headers, rows }: { headers: string[]; rows: { id: number; values: string[]; onEdit: () => void; onDelete: () => void }[] }) {
+export function AdminTable({
+  headers,
+  rows,
+  className = "",
+  bodyClassName = ""
+}: {
+  headers: string[];
+  rows: { id: number; values: string[]; onEdit: () => void; onDelete: () => void }[];
+  className?: string;
+  bodyClassName?: string;
+}) {
   return (
-    <div className="overflow-hidden rounded-[16px] border border-monserrat-ink/8">
-      <div className="overflow-x-auto">
+    <div className={`overflow-hidden rounded-[16px] border border-monserrat-ink/8 ${className}`}>
+      <div className={`overflow-x-auto ${bodyClassName}`}>
         <table className="w-full border-collapse text-left text-[12.5px]">
           <thead className="bg-monserrat-ink">
             <tr>{headers.map((h) => <th key={h} className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.1em] text-monserrat-cream/70">{h}</th>)}
