@@ -212,8 +212,12 @@ export function AdminSection({ institution, ingresantes, videos, redes, onRefres
     setErrorMessage(null);
     try { await action(); await onRefresh(); setStatus(successMessage); }
     catch (e) {
-      setStatus(e instanceof Error ? e.message : "Error al completar la operacion");
-      setErrorMessage(e instanceof Error ? e.message : "Error al completar la operacion");
+      let msg = e instanceof Error ? e.message : "Error al completar la operacion";
+      if (msg.includes("403") || msg.includes("401") || msg.toLowerCase().includes("forbidden") || msg.toLowerCase().includes("unauthorized")) {
+        msg += " (Su sesión puede haber expirado. Por favor, cierre sesión e ingrese nuevamente para renovar sus credenciales).";
+      }
+      setStatus(msg);
+      setErrorMessage(msg);
     }
     finally { setIsBusy(false); }
   };
@@ -396,48 +400,190 @@ export function AdminSection({ institution, ingresantes, videos, redes, onRefres
     const XLSX = await import("xlsx");
     const buffer = await file.arrayBuffer();
     const workbook = XLSX.read(buffer, { type: "array" });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
     const existentes = new Set(usuariosAcademicos.map((usuario) => usuario.dni));
-    let creados = 0;
-    let omitidos = 0;
+
+    let alumnosCreados = 0;
+    let alumnosOmitidos = 0;
+    let docentesPrimariaCreados = 0;
+    let docentesPrimariaOmitidos = 0;
+    let docentesSecundariaCreados = 0;
+    let docentesSecundariaOmitidos = 0;
 
     await runAdminAction(async () => {
-      for (const row of rows) {
-        const dni = String(row.dni ?? row.DNI ?? "").trim();
-        const nombre = String(row.nombre ?? row.Nombre ?? "").trim();
-        const nivelEducativo = normalizeNivel(row.nivelEducativo ?? row.nivel ?? row.Nivel);
-        const grado = normalizeGrado(row.grado ?? row.Grado, nivelEducativo);
-        const seccion = String(row.seccion ?? row.Seccion ?? row["sección"] ?? "").trim().toUpperCase();
+      for (const sheetName of workbook.SheetNames) {
+        const sheet = workbook.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
 
-        if (!dni || !nombre || !nivelEducativo || !grado || !seccion || existentes.has(dni)) {
-          omitidos += 1;
-          continue;
+        const sheetLower = sheetName.trim().toLowerCase().replace(/\s+/g, "_");
+
+        // Detectar hoja por nombre exacto primero, luego por patrones
+        const isDocentePrimariaSheet =
+          sheetLower === "docentes_primaria" ||
+          /docente.*primaria|primaria.*docente/i.test(sheetName);
+        const isDocenteSecundariaSheet =
+          sheetLower === "docentes_secundaria" ||
+          /docente.*secundaria|secundaria.*docente/i.test(sheetName);
+        const isEstudiantesSheet =
+          sheetLower === "estudiantes" ||
+          sheetLower === "alumnos" ||
+          (!isDocentePrimariaSheet && !isDocenteSecundariaSheet &&
+            (/estudiante|alumno/i.test(sheetName)));
+
+        // Si no es docentes y es la única hoja, asumir estudiantes
+        const isEstudiantes =
+          isEstudiantesSheet ||
+          (workbook.SheetNames.length === 1 && !isDocentePrimariaSheet && !isDocenteSecundariaSheet);
+        const isDocentePrimaria = !isEstudiantes && isDocentePrimariaSheet;
+        const isDocenteSecundaria = !isEstudiantes && !isDocentePrimaria && isDocenteSecundariaSheet;
+
+        for (const row of rows) {
+          // Extraer campos de manera flexible y normalizar claves (sin tildes, sin espacios extra)
+          const normalize = (s: string) =>
+            s.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          const findVal = (keys: string[]): string => {
+            const rowKeys = Object.keys(row);
+            for (const key of keys) {
+              const normKey = normalize(key);
+              const matchedKey = rowKeys.find(k => normalize(k) === normKey);
+              if (matchedKey) return String(row[matchedKey] ?? "").trim();
+            }
+            return "";
+          };
+
+          // Columnas exactas del Excel: DNI, CÓDIGO, NOMBRE COMPLETO, CORREO, TELÉFONO
+          const dni = findVal(["dni", "d.n.i", "documento"]);
+          const nombreCompleto = findVal(["nombre completo", "nombre_completo", "nombres y apellidos", "apellidos y nombres", "nombre"]);
+
+          if (!dni || !nombreCompleto || existentes.has(dni)) {
+            if (isEstudiantes) alumnosOmitidos += 1;
+            else if (isDocentePrimaria) docentesPrimariaOmitidos += 1;
+            else if (isDocenteSecundaria) docentesSecundariaOmitidos += 1;
+            continue;
+          }
+
+          // Separar nombre completo en nombres y apellidos
+          const nombres_col = findVal(["nombres"]);
+          const apellidos_col = findVal(["apellidos", "apellido"]);
+          let nombres = nombres_col;
+          let apellidos = apellidos_col;
+          if (!nombres || !apellidos) {
+            const parts = nombreCompleto.split(/\s+/);
+            if (parts.length >= 3) {
+              apellidos = `${parts[0]} ${parts[1]}`;
+              nombres = parts.slice(2).join(" ");
+            } else if (parts.length === 2) {
+              apellidos = parts[0];
+              nombres = parts[1];
+            } else {
+              nombres = nombreCompleto;
+              apellidos = "-";
+            }
+          }
+
+          // CORREO, TELÉFONO, CÓDIGO — coinciden con y sin tilde gracias a normalize()
+          const rawCorreo = findVal(["correo", "correo electronico", "email", "e-mail"]);
+          const correo = rawCorreo && rawCorreo.includes("@") ? rawCorreo : undefined;
+          const telefono = findVal(["telefono", "celular", "movil"]);
+          const codigo = findVal(["codigo", "codigo_estudiante", "cod"]);
+
+          if (isEstudiantes) {
+            // Columnas Excel: NIVEL(primaria o secundaria), GRADO, SECCIÓN
+            const rawNivel = findVal(["nivel(primaria o secundaria)", "nivel", "nivel educativo", "nivel_educativo"]);
+            const nivelEducativo = normalizeNivel(rawNivel || "PRIMARIA");
+            const rawGrado = findVal(["grado", "grado_academico"]);
+            const grado = normalizeGrado(rawGrado, nivelEducativo);
+            const seccion = findVal(["seccion", "aula"]).toUpperCase() || "A";
+
+            if (!nivelEducativo || !grado || !seccion) {
+              alumnosOmitidos += 1;
+              continue;
+            }
+
+            await monserratApi.createUsuarioAcademico({
+              ...emptyUsuarioAcademico,
+              codigo: codigo || dni,
+              dni,
+              nombre: nombreCompleto,
+              nombres,
+              apellidos,
+              correo,
+              telefono,
+              rol: "ALUMNO",
+              nivelEducativo,
+              grado,
+              seccion,
+              estadoMatricula: findVal(["estado matricula", "estado_matricula", "matricula", "estado"]) || "MATRICULADO",
+              pensionPagada: parseBooleanCell(findVal(["pension", "pension pagada", "pension_pagada", "pagado"])),
+              pensionObservacion: findVal(["observacion", "observaciones", "pension observacion", "pension_observacion"])
+            }, token);
+            existentes.add(dni);
+            alumnosCreados += 1;
+
+          } else if (isDocentePrimaria) {
+            await monserratApi.createUsuarioAcademico({
+              ...emptyUsuarioAcademico,
+              codigo: codigo || dni,
+              dni,
+              nombre: nombreCompleto,
+              nombres,
+              apellidos,
+              correo,
+              telefono,
+              rol: "DOCENTE",
+              nivelEducativo: "PRIMARIA",
+              materia: "",
+              especialidad: "PRIMARIA"
+            }, token);
+            existentes.add(dni);
+            docentesPrimariaCreados += 1;
+
+          } else if (isDocenteSecundaria) {
+            const rawCurso = findVal(["curso", "materia", "asignatura"]);
+            // Normalizar curso para docentes de secundaria si coincide con el enum
+            const normalizeCurso = (val: string): string => {
+              const raw = val.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+              if (raw.includes("MATEMATICA")) return "MATEMATICA";
+              if (raw.includes("COMUNICACION")) return "COMUNICACION";
+              if (raw.includes("CIENCIA") || raw.includes("TECNOLOGIA")) return "CIENCIA_TECNOLOGIA";
+              if (raw.includes("HISTORIA")) return "HISTORIA";
+              if (raw.includes("INGLES")) return "INGLES";
+              return raw;
+            };
+            const materia = normalizeCurso(rawCurso || "MATEMATICA");
+
+            await monserratApi.createUsuarioAcademico({
+              ...emptyUsuarioAcademico,
+              codigo: codigo || dni,
+              dni,
+              nombre: nombreCompleto,
+              nombres,
+              apellidos,
+              correo,
+              telefono,
+              rol: "DOCENTE",
+              nivelEducativo: "SECUNDARIA",
+              materia,
+              especialidad: "SECUNDARIA"
+            }, token);
+            existentes.add(dni);
+            docentesSecundariaCreados += 1;
+          }
         }
-
-        await monserratApi.createUsuarioAcademico({
-          ...emptyUsuarioAcademico,
-          codigo: String(row.codigo ?? row.Codigo ?? row["código"] ?? dni).trim(),
-          dni,
-          nombre,
-          nombres: String(row.nombres ?? row.Nombres ?? "").trim(),
-          apellidos: String(row.apellidos ?? row.Apellidos ?? "").trim(),
-          correo: String(row.correo ?? row.Correo ?? "").trim(),
-          telefono: String(row.telefono ?? row.Telefono ?? row["teléfono"] ?? "").trim(),
-          rol: "ALUMNO",
-          nivelEducativo,
-          grado,
-          seccion,
-          estadoMatricula: String(row.estadoMatricula ?? row.EstadoMatricula ?? "MATRICULADO").trim() || "MATRICULADO",
-          pensionPagada: parseBooleanCell(row.pensionPagada ?? row.PensionPagada),
-          pensionObservacion: String(row.pensionObservacion ?? row.PensionObservacion ?? "").trim()
-        }, token);
-        existentes.add(dni);
-        creados += 1;
       }
       setUsuariosAcademicos(await monserratApi.usuariosAcademicos(token));
-      setImportSummary(`${creados} alumnos importados. ${omitidos} filas omitidas.`);
-    }, "Importacion de alumnos completada");
+      
+      const parts = [];
+      if (alumnosCreados > 0 || alumnosOmitidos > 0) {
+        parts.push(`${alumnosCreados} alumnos creados (${alumnosOmitidos} omitidos)`);
+      }
+      if (docentesPrimariaCreados > 0 || docentesPrimariaOmitidos > 0) {
+        parts.push(`${docentesPrimariaCreados} docentes de primaria creados (${docentesPrimariaOmitidos} omitidos)`);
+      }
+      if (docentesSecundariaCreados > 0 || docentesSecundariaOmitidos > 0) {
+        parts.push(`${docentesSecundariaCreados} docentes de secundaria creados (${docentesSecundariaOmitidos} omitidos)`);
+      }
+      setImportSummary(`Importación completada: ${parts.join(", ") || "ningún registro importado"}.`);
+    }, "Importación completada con éxito");
   };
 
   const actualizarPensionMensual = (pension: PensionMensual, pagada: boolean) => {

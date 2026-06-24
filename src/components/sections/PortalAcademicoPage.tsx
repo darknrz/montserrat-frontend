@@ -1,4 +1,4 @@
-import { BadgeCheck, BookOpen, CheckCircle2, ClipboardCheck, GraduationCap, LogOut, Save, School, ShieldCheck, UserRound, WalletCards } from "lucide-react";
+ï»¿import { BadgeCheck, BookOpen, CheckCircle2, ClipboardCheck, Clock, Edit3, GraduationCap, LogOut, Plus, Save, School, ShieldCheck, UserCheck, UserRound, UserX, WalletCards, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { monserratApi } from "../../api/monserrat";
@@ -36,8 +36,12 @@ export function PortalAcademicoPage() {
   const [isBusy, setIsBusy] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
-  const [asistenciaForm, setAsistenciaForm] = useState({ alumnoDni: "", fecha: new Date().toISOString().slice(0, 10), estado: "PRESENTE", observacion: "" });
-  const [notaForm, setNotaForm] = useState({ id: 0, alumnoDni: "", curso: "", periodo: "", tipoEvaluacion: "EXAMEN", valor: 0, observacion: "" });
+  const [asistenciaFecha, setAsistenciaFecha] = useState(new Date().toISOString().slice(0, 10));
+  const [asistenciaBulk, setAsistenciaBulk] = useState<Record<string, string>>({});
+  const emptyNotaForm = { id: 0, alumnoDni: "", curso: "", periodo: "", tipoEvaluacion: "EXAMEN", valor: 0, observacion: "" };
+  const [notaForm, setNotaForm] = useState(emptyNotaForm);
+  const [perfilPhotoFile, setPerfilPhotoFile] = useState<File | null>(null);
+  const perfilPhotoPreview = perfilPhotoFile ? URL.createObjectURL(perfilPhotoFile) : perfil.fotoUrl;
 
   const token = session?.token ?? "";
   const isDocente = session?.rol === "DOCENTE";
@@ -53,15 +57,7 @@ export function PortalAcademicoPage() {
     }, []);
   }, [asignaciones]);
 
-  const salonActualDetalle = useMemo(() => {
-    const grado = labelFromEnum(perfil.grado ?? "");
-    const seccion = perfil.seccion ?? "";
-    const titulo = grado || seccion ? `${grado} ${seccion}`.trim() : "Sin salon asignado";
-    const nivel = perfil.nivelEducativo ? labelFromEnum(perfil.nivelEducativo) : (isDocente ? "Docente" : "Alumno");
-    return { titulo, nivel };
-  }, [isDocente, perfil.grado, perfil.nivelEducativo, perfil.seccion]);
-
-  const salonRows = useMemo(() => {
+    const salonRows = useMemo(() => {
     const grouped = new Map<string, { nivel: string; grado?: string; seccion?: string; alumnos: string[]; cursos: string[] }>();
     asignaciones.forEach((item) => {
       const key = `${item.nivelEducativo ?? ""}-${item.grado ?? ""}-${item.seccion ?? ""}`;
@@ -80,10 +76,24 @@ export function PortalAcademicoPage() {
     });
     return Array.from(grouped.values()).map((item) => ({
       ...item,
-      salon: `${labelFromEnum(item.grado ?? "")} ${item.seccion ?? ""}`.trim(),
+      salon: `${gradoCorto(item.grado ?? "")} ${item.seccion ?? ""}`.trim(),
       nivelLabel: item.nivel ? labelFromEnum(item.nivel) : "Sin nivel"
     }));
   }, [asignaciones]);
+
+  const salonActualDetalle = useMemo(() => {
+    // Para docentes: obtener salon real de las asignaciones
+    if (isDocente && salonRows.length > 0) {
+      const primerSalon = salonRows[0];
+      return { titulo: primerSalon.salon || "Sin salon", nivel: primerSalon.nivelLabel };
+    }
+    // Para alumnos: usar datos del perfil
+    const grado = labelFromEnum(perfil.grado ?? "");
+    const seccion = perfil.seccion ?? "";
+    const titulo = grado || seccion ? `${grado} ${seccion}`.trim() : "Sin salon asignado";
+    const nivel = perfil.nivelEducativo ? labelFromEnum(perfil.nivelEducativo) : "Alumno";
+    return { titulo, nivel };
+  }, [isDocente, perfil.grado, perfil.nivelEducativo, perfil.seccion, salonRows]);
 
   const cursosDelAlumno = useMemo(() => {
     const unique = new Map<string, string>();
@@ -121,7 +131,7 @@ export function PortalAcademicoPage() {
       setAsignaciones(asignacionesData);
       setAsistencias(asistenciasData);
       setNotas(notasData);
-      setAsistenciaForm((current) => ({ ...current, alumnoDni: current.alumnoDni || alumnosData[0]?.dni || "" }));
+      // Inicializar bulk con todos como PRESENTE
       setNotaForm((current) => ({ ...current, alumnoDni: current.alumnoDni || alumnosData[0]?.dni || "", curso: current.curso || asignacionesData[0]?.curso || "" }));
     }
 
@@ -172,8 +182,14 @@ export function PortalAcademicoPage() {
     setIsBusy(true);
     setStatus(null);
     try {
-      const updated = await monserratApi.updatePerfilAcademico(perfil, token);
+      let fotoUrl = perfil.fotoUrl ?? "";
+      if (perfilPhotoFile) {
+        const uploaded = await monserratApi.uploadMedia(perfilPhotoFile, "academico", token);
+        fotoUrl = uploaded.secureUrl;
+      }
+      const updated = await monserratApi.updatePerfilAcademico({ ...perfil, fotoUrl }, token);
       setPerfil(updated);
+      setPerfilPhotoFile(null);
       setStatus("Perfil actualizado");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "No se pudo actualizar el perfil");
@@ -182,15 +198,32 @@ export function PortalAcademicoPage() {
     }
   };
 
-  const submitAsistencia = async (event: FormEvent) => {
-    event.preventDefault();
+  const toggleAsistencia = (dni: string) => {
+    setAsistenciaBulk((prev) => {
+      const current = prev[dni] || "PRESENTE";
+      const next = current === "PRESENTE" ? "AUSENTE" : current === "AUSENTE" ? "TARDANZA" : current === "TARDANZA" ? "JUSTIFICADO" : "PRESENTE";
+      return { ...prev, [dni]: next };
+    });
+  };
+
+  const marcarTodos = (estado: string) => {
+    const bulk: Record<string, string> = {};
+    alumnos.forEach((a) => { bulk[a.dni] = estado; });
+    setAsistenciaBulk(bulk);
+  };
+
+  const submitAsistenciaBulk = async () => {
     setIsBusy(true);
     setStatus(null);
     try {
-      await monserratApi.createAsistencia(asistenciaForm, token);
-      setAsistenciaForm((current) => ({ ...current, observacion: "" }));
+      let count = 0;
+      for (const alumno of alumnos) {
+        const estado = asistenciaBulk[alumno.dni] || "PRESENTE";
+        await monserratApi.createAsistencia({ alumnoDni: alumno.dni, fecha: asistenciaFecha, estado, observacion: "" }, token);
+        count++;
+      }
       await loadPortal();
-      setStatus("Asistencia registrada");
+      setStatus(`Asistencia guardada para ${count} alumnos`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "No se pudo registrar la asistencia");
     } finally {
@@ -204,11 +237,13 @@ export function PortalAcademicoPage() {
     setStatus(null);
     try {
       const payload = { alumnoDni: notaForm.alumnoDni, curso: notaForm.curso, periodo: notaForm.periodo, tipoEvaluacion: notaForm.tipoEvaluacion, valor: Number(notaForm.valor), observacion: notaForm.observacion };
-      if (notaForm.id) await monserratApi.updateNota(notaForm.id, payload, token);
+      const isEditing = notaForm.id > 0;
+      if (isEditing) await monserratApi.updateNota(notaForm.id, payload, token);
       else await monserratApi.createNota(payload, token);
-      setNotaForm({ id: 0, alumnoDni: "", curso: asignaciones[0]?.curso ?? "", periodo: "", tipoEvaluacion: "EXAMEN", valor: 0, observacion: "" });
+      // Reset completo del formulario
+      setNotaForm(emptyNotaForm);
       await loadPortal();
-      setStatus("Nota guardada");
+      setStatus(isEditing ? "Nota actualizada correctamente" : "Nota registrada correctamente");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "No se pudo guardar la nota");
     } finally {
@@ -298,7 +333,7 @@ export function PortalAcademicoPage() {
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/45">Ficha rapida</p>
                   <h3 className="mt-1 font-serif text-2xl font-black text-monserrat-ink">{perfil.nombre || session.nombre}</h3>
-                  <p className="mt-1 text-sm font-semibold text-monserrat-ink/55">{isDocente ? "Docente" : "Alumno"} · {labelFromEnum(nivelActual)}</p>
+                  <p className="mt-1 text-sm font-semibold text-monserrat-ink/55">{isDocente ? "Docente" : "Alumno"} ï¿½ {labelFromEnum(nivelActual)}</p>
                 </div>
                 <div className="grid gap-3">
                   <SummaryItem label="Salon" value={salonActualDetalle.titulo} />
@@ -310,8 +345,17 @@ export function PortalAcademicoPage() {
               <form onSubmit={submitPerfil} className="grid gap-4 rounded-[18px] border border-monserrat-ink/8 bg-white p-5 shadow-sm md:grid-cols-2">
                 <Field label="Nombre"><input value={perfil.nombre ?? ""} onChange={(event) => setPerfil({ ...perfil, nombre: event.target.value })} className="admin-input" required /></Field>
                 <Field label="Telefono"><input value={perfil.telefono ?? ""} onChange={(event) => setPerfil({ ...perfil, telefono: event.target.value })} className="admin-input" /></Field>
-                <Field label="Foto URL"><input value={perfil.fotoUrl ?? ""} onChange={(event) => setPerfil({ ...perfil, fotoUrl: event.target.value })} className="admin-input" /></Field>
-                {isDocente && <Field label="Materia"><input value={perfil.materia ?? ""} onChange={(event) => setPerfil({ ...perfil, materia: event.target.value })} className="admin-input" /></Field>}
+                <Field label="Foto de perfil">
+                    <div className="flex items-center gap-3">
+                      {perfilPhotoPreview && <img src={perfilPhotoPreview} alt="Preview" className="h-14 w-14 rounded-[10px] object-cover border border-monserrat-ink/10" />}
+                      <label className="inline-flex cursor-pointer items-center gap-2 rounded-[10px] border border-monserrat-ink/12 bg-white px-4 py-2 text-xs font-bold text-monserrat-ink/70 hover:bg-monserrat-cream/60 transition-colors">
+                        <UserRound size={14} /> {perfilPhotoPreview ? "Cambiar foto" : "Subir foto"}
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => { if (e.target.files?.[0]) setPerfilPhotoFile(e.target.files[0]); }} />
+                      </label>
+                      {perfilPhotoFile && <span className="text-[11px] font-semibold text-emerald-600">{perfilPhotoFile.name}</span>}
+                    </div>
+                  </Field>
+                {isDocente && nivelActual === "SECUNDARIA" && <Field label="Materia"><input value={perfil.materia ?? ""} onChange={(event) => setPerfil({ ...perfil, materia: event.target.value })} className="admin-input" /></Field>}
                 {isAlumno && <Field label="Grado"><input value={perfil.grado ?? ""} onChange={(event) => setPerfil({ ...perfil, grado: event.target.value })} className="admin-input" /></Field>}
                 {isAlumno && <Field label="Seccion"><input value={perfil.seccion ?? ""} onChange={(event) => setPerfil({ ...perfil, seccion: event.target.value })} className="admin-input" /></Field>}
                 <div className="md:col-span-2 flex flex-wrap gap-3">
@@ -351,20 +395,75 @@ export function PortalAcademicoPage() {
           )}
 
           {tab === "asistencia" && isDocente && (
-            <div className="grid gap-5 lg:grid-cols-[320px_1fr]">
-              <form onSubmit={submitAsistencia} className="grid content-start gap-3 rounded-[16px] border border-monserrat-ink/8 bg-monserrat-cream/35 p-4">
-                <h3 className="font-serif text-lg font-black text-monserrat-ink">Registrar asistencia</h3>
-                <Field label="Alumno">
-                  <select value={asistenciaForm.alumnoDni} onChange={(event) => setAsistenciaForm({ ...asistenciaForm, alumnoDni: event.target.value })} className="admin-input" required>
-                    <option value="">Selecciona</option>
-                    {alumnos.map((alumno) => <option key={alumno.dni} value={alumno.dni}>{alumno.nombre}</option>)}
-                  </select>
-                </Field>
-                <Field label="Fecha"><input type="date" value={asistenciaForm.fecha} onChange={(event) => setAsistenciaForm({ ...asistenciaForm, fecha: event.target.value })} className="admin-input" required /></Field>
-                <Field label="Estado"><select value={asistenciaForm.estado} onChange={(event) => setAsistenciaForm({ ...asistenciaForm, estado: event.target.value })} className="admin-input"><option value="PRESENTE">Presente</option><option value="AUSENTE">Ausente</option><option value="TARDANZA">Tardanza</option><option value="JUSTIFICADO">Justificado</option></select></Field>
-                <Field label="Observacion"><textarea value={asistenciaForm.observacion} onChange={(event) => setAsistenciaForm({ ...asistenciaForm, observacion: event.target.value })} className="admin-input" /></Field>
-                <button disabled={isBusy} className="inline-flex items-center justify-center gap-2 rounded-[12px] bg-monserrat-red py-2.5 text-sm font-black text-white"><ClipboardCheck size={16} /> Guardar</button>
-              </form>
+            <div className="grid gap-5">
+              {/* Panel de asistencia bulk */}
+              <div className="rounded-[16px] border border-monserrat-ink/8 bg-monserrat-cream/35 p-5">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <h3 className="font-serif text-lg font-black text-monserrat-ink">Asistencia del dia</h3>
+                  <div className="flex items-center gap-3">
+                    <Field label="Fecha">
+                      <input type="date" value={asistenciaFecha} onChange={(e) => setAsistenciaFecha(e.target.value)} className="admin-input" />
+                    </Field>
+                  </div>
+                </div>
+
+                {/* Botones rapidos */}
+                <div className="mb-3 flex flex-wrap gap-2">
+                  <button type="button" onClick={() => marcarTodos("PRESENTE")} className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 transition-colors">
+                    <UserCheck size={12} /> Todos presentes
+                  </button>
+                  <button type="button" onClick={() => marcarTodos("AUSENTE")} className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-[11px] font-bold text-red-700 hover:bg-red-100 transition-colors">
+                    <UserX size={12} /> Todos ausentes
+                  </button>
+                </div>
+
+                {/* Lista de alumnos */}
+                <div className="grid gap-1.5 max-h-[420px] overflow-y-auto">
+                  {alumnos.map((alumno) => {
+                    const estado = asistenciaBulk[alumno.dni] || "PRESENTE";
+                    const colors: Record<string, string> = {
+                      PRESENTE: "bg-emerald-50 border-emerald-300 text-emerald-700",
+                      AUSENTE: "bg-red-50 border-red-300 text-red-700",
+                      TARDANZA: "bg-amber-50 border-amber-300 text-amber-700",
+                      JUSTIFICADO: "bg-blue-50 border-blue-300 text-blue-700"
+                    };
+                    const icons: Record<string, React.ReactNode> = {
+                      PRESENTE: <UserCheck size={14} />,
+                      AUSENTE: <UserX size={14} />,
+                      TARDANZA: <Clock size={14} />,
+                      JUSTIFICADO: <ShieldCheck size={14} />
+                    };
+                    return (
+                      <button
+                        key={alumno.dni}
+                        type="button"
+                        onClick={() => toggleAsistencia(alumno.dni)}
+                        className={`flex items-center justify-between rounded-[10px] border px-4 py-2.5 text-left transition-all ${colors[estado] ?? colors.PRESENTE}`}
+                      >
+                        <span className="text-[13px] font-semibold text-monserrat-ink/80">{alumno.nombre}</span>
+                        <span className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wide">
+                          {icons[estado] ?? icons.PRESENTE} {labelFromEnum(estado)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  {alumnos.length === 0 && <p className="py-6 text-center text-sm font-semibold text-monserrat-ink/40">No hay alumnos asignados</p>}
+                </div>
+
+                {/* Boton guardar */}
+                {alumnos.length > 0 && (
+                  <button
+                    type="button"
+                    disabled={isBusy}
+                    onClick={submitAsistenciaBulk}
+                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-[12px] bg-monserrat-red py-3 text-sm font-black text-white disabled:opacity-60 hover:opacity-90 transition-opacity"
+                  >
+                    <ClipboardCheck size={16} /> {isBusy ? "Guardando..." : `Guardar asistencia (${alumnos.length} alumnos)`}
+                  </button>
+                )}
+              </div>
+
+              {/* Historial */}
               <SimpleTable title="Ultimas asistencias" headers={["Fecha", "Alumno", "Estado"]} rows={asistencias.map((item) => [item.fecha, item.alumnoNombre, labelFromEnum(item.estado)])} />
             </div>
           )}
@@ -372,22 +471,54 @@ export function PortalAcademicoPage() {
           {tab === "notas" && (
             <div className={isDocente ? "grid gap-5 lg:grid-cols-[320px_1fr]" : "grid gap-5"}>
               {isDocente && (
-                <form onSubmit={submitNota} className="grid content-start gap-3 rounded-[16px] border border-monserrat-ink/8 bg-monserrat-cream/35 p-4">
-                  <h3 className="font-serif text-lg font-black text-monserrat-ink">{notaForm.id ? "Editar nota" : "Registrar nota"}</h3>
+                <form
+                  onSubmit={submitNota}
+                  className={`grid content-start gap-3 rounded-[16px] border-2 p-4 transition-all duration-200 ${
+                    notaForm.id
+                      ? "border-blue-400 bg-blue-50/60"
+                      : "border-monserrat-ink/8 bg-monserrat-cream/35"
+                  }`}
+                >
+                  {/* Barra de modo: Nueva nota / Editando nota */}
+                  <div className="flex items-center justify-between gap-2 pb-1">
+                    {notaForm.id ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-3 py-1 text-[11px] font-black uppercase tracking-wide text-blue-700">
+                        <Edit3 size={11} /> Editando nota #{notaForm.id}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-black uppercase tracking-wide text-emerald-700">
+                        <Plus size={11} /> Nueva nota
+                      </span>
+                    )}
+                    {notaForm.id > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setNotaForm(emptyNotaForm)}
+                        className="inline-flex items-center gap-1 rounded-[8px] border border-blue-200 bg-white px-3 py-1 text-[12px] font-bold text-blue-600 hover:bg-blue-50 transition-colors"
+                      >
+                        <X size={12} /> Cancelar edicion
+                      </button>
+                    )}
+                  </div>
+
+                  <h3 className={`font-serif text-lg font-black ${notaForm.id ? "text-blue-700" : "text-monserrat-ink"}`}>
+                    {notaForm.id ? "Editar nota" : "Registrar nota"}
+                  </h3>
+
                   <Field label="Alumno">
                     <select value={notaForm.alumnoDni} onChange={(event) => setNotaForm({ ...notaForm, alumnoDni: event.target.value })} className="admin-input" required>
-                      <option value="">Selecciona</option>
+                      <option value="">Selecciona un alumno</option>
                       {alumnos.map((alumno) => <option key={alumno.dni} value={alumno.dni}>{alumno.nombre}</option>)}
                     </select>
                   </Field>
                   <Field label="Curso">
                     {cursosDisponibles.length > 0 ? (
                       <select value={notaForm.curso} onChange={(event) => setNotaForm({ ...notaForm, curso: event.target.value })} className="admin-input" required>
-                        <option value="">Selecciona</option>
+                        <option value="">Selecciona un curso</option>
                         {cursosDisponibles.map((curso) => <option key={curso} value={curso}>{curso}</option>)}
                       </select>
                     ) : (
-                      <input value={notaForm.curso} onChange={(event) => setNotaForm({ ...notaForm, curso: event.target.value })} className="admin-input" required />
+                      <input value={notaForm.curso} onChange={(event) => setNotaForm({ ...notaForm, curso: event.target.value })} className="admin-input" placeholder="Nombre del curso" required />
                     )}
                   </Field>
                   <Field label="Tipo de evaluacion">
@@ -399,10 +530,21 @@ export function PortalAcademicoPage() {
                       <option value="PROYECTO">Proyecto</option>
                     </select>
                   </Field>
-                  <Field label="Periodo"><input value={notaForm.periodo} onChange={(event) => setNotaForm({ ...notaForm, periodo: event.target.value })} className="admin-input" required /></Field>
-                  <Field label="Nota"><input type="number" min="0" max="20" step="0.1" value={notaForm.valor} onChange={(event) => setNotaForm({ ...notaForm, valor: Number(event.target.value) })} className="admin-input" required /></Field>
-                  <Field label="Observacion"><textarea value={notaForm.observacion} onChange={(event) => setNotaForm({ ...notaForm, observacion: event.target.value })} className="admin-input" /></Field>
-                  <button disabled={isBusy} className="inline-flex items-center justify-center gap-2 rounded-[12px] bg-monserrat-red py-2.5 text-sm font-black text-white"><GraduationCap size={16} /> Guardar</button>
+                  <Field label="Periodo"><input value={notaForm.periodo} onChange={(event) => setNotaForm({ ...notaForm, periodo: event.target.value })} className="admin-input" placeholder="Ej: Bimestre 1" required /></Field>
+                  <Field label="Nota (0-20)"><input type="number" min="0" max="20" step="0.1" value={notaForm.valor || ""} onChange={(event) => setNotaForm({ ...notaForm, valor: Number(event.target.value) })} className="admin-input" placeholder="0 - 20" required /></Field>
+                  <Field label="Observacion"><textarea value={notaForm.observacion} onChange={(event) => setNotaForm({ ...notaForm, observacion: event.target.value })} className="admin-input" placeholder="Opcional" /></Field>
+
+                  <button
+                    disabled={isBusy}
+                    className={`inline-flex items-center justify-center gap-2 rounded-[12px] py-2.5 text-sm font-black text-white disabled:opacity-60 transition-colors ${
+                      notaForm.id ? "bg-blue-600 hover:bg-blue-700" : "bg-monserrat-red hover:opacity-90"
+                    }`}
+                  >
+                    {notaForm.id
+                      ? <><Edit3 size={15} /> Actualizar nota</>
+                      : <><GraduationCap size={15} /> Registrar nota</>
+                    }
+                  </button>
                 </form>
               )}
               <SimpleTable
@@ -464,6 +606,10 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
       <p className="mt-1 text-lg font-black text-monserrat-ink">{value}</p>
     </div>
   );
+}
+
+function gradoCorto(grado: string) {
+  return labelFromEnum(grado.replace(/_PRIMARIA|_SECUNDARIA/gi, ""));
 }
 
 function labelFromEnum(value: string) {
