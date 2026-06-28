@@ -1,7 +1,7 @@
 import { Edit3, ImagePlus, Plus, Save, Trash2, Upload } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { createCatalogId, type CatalogItem, type SalonItem } from "./adminShared";
+import { createCatalogId, aulaPorGradoSeccion, type CatalogItem, type SalonItem } from "./adminShared";
 
 export function AdminField({ label, children, className = "" }: { label: string; children: ReactNode; className?: string }) {
   return (
@@ -147,7 +147,7 @@ export function SalonConfigPanel({
 }: {
   nivel: string;
   salones: SalonItem[];
-  addSalon: () => void;
+  addSalon: (grado: string, seccion: string, aula: string) => void;
   updateSalon: (salon: SalonItem, patch: Partial<SalonItem>) => void;
   deleteSalon: (salon: SalonItem) => void;
   gradosActivosPorNivel: (nivel?: string) => string[];
@@ -155,6 +155,18 @@ export function SalonConfigPanel({
   labelAcademico: (id: string) => string;
 }) {
   const [deleteTarget, setDeleteTarget] = useState<SalonItem | null>(null);
+
+  // Pagination states and effects
+  const [pagina, setPagina] = useState(1);
+  const SALONES_POR_PAGINA = 4;
+
+  useEffect(() => {
+    setPagina(1);
+  }, [nivel]);
+
+  const totalPaginas = Math.max(1, Math.ceil(salones.length / SALONES_POR_PAGINA));
+  const salonesPagina = salones.slice((pagina - 1) * SALONES_POR_PAGINA, pagina * SALONES_POR_PAGINA);
+
   return (
     <div className="overflow-hidden rounded-[16px] border border-monserrat-ink/8 bg-white shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-monserrat-ink/8 bg-monserrat-ink px-5 py-4">
@@ -162,17 +174,18 @@ export function SalonConfigPanel({
           <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-cream/70">Configuracion</p>
           <h4 className="font-serif text-xl font-black text-white">Salones de {labelAcademico(nivel)}</h4>
         </div>
-        <button type="button" onClick={addSalon} className="inline-flex items-center gap-1 rounded-[10px] bg-white/10 px-3 py-2 text-[11px] font-black text-monserrat-cream hover:bg-white/18">
+        <button type="button" onClick={() => addSalon("", "", "Nuevo")} className="inline-flex items-center gap-1 rounded-[10px] bg-white/10 px-3 py-2 text-[11px] font-black text-monserrat-cream hover:bg-white/18">
           <Plus size={12} /> Agregar
         </button>
       </div>
+
       <div className="grid gap-3 p-4 xl:grid-cols-2">
-        {salones.map((salon) => (
+        {salonesPagina.map((salon) => (
           <div key={`${salon.nivel}-${salon.grado}-${salon.seccion}-${salon.aula}`} className={`rounded-[14px] border p-4 ${salon.active ? "border-monserrat-ink/8 bg-monserrat-cream/25" : "border-monserrat-ink/8 bg-white opacity-60"}`}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">{labelAcademico(salon.nivel)}</p>
-                <h5 className="mt-1 font-serif text-lg font-black text-monserrat-ink">Aula {salon.aula}</h5>
+                <h5 className="mt-1 font-serif text-lg font-black text-monserrat-ink">Aula {salon.aula || "(vacia)"}</h5>
               </div>
               <button type="button" onClick={() => setDeleteTarget(salon)} className="flex h-8 w-8 items-center justify-center rounded-[8px] bg-monserrat-red/8 text-monserrat-red hover:bg-monserrat-red/16">
                 <Trash2 size={13} />
@@ -186,14 +199,10 @@ export function SalonConfigPanel({
                 <input value={salon.aula} onChange={(e) => updateSalon(salon, { aula: e.target.value })} className="admin-input" />
               </AdminField>
               <AdminField label="Grado">
-                <select value={salon.grado} onChange={(e) => updateSalon(salon, { grado: e.target.value })} className="admin-input">
-                  {gradosActivosPorNivel(salon.nivel).map((grado) => <option key={grado} value={grado}>{labelAcademico(grado)}</option>)}
-                </select>
+                <input value={salon.grado ? labelAcademico(salon.grado) : "No asignado"} className="admin-input" disabled />
               </AdminField>
               <AdminField label="Seccion">
-                <select value={salon.seccion} onChange={(e) => updateSalon(salon, { seccion: e.target.value })} className="admin-input">
-                  {seccionesActivas.map((seccion) => <option key={seccion} value={seccion}>{labelAcademico(seccion)}</option>)}
-                </select>
+                <input value={salon.seccion ? labelAcademico(salon.seccion) : "No asignado"} className="admin-input" disabled />
               </AdminField>
             </div>
             <button type="button" onClick={() => updateSalon(salon, { active: !salon.active })}
@@ -203,6 +212,34 @@ export function SalonConfigPanel({
           </div>
         ))}
       </div>
+
+      {totalPaginas > 1 && (
+        <div className="flex items-center justify-between border-t border-monserrat-ink/8 px-5 py-3 bg-monserrat-cream/10">
+          <p className="text-[12px] font-semibold text-monserrat-ink/45">
+            Página <span className="font-black text-monserrat-ink">{pagina}</span> de{" "}
+            <span className="font-black text-monserrat-ink">{totalPaginas}</span>
+          </p>
+          <div className="flex gap-1">
+            <button
+              type="button"
+              disabled={pagina === 1}
+              onClick={() => setPagina((p) => p - 1)}
+              className="flex h-8 w-8 items-center justify-center rounded-[8px] border border-monserrat-ink/10 text-monserrat-ink/50 transition hover:border-monserrat-ink/25 hover:text-monserrat-ink disabled:opacity-30"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6" /></svg>
+            </button>
+            <button
+              type="button"
+              disabled={pagina === totalPaginas}
+              onClick={() => setPagina((p) => p + 1)}
+              className="flex h-8 w-8 items-center justify-center rounded-[8px] border border-monserrat-ink/10 text-monserrat-ink/50 transition hover:border-monserrat-ink/25 hover:text-monserrat-ink disabled:opacity-30"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 18 6-6-6-6" /></svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       {deleteTarget && (
         <ConfirmDeleteModal
           title="Eliminar salon"
@@ -278,18 +315,29 @@ export function AdminTable({
 }) {
   return (
     <div className={`overflow-hidden rounded-[16px] border border-monserrat-ink/8 ${className}`}>
-      <div className={`overflow-x-auto ${bodyClassName}`}>
-        <table className="w-full border-collapse text-left text-[12.5px]">
+      <div className={`admin-table-scroll ${bodyClassName}`}>
+        <table className="w-full table-fixed border-collapse text-left text-[12.5px]">
           <thead className="bg-monserrat-ink">
-            <tr>{headers.map((h) => <th key={h} className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.1em] text-monserrat-cream/70">{h}</th>)}
-              <th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.1em] text-monserrat-cream/70"></th>
+            <tr>
+              {headers.map((h, i) => (
+                <th key={h}
+                  className={`px-4 py-3 text-[10px] font-black uppercase tracking-[0.1em] text-monserrat-cream/70 ${i === 0 ? "w-[12%]" :   // Codigo
+                    i === 1 ? "w-[30%]" :   // Nombre
+                      i === 2 ? "w-[10%]" :   // Rol
+                        i === 3 ? "w-[10%]" :   // Estado
+                          "w-[30%]"               // Detalle
+                    }`}
+                >{h}</th>
+              ))}
+              <th className="w-[8%] px-4 py-3"></th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => (
               <tr key={row.id} className="border-t border-monserrat-ink/6 hover:bg-monserrat-cream/20">
-                {row.values.map((v, i) => <td key={i} className="max-w-[220px] truncate px-4 py-3 text-monserrat-ink/80">{v}</td>)}
-                <td className="px-4 py-3">
+                {row.values.map((v, i) => <td key={i} className="truncate px-2 py-3 text-monserrat-ink/80">{v}</td>)}
+
+                <td className="py-3">
                   <div className="flex gap-1.5">
                     <button type="button" onClick={row.onEdit} className="flex h-8 w-8 items-center justify-center rounded-[8px] border border-monserrat-ink/12 bg-white hover:border-monserrat-ink/30"><Edit3 size={13} /></button>
                     <button type="button" onClick={row.onDelete} className="flex h-8 w-8 items-center justify-center rounded-[8px] bg-monserrat-red/8 text-monserrat-red hover:bg-monserrat-red/16"><Trash2 size={13} /></button>
