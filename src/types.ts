@@ -172,7 +172,7 @@ export type ChatbotMessageDTO = {
 
 export type MediaUploadResponse = {
   publicId: string;
-  resourceType: "image" | "video" | string;
+  resourceType: "image" | "video" | "raw" | string;
   secureUrl: string;
   thumbnailUrl?: string;
   format?: string;
@@ -181,5 +181,19 @@ export type MediaUploadResponse = {
   bytes?: number;
   duration?: number;
   originalFilename?: string;
+};
+
+export type Anuncio = {
+  id: number;
+  titulo: string;
+  mensaje?: string;
+  verMasTexto: string;
+  attachmentUrl?: string;
+  attachmentPublicId?: string;
+  attachmentResourceType?: string;
+  attachmentMimeType?: string;
+  mostrarEnPopup?: boolean;
+  activo?: boolean;
+  orden?: number;
 };
 

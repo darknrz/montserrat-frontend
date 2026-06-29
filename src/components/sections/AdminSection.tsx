@@ -25,6 +25,7 @@ import {
 } from "./admin/adminShared";
 import { InstitucionTab } from "./admin/InstitucionTab";
 import { IngresantesTab } from "./admin/IngresantesTab";
+import { AnunciosTab } from "./admin/AnunciosTab";
 import { CarruselTab } from "./admin/CarruselTab";
 import { RedesSocialesTab } from "./admin/RedesSocialesTab";
 import { AsignacionesTab } from "./admin/AsignacionesTab";
@@ -226,6 +227,7 @@ export function AdminSection({
   const TABS: { id: Tab; label: string }[] = [
     { id: "institucion", label: "Institución" },
     { id: "ingresantes", label: "Ingresantes" },
+    { id: "anuncios", label: "Anuncios" },
     { id: "videos", label: "Carrusel" },
     { id: "redes", label: "Redes sociales" },
     { id: "asignaciones", label: "Asignaciones" },
@@ -300,6 +302,17 @@ export function AdminSection({
               <IngresantesTab
                 ingresantes={ingresantes}
                 usuariosAcademicos={usuariosAcademicos}
+                token={token}
+                isBusy={isBusy}
+                runAdminAction={runAdminAction}
+                academicoConfig={academicoConfig}
+                saveAcademicoConfig={saveAcademicoConfig}
+              />
+            )}
+
+            {/* ── TAB ANUNCIOS ── */}
+            {tab === "anuncios" && (
+              <AnunciosTab
                 token={token}
                 isBusy={isBusy}
                 runAdminAction={runAdminAction}

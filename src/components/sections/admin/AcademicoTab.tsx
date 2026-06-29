@@ -293,17 +293,56 @@ export function AcademicoTab({
     return `${day}/${month}/${year}`;
   };
 
-  const parseInicioPeriodo = (value: string): string | undefined => {
-    const texto = value.trim();
-    if (!texto) return undefined;
-    const isoDateTime = (() => {
-      const dmy = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
-      if (!dmy) return undefined;
-      const [, dd, mm, yyyy, hh = "00", min = "00", ss = "00"] = dmy;
-      const pad = (s: string) => s.padStart(2, "0");
-      return `${yyyy}-${pad(mm)}-${pad(dd)}T${pad(hh)}:${pad(min)}:${pad(ss)}`;
-    })();
-    return isoDateTime;
+  const parseExcelSerialDate = (value: number): Date | undefined => {
+    if (!Number.isFinite(value)) return undefined;
+    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+    const days = Math.floor(value);
+    const fractionalDay = value - days;
+    const excelDay = days > 60 ? days - 1 : days;
+    const millis = Math.round(fractionalDay * 24 * 60 * 60 * 1000);
+    return new Date(excelEpoch.getTime() + excelDay * 24 * 60 * 60 * 1000 + millis);
+  };
+
+  const parseInicioPeriodo = (value: unknown): string | undefined => {
+    if (value === undefined || value === null) return undefined;
+    const texto = typeof value === "string" ? value.trim() : "";
+    if (typeof value === "string" && !texto) return undefined;
+
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+      const year = value.getFullYear();
+      const month = String(value.getMonth() + 1).padStart(2, "0");
+      const day = String(value.getDate()).padStart(2, "0");
+      const hours = String(value.getHours()).padStart(2, "0");
+      const minutes = String(value.getMinutes()).padStart(2, "0");
+      const seconds = String(value.getSeconds()).padStart(2, "0");
+      return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+    }
+
+    if (typeof value === "number") {
+      const date = parseExcelSerialDate(value);
+      if (date && !Number.isNaN(date.getTime())) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        const hours = String(date.getHours()).padStart(2, "0");
+        const minutes = String(date.getMinutes()).padStart(2, "0");
+        const seconds = String(date.getSeconds()).padStart(2, "0");
+        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+      }
+    }
+
+    if (typeof texto === "string") {
+      const isoDateTime = (() => {
+        const dmy = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+        if (!dmy) return undefined;
+        const [, dd, mm, yyyy, hh = "00", min = "00", ss = "00"] = dmy;
+        const pad = (s: string) => s.padStart(2, "0");
+        return `${yyyy}-${pad(mm)}-${pad(dd)}T${pad(hh)}:${pad(min)}:${pad(ss)}`;
+      })();
+      return isoDateTime;
+    }
+
+    return undefined;
   };
 
   const importarAlumnosExcel = async (
@@ -384,14 +423,23 @@ export function AcademicoTab({
               .normalize("NFD")
               .replace(/[\u0300-\u036f]/g, "");
           const findVal = (keys: string[]): string => {
-  const rowKeys = Object.keys(row);
-  for (const key of keys) {
-    const normKey = normalize(key);
-    const matchedKey = rowKeys.find((k) => normalize(k) === normKey);
-    if (matchedKey !== undefined) return String(row[matchedKey] ?? "").trim();
-  }
-  return "";
-};
+            const rowKeys = Object.keys(row);
+            for (const key of keys) {
+              const normKey = normalize(key);
+              const matchedKey = rowKeys.find((k) => normalize(k) === normKey);
+              if (matchedKey !== undefined) return String(row[matchedKey] ?? "").trim();
+            }
+            return "";
+          };
+          const findRawValue = (keys: string[]): unknown => {
+            const rowKeys = Object.keys(row);
+            for (const key of keys) {
+              const normKey = normalize(key);
+              const matchedKey = rowKeys.find((k) => normalize(k) === normKey);
+              if (matchedKey !== undefined) return row[matchedKey];
+            }
+            return undefined;
+          };
 
           const dni = findVal(["dni", "d.n.i", "documento"]);
 const nombreCompleto = findVal([
@@ -433,7 +481,7 @@ const rawCorreo = findVal(["correo", "correo electronico", "email", "e-mail"]);
 const correo = rawCorreo && rawCorreo.includes("@") ? rawCorreo : undefined;
 const telefono = findVal(["telefono", "celular", "movil"]);
 const codigo = findVal(["codigo", "codigo_estudiante", "cod", "code"]);
-const inicioPeriodo = findVal([
+const inicioPeriodo = findRawValue([
   "inicio periodo",
   "inicio_periodo",
   "inicio-periodo",
@@ -443,7 +491,7 @@ const inicioPeriodo = findVal([
   "fecha-ingreso",
   "fecha de ingreso",
 ]);
-const inicioPeriodoIso = parseInicioPeriodo(inicioPeriodo ?? "") || undefined;
+const inicioPeriodoIso = parseInicioPeriodo(inicioPeriodo);
 
           if (isEstudiantes) {
             const rawNivel = findVal([

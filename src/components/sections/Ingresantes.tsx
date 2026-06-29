@@ -310,86 +310,45 @@ export function Ingresantes({ ingresantes }: IngresantesProps) {
         </div>
 
         {/* CARDS */}
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visible.map((item) => (
             <div
               key={item.id}
-              className="rounded-[18px] border border-monserrat-ink/8 bg-white px-4 py-3.5 shadow-[0_2px_8px_rgba(28,20,16,0.04)] transition hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(28,20,16,0.09)]"
+              className="overflow-hidden rounded-[22px] border border-monserrat-ink/8 bg-white shadow-[0_2px_16px_rgba(28,20,16,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(28,20,16,0.12)]"
             >
-              {/* HEADER */}
-              <div className="mb-3 flex items-center gap-3">
+              <div className="relative h-56 w-full overflow-hidden bg-monserrat-cream/20">
                 {item.fotoUrl ? (
                   <img
                     src={item.fotoUrl}
                     alt={item.nombre}
-                    className="h-10 w-10 flex-shrink-0 rounded-full border-2 border-monserrat-gold/25 object-cover"
+                    className="h-full w-full object-cover"
                   />
                 ) : (
-                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-monserrat-red to-monserrat-red/60 text-[15px] font-black text-white">
-                    {item.nombre.slice(0, 1)}
+                  <div className="flex h-full w-full items-center justify-center bg-monserrat-red text-white">
+                    <span className="text-3xl font-black">{item.nombre.slice(0, 1)}</span>
                   </div>
                 )}
-
-                <div className="min-w-0">
-                  <p className="truncate text-[13px] font-black leading-tight text-monserrat-ink">
-                    {item.nombre}
-                  </p>
-
-                  <span className="mt-0.5 inline-block rounded-full bg-monserrat-red/8 px-2 py-px text-[10px] font-bold text-monserrat-red">
-                    {item.anio}
-                  </span>
-                </div>
               </div>
 
-              <div className="mb-3 h-px bg-monserrat-ink/6" />
+              <div className="p-5">
+                <p className="text-[14px] font-black uppercase tracking-[0.06em] text-monserrat-ink">
+                  {item.nombre}
+                </p>
+                <p className="mt-2 text-[12px] font-bold uppercase tracking-[0.16em] text-monserrat-ink/50">
+                  {item.universidadSiglas}
+                </p>
+                <p className="mt-2 text-[13px] leading-snug text-monserrat-ink/80">
+                  {item.carrera}
+                </p>
 
-              {/* INFO */}
-              <div className="grid grid-cols-2 gap-x-3 gap-y-2.5">
-                <div className="col-span-2">
-                  <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.12em] text-monserrat-ink/40">
-                    Universidad
-                  </p>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge
-                      className={
-                        universityBadgeClasses[
-                          item.universidadSiglas
-                        ] ??
-                        "bg-gray-100 text-gray-800 ring-gray-200"
-                      }
-                    >
-                      {item.universidadSiglas}
-                    </Badge>
-
-                    <p className="truncate text-[11.5px] leading-snug text-monserrat-ink/55">
-                      {item.universidad}
-                    </p>
-                  </div>
-                </div>
-
-                <div>
-                  <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.12em] text-monserrat-ink/40">
-                    Carrera
-                  </p>
-
-                  <p className="line-clamp-2 text-[12px] leading-snug text-monserrat-ink">
-                    {item.carrera}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.12em] text-monserrat-ink/40">
-                    Selección
-                  </p>
-
-                  <div className="inline-flex items-center gap-1">
-                    <span className="h-[5px] w-[5px] flex-shrink-0 rounded-full bg-monserrat-gold" />
-
-                    <span className="text-[11px] font-bold leading-tight text-monserrat-gold/90">
-                      {item.tipoSeleccion}
-                    </span>
-                  </div>
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                  <span className="rounded-full bg-monserrat-red/10 px-3 py-1 text-[11px] font-bold text-monserrat-red">
+                    {item.anio}
+                  </span>
+                  <span className="inline-flex items-center gap-2 rounded-full bg-monserrat-ink/5 px-3 py-1 text-[11px] font-bold text-monserrat-ink">
+                    <span className="h-2.5 w-2.5 rounded-full bg-monserrat-gold" />
+                    {item.tipoSeleccion}
+                  </span>
                 </div>
               </div>
             </div>

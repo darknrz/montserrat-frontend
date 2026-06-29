@@ -1,10 +1,11 @@
-﻿import { useCallback, useEffect, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { monserratApi } from "./api/monserrat";
 import { ChatbotButton } from "./components/chatbot/ChatbotButton";
 import { ChatbotWindow } from "./components/chatbot/ChatbotWindow";
 import { Layout } from "./components/layout/Layout";
 import { AccessGatewayPage } from "./components/sections/AccessGatewayPage";
 import { AdminPage } from "./components/sections/AdminPage";
+import { AnnouncementPopup } from "./components/sections/AnnouncementPopup";
 import { Carrusel } from "./components/sections/Carrusel";
 import { DatosGenerales } from "./components/sections/DatosGenerales";
 import { Hero } from "./components/sections/Hero";
@@ -12,7 +13,7 @@ import { Ingresantes } from "./components/sections/Ingresantes";
 import { PortalAcademicoPage } from "./components/sections/PortalAcademicoPage";
 import { Ubicacion } from "./components/sections/Ubicacion";
 import { useChatbot } from "./hooks/useChatbot";
-import type { Ingresante, Institution, RedSocial, Video } from "./types";
+import type { Anuncio, Ingresante, Institution, RedSocial, Video } from "./types";
 
 function App() {
   const [pathname, setPathname] = useState(() => window.location.pathname);
@@ -20,22 +21,33 @@ function App() {
   const [ingresantes, setIngresantes] = useState<Ingresante[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
   const [redes, setRedes] = useState<RedSocial[]>([]);
+  const [anuncios, setAnuncios] = useState<Anuncio[]>([]);
+  const [showAnnouncementPopup, setShowAnnouncementPopup] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const chatbot = useChatbot();
 
+  // ✅ useMemo movido aquí, antes de cualquier return condicional
+  const popupAnnouncements = useMemo(
+    () => anuncios.filter((anuncio) => anuncio.mostrarEnPopup !== false),
+    [anuncios]
+  );
+
   const loadPageData = useCallback(async () => {
-    const [institutionData, ingresantesData, videosData, redesData] = await Promise.all([
+    const [institutionData, ingresantesData, videosData, redesData, anunciosData] = await Promise.all([
       monserratApi.institution(),
       monserratApi.ingresantes(),
       monserratApi.videos(),
-      monserratApi.redesSociales()
+      monserratApi.redesSociales(),
+      monserratApi.anuncios(),
     ]);
 
     setInstitution(institutionData);
     setIngresantes(ingresantesData.filter((item) => item.activo !== false));
     setVideos(videosData.filter((item) => item.activo !== false).sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0)));
     setRedes(redesData.filter((item) => item.activo !== false).sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0)));
+    setAnuncios(anunciosData.filter((item) => item.activo !== false));
+    setShowAnnouncementPopup(true);
     setError(null);
   }, []);
 
@@ -63,6 +75,7 @@ function App() {
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
+  // ✅ Returns condicionales DESPUÉS de todos los hooks
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-monserrat-cream px-4 text-center">
@@ -122,6 +135,12 @@ function App() {
       <Ingresantes ingresantes={ingresantes} />
       <DatosGenerales institution={institution} />
       <Ubicacion institution={institution} />
+
+      <AnnouncementPopup
+        announcements={popupAnnouncements}
+        isOpen={showAnnouncementPopup && popupAnnouncements.length > 0}
+        onClose={() => setShowAnnouncementPopup(false)}
+      />
 
       {chatbot.isOpen ? (
         <ChatbotWindow

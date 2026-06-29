@@ -303,9 +303,18 @@ export function MediaPicker({ label, accept, previewUrl, previewType, onFileChan
       </label>
       {previewUrl ? (
         <div className="overflow-hidden rounded-[10px] border border-monserrat-ink/8">
-          {previewType === "video"
-            ? <video src={previewUrl} controls className="h-40 w-full bg-black object-cover" />
-            : <img src={previewUrl} alt="" className="h-40 w-full object-cover" />}
+          {previewType === "video" ? (
+            <video src={previewUrl} controls className="h-40 w-full bg-black object-cover" />
+          ) : previewType === "image" ? (
+            <img src={previewUrl} alt="" className="h-40 w-full object-cover" />
+          ) : (
+            <div className="flex h-40 w-full flex-col items-center justify-center gap-2 bg-monserrat-cream/30 px-4 text-center text-sm font-semibold text-monserrat-ink/70">
+              <span className="text-base font-black">Documento adjunto</span>
+              <a href={previewUrl} target="_blank" rel="noreferrer" className="text-monserrat-red underline">
+                Ver archivo
+              </a>
+            </div>
+          )}
         </div>
       ) : (
         <div className="flex h-32 items-center justify-center rounded-[10px] border border-dashed border-monserrat-ink/10 bg-white text-[12px] font-semibold text-monserrat-ink/40">

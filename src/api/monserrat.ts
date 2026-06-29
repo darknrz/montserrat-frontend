@@ -1,4 +1,4 @@
-import type { AsignacionAcademica, AsistenciaAcademica, ChatbotConversationResponse, ChatbotMessageDTO, Ingresante, Institution, LoginResponse, MediaUploadResponse, NotaAcademica, PensionEstado, PensionMensual, PerfilAcademico, RedSocial, UsuarioAcademico, Video } from "../types";
+import type { Anuncio, AsignacionAcademica, AsistenciaAcademica, ChatbotConversationResponse, ChatbotMessageDTO, Ingresante, Institution, LoginResponse, MediaUploadResponse, NotaAcademica, PensionEstado, PensionMensual, PerfilAcademico, RedSocial, UsuarioAcademico, Video } from "../types";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -143,7 +143,11 @@ export const monserratApi = {
   uploadMedia: (file: File, folder: string, token: string) => uploadFile(file, folder, token),
   deleteMedia: (publicId: string, resourceType: string, token: string) =>
     deleteRequest(`/media?publicId=${encodeURIComponent(publicId)}&resourceType=${encodeURIComponent(resourceType)}`, token),
-  usuariosAcademicos: (token: string) => getJsonAuth<UsuarioAcademico[]>("/academico/usuarios", token),
+  anuncios: () => getJson<Anuncio[]>('/anuncios'),
+  createAnuncio: (data: Omit<Anuncio, 'id'>, token: string) => sendJson<Anuncio>('/anuncios', 'POST', data, token),
+  updateAnuncio: (id: number, data: Omit<Anuncio, 'id'>, token: string) => sendJson<Anuncio>(`/anuncios/${id}`, 'PUT', data, token),
+  deleteAnuncio: (id: number, token: string) => deleteRequest(`/anuncios/${id}`, token),
+  usuariosAcademicos: (token: string) => getJsonAuth<UsuarioAcademico[]>('/academico/usuarios', token),
   academicoConfiguracion: <T>(token: string) => getJsonAuth<T>("/academico/configuracion", token),
   updateAcademicoConfiguracion: <T>(data: T, token: string) =>
     sendJson<T>("/academico/configuracion", "PUT", data, token),

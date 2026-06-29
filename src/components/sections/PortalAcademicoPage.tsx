@@ -4,7 +4,7 @@ import type { FormEvent } from "react";
 import { monserratApi } from "../../api/monserrat";
 import type { AsignacionAcademica, AsistenciaAcademica, LoginResponse, NotaAcademica, PensionEstado, PensionMensual, PerfilAcademico, UsuarioAcademico } from "../../types";
 import { SectionHeader } from "../ui/SectionHeader";
-import { MESES_PENSION, YEARS } from "./admin/adminShared";
+import { MESES_PENSION } from "./admin/adminShared";
 
 type Tab = "perfil" | "cursos" | "asistencia" | "notas" | "pension";
 
@@ -46,6 +46,7 @@ export function PortalAcademicoPage() {
 
   const [pensionesDetalle, setPensionesDetalle] = useState<PensionMensual[]>([]);
   const [pensionYear, setPensionYear] = useState<number>(new Date().getFullYear());
+  const [pensionYears, setPensionYears] = useState<number[]>([new Date().getFullYear()]);
   const [minAsistenciaPct, setMinAsistenciaPct] = useState<number>(70);
 
   const token = session?.token ?? "";
@@ -176,6 +177,30 @@ export function PortalAcademicoPage() {
         .catch((err) => console.error(err));
     }
   }, [pensionYear, token, session?.rol]);
+
+  useEffect(() => {
+    const rawDate = perfil.inicioPeriodo ?? perfil.createdAt;
+    if (!rawDate) return;
+
+    const normalizeDateString = (value: string): string => {
+      const trimmed = value.trim();
+      if (trimmed.includes("T")) return trimmed;
+      return trimmed.replace(" ", "T");
+    };
+
+    const parsedDate = new Date(normalizeDateString(rawDate));
+    if (Number.isNaN(parsedDate.getTime())) return;
+
+    const now = new Date();
+    const years: number[] = [];
+    for (let year = parsedDate.getFullYear(); year <= now.getFullYear(); year += 1) {
+      years.push(year);
+    }
+    setPensionYears(years);
+    if (!years.includes(pensionYear)) {
+      setPensionYear(years[years.length - 1]);
+    }
+  }, [perfil.inicioPeriodo, pensionYear]);
 
   const logout = () => {
     window.localStorage.removeItem("monserrat_academic_session");
@@ -699,9 +724,9 @@ export function PortalAcademicoPage() {
                       onChange={(e) => setPensionYear(Number(e.target.value))}
                       className="admin-input py-1 text-xs min-w-[80px]"
                     >
-                      {YEARS.map((y) => (
-                        <option key={y} value={y}>
-                          {y}
+                      {pensionYears.map((year) => (
+                        <option key={year} value={year}>
+                          {year}
                         </option>
                       ))}
                     </select>

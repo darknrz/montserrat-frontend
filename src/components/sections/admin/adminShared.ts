@@ -13,7 +13,7 @@ export const MESES_PENSION = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "
 
 export const ADMIN_TAB_STORAGE_KEY = "monserrat_admin_active_tab";
 
-export type Tab = "institucion" | "ingresantes" | "videos" | "redes" | "academico" | "asignaciones" | "pensiones" | "configuracion";
+export type Tab = "institucion" | "ingresantes" | "anuncios" | "videos" | "redes" | "academico" | "asignaciones" | "pensiones" | "configuracion";
 export type CatalogItem = { id: string; label: string; active: boolean };
 export type SalonItem = { nivel: string; grado: string; seccion: string; aula: string; active: boolean };
 export type ConfigView = "primaria-cursos" | "primaria-grados" | "primaria-secciones" | "primaria-salones" | "secundaria-cursos" | "secundaria-grados" | "secundaria-secciones" | "secundaria-salones";
@@ -27,6 +27,7 @@ export type AcademicoConfig = {
   seccionesSecundaria: CatalogItem[];
   salones: SalonItem[];
   minAsistenciaPorcentaje?: number;
+  ingresantesModelo?: string;
 };
 
 export const defaultAcademicoConfig: AcademicoConfig = {
@@ -46,7 +47,12 @@ export const defaultAcademicoConfig: AcademicoConfig = {
   salones: [...GRADOS_PRIMARIA.map((grado) => ({ nivel: "PRIMARIA", grado })), ...GRADOS_SECUNDARIA.map((grado) => ({ nivel: "SECUNDARIA", grado }))]
     .flatMap(({ nivel, grado }) => SECCIONES.map((seccion) => ({ nivel, grado, seccion, aula: aulaPorGradoSeccion(nivel, grado, seccion), active: true }))),
   minAsistenciaPorcentaje: 70
+  ,ingresantesModelo: "card-grid"
 };
+
+// available templates for ingresantes
+export const INGRESANTES_MODELS = ["card-grid", "card-featured"] as const;
+
 
 export function mergeAcademicoConfig(config: Partial<AcademicoConfig>) {
   const legacy = config as Partial<AcademicoConfig> & { cursos?: CatalogItem[]; secciones?: CatalogItem[] };
@@ -73,7 +79,8 @@ export function mergeAcademicoConfig(config: Partial<AcademicoConfig>) {
     seccionesPrimaria: config.seccionesPrimaria ?? legacy.secciones ?? defaultAcademicoConfig.seccionesPrimaria,
     seccionesSecundaria: config.seccionesSecundaria ?? defaultAcademicoConfig.seccionesSecundaria,
     salones: config.salones ?? defaultAcademicoConfig.salones,
-    minAsistenciaPorcentaje: config.minAsistenciaPorcentaje ?? defaultAcademicoConfig.minAsistenciaPorcentaje
+    minAsistenciaPorcentaje: config.minAsistenciaPorcentaje ?? defaultAcademicoConfig.minAsistenciaPorcentaje,
+    ingresantesModelo: (config as any).ingresantesModelo ?? defaultAcademicoConfig.ingresantesModelo
   };
 }
 

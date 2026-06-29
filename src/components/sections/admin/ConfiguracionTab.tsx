@@ -284,6 +284,17 @@ export function ConfiguracionTab({
                 />
               </label>
 
+              <label className="grid gap-1.5 text-[11px] font-black uppercase tracking-[0.08em] text-monserrat-ink/50">
+                Modelo de Ingresantes
+                <select
+                  value={academicoConfig.ingresantesModelo ?? "card-grid"}
+                  onChange={(e) => saveAcademicoConfig({ ...academicoConfig, ingresantesModelo: e.target.value })}
+                  className="admin-input"
+                >
+                  <option value="card-grid">Tabla (grid)</option>
+                  <option value="card-featured">Tarjetas destacadas</option>
+                </select>
+              </label>
               <div className="rounded-[12px] bg-monserrat-cream/15 p-3.5 border border-monserrat-ink/6 text-[11px] font-semibold text-monserrat-ink/50 leading-relaxed">
                 Este porcentaje se utilizará en el portal de los alumnos para mostrar alertas sobre su asistencia general.
               </div>
