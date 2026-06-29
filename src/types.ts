@@ -88,6 +88,7 @@ export type UsuarioAcademico = {
   pensionObservacion?: string;
   debeCambiarContrasena?: boolean;
   createdAt?: string;
+  inicioPeriodo?: string;
 };
 
 export type PerfilAcademico = UsuarioAcademico & {

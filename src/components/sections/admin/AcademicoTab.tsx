@@ -71,6 +71,7 @@ const emptyUsuarioAcademico: Omit<UsuarioAcademico, "id"> = {
   pensionPagada: false,
   pensionObservacion: "",
   createdAt: "",
+  inicioPeriodo: "",
 };
 
 export function AcademicoTab({
@@ -247,7 +248,7 @@ export function AcademicoTab({
       nivelEducativo: alumno.nivelEducativo ?? "",
       grado: alumno.grado ?? "",
       seccion: alumno.seccion ?? "",
-      inicio_periodo: formatIsoDateToDmy(alumno.createdAt),
+      inicio_periodo: formatIsoDateToDmy(alumno.inicioPeriodo),
       estadoMatricula: alumno.estadoMatricula ?? "MATRICULADO",
       pensionPagada: alumno.pensionPagada ? "SI" : "NO",
       pensionObservacion: alumno.pensionObservacion ?? "",
@@ -383,78 +384,81 @@ export function AcademicoTab({
               .normalize("NFD")
               .replace(/[\u0300-\u036f]/g, "");
           const findVal = (keys: string[]): string => {
-            const rowKeys = Object.keys(row);
-            for (const key of keys) {
-              const normKey = normalize(key);
-              const matchedKey = rowKeys.find((k) => normalize(k) === normKey);
-              if (matchedKey) return String(row[matchedKey] ?? "").trim();
-            }
-            return "";
-          };
+  const rowKeys = Object.keys(row);
+  for (const key of keys) {
+    const normKey = normalize(key);
+    const matchedKey = rowKeys.find((k) => normalize(k) === normKey);
+    if (matchedKey !== undefined) return String(row[matchedKey] ?? "").trim();
+  }
+  return "";
+};
 
           const dni = findVal(["dni", "d.n.i", "documento"]);
-          const nombreCompleto = findVal([
-            "nombre completo",
-            "nombre_completo",
-            "nombres y apellidos",
-            "apellidos y nombres",
-            "nombre",
-          ]);
+const nombreCompleto = findVal([
+  "nombre completo",
+  "nombre_completo",
+  "nombres y apellidos",
+  "apellidos y nombres",
+  "nombre",
+]);
 
-          if (!dni || !nombreCompleto) {
-            alumnosOmitidos += isEstudiantes ? 1 : 0;
-            docentesPrimariaOmitidos += isDocentePrimaria ? 1 : 0;
-            docentesSecundariaOmitidos += isDocenteSecundaria ? 1 : 0;
-            processedRows += 1;
-            setImportProgress(Math.round((processedRows / totalRows) * 100));
-            continue;
-          }
+if (!dni || !nombreCompleto) {
+  alumnosOmitidos += isEstudiantes ? 1 : 0;
+  docentesPrimariaOmitidos += isDocentePrimaria ? 1 : 0;
+  docentesSecundariaOmitidos += isDocenteSecundaria ? 1 : 0;
+  processedRows += 1;
+  setImportProgress(Math.round((processedRows / totalRows) * 100));
+  continue;
+}
 
-          const nombres_col = findVal(["nombres"]);
-          const apellidos_col = findVal(["apellidos", "apellido"]);
-          let nombres = nombres_col;
-          let apellidos = apellidos_col;
-          if (!nombres || !apellidos) {
-            const parts = nombreCompleto.split(/\s+/);
-            if (parts.length >= 3) {
-              apellidos = `${parts[0]} ${parts[1]}`;
-              nombres = parts.slice(2).join(" ");
-            } else if (parts.length === 2) {
-              apellidos = parts[0];
-              nombres = parts[1];
-            } else {
-              nombres = nombreCompleto;
-              apellidos = "-";
-            }
-          }
+const nombres_col = findVal(["nombres"]);
+const apellidos_col = findVal(["apellidos", "apellido"]);
+let nombres = nombres_col;
+let apellidos = apellidos_col;
+if (!nombres || !apellidos) {
+  const parts = nombreCompleto.split(/\s+/);
+  if (parts.length >= 3) {
+    apellidos = `${parts[0]} ${parts[1]}`;
+    nombres = parts.slice(2).join(" ");
+  } else if (parts.length === 2) {
+    apellidos = parts[0];
+    nombres = parts[1];
+  } else {
+    nombres = nombreCompleto;
+    apellidos = "-";
+  }
+}
 
-          const rawCorreo = findVal(["correo", "correo electronico", "email", "e-mail"]);
-          const correo = rawCorreo && rawCorreo.includes("@") ? rawCorreo : undefined;
-          const telefono = findVal(["telefono", "celular", "movil"]);
-          const codigo = findVal(["codigo", "codigo_estudiante", "cod"]);
-          const inicioPeriodo = findVal([
-            "inicio periodo",
-            "inicio_periodo",
-            "inicio-periodo",
-            "inicio",
-            "fecha inicio",
-            "fecha_inicio",
-            "fecha-ingreso",
-            "fecha de ingreso",
-          ]);
-          const inicioPeriodoIso = parseInicioPeriodo(inicioPeriodo ?? "") || undefined;
+const rawCorreo = findVal(["correo", "correo electronico", "email", "e-mail"]);
+const correo = rawCorreo && rawCorreo.includes("@") ? rawCorreo : undefined;
+const telefono = findVal(["telefono", "celular", "movil"]);
+const codigo = findVal(["codigo", "codigo_estudiante", "cod", "code"]);
+const inicioPeriodo = findVal([
+  "inicio periodo",
+  "inicio_periodo",
+  "inicio-periodo",
+  "inicio",
+  "fecha inicio",
+  "fecha_inicio",
+  "fecha-ingreso",
+  "fecha de ingreso",
+]);
+const inicioPeriodoIso = parseInicioPeriodo(inicioPeriodo ?? "") || undefined;
 
           if (isEstudiantes) {
             const rawNivel = findVal([
-              "nivel(primaria o secundaria)",
-              "nivel",
-              "nivel educativo",
-              "nivel_educativo",
-            ]);
-            const nivelEducativo = normalizeNivel(rawNivel || "PRIMARIA");
-            const rawGrado = findVal(["grado", "grado_academico"]);
-            const grado = normalizeGrado(rawGrado, nivelEducativo);
-            const seccion = findVal(["seccion", "aula"]).toUpperCase() || "A";
+  "nivel",
+  "nivel educativo",
+  "nivel_educativo",
+  "nivel (primaria o secundaria)",
+  "nivel(primaria o secundaria)",
+]);
+const nivelEducativo = normalizeNivel(rawNivel || "PRIMARIA");
+
+const rawGrado = findVal(["grado", "grado_academico", "grado academico"]);
+const grado = normalizeGrado(rawGrado, nivelEducativo);
+
+const seccion = findVal(["seccion", "seccion ", "aula", "sección"]).toUpperCase().trim() || "A";
 
             if (!nivelEducativo || !grado || !seccion) {
               alumnosOmitidos += 1;
@@ -488,7 +492,7 @@ export function AcademicoTab({
                 "pension observacion",
                 "pension_observacion",
               ]),
-              createdAt: inicioPeriodoIso,
+              inicioPeriodo: inicioPeriodoIso,
             };
 
             const existenteByDni = alumnosPorDni.get(dni);
@@ -548,60 +552,119 @@ export function AcademicoTab({
               }
             }
           } else if (isDocentePrimaria) {
-            await monserratApi.createUsuarioAcademico(
-              {
-                ...emptyUsuarioAcademico,
-                codigo: codigo || dni,
-                dni,
-                nombre: nombreCompleto,
-                nombres,
-                apellidos,
-                correo,
-                telefono,
-                rol: "DOCENTE",
-                nivelEducativo: "PRIMARIA",
-                materia: "",
-                especialidad: "PRIMARIA",
-              },
-              token
-            );
-            docentesPrimariaCreados += 1;
-          } else if (isDocenteSecundaria) {
-            const rawCurso = findVal(["curso", "materia", "asignatura"]);
-            const normalizeCurso = (val: string): string => {
-              const raw = val
-                .toUpperCase()
-                .normalize("NFD")
-                .replace(/[\u0300-\u036f]/g, "");
-              if (raw.includes("MATEMATICA")) return "MATEMATICA";
-              if (raw.includes("COMUNICACION")) return "COMUNICACION";
-              if (raw.includes("CIENCIA") || raw.includes("TECNOLOGIA")) return "CIENCIA_TECNOLOGIA";
-              if (raw.includes("HISTORIA")) return "HISTORIA";
-              if (raw.includes("INGLES")) return "INGLES";
-              return raw;
-            };
-            const materia = normalizeCurso(rawCurso || "MATEMATICA");
+  const existente =
+    alumnosPorDni.get(dni) ||
+    (codigo ? alumnosPorCodigo.get(codigo.trim().toLowerCase()) : undefined) ||
+    (rawCorreo ? alumnosPorCorreo.get(rawCorreo.trim().toLowerCase()) : undefined);
 
-            await monserratApi.createUsuarioAcademico(
-              {
-                ...emptyUsuarioAcademico,
-                codigo: codigo || dni,
-                dni,
-                nombre: nombreCompleto,
-                nombres,
-                apellidos,
-                correo,
-                telefono,
-                rol: "DOCENTE",
-                nivelEducativo: "SECUNDARIA",
-                materia,
-                especialidad: "SECUNDARIA",
-              },
-              token
-            );
-            docentesSecundariaCreados += 1;
-          }
+  if (mode === "update-only") {
+    if (existente) {
+      await monserratApi.updateUsuarioAcademico(existente.id, {
+        codigo: codigo || existente.codigo || dni,
+        dni: existente.dni,
+        nombre: nombreCompleto,
+        nombres,
+        apellidos,
+        correo: correo ?? existente.correo,
+        telefono,
+        rol: "DOCENTE",
+        nivelEducativo: "PRIMARIA",
+        materia: "",
+        especialidad: "PRIMARIA",
+      }, token);
+      docentesPrimariaCreados += 1; // reutilizamos el contador como "procesados"
+    } else {
+      docentesPrimariaOmitidos += 1;
+    }
+  } else if (mode === "create-only") {
+    if (existente) {
+      docentesPrimariaOmitidos += 1;
+    } else {
+      await monserratApi.createUsuarioAcademico(
+        {
+          ...emptyUsuarioAcademico,
+          codigo: codigo || dni,
+          dni,
+          nombre: nombreCompleto,
+          nombres,
+          apellidos,
+          correo,
+          telefono,
+          rol: "DOCENTE",
+          nivelEducativo: "PRIMARIA",
+          materia: "",
+          especialidad: "PRIMARIA",
+        },
+        token
+      );
+      docentesPrimariaCreados += 1;
+    }
+  }
+} else if (isDocenteSecundaria) {
+  const rawCurso = findVal(["curso", "materia", "asignatura"]);
+  const normalizeCurso = (val: string): string => {
+    const raw = val
+      .toUpperCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    if (raw.includes("MATEMATICA")) return "MATEMATICA";
+    if (raw.includes("COMUNICACION")) return "COMUNICACION";
+    if (raw.includes("CIENCIA") || raw.includes("TECNOLOGIA")) return "CIENCIA_TECNOLOGIA";
+    if (raw.includes("HISTORIA")) return "HISTORIA";
+    if (raw.includes("INGLES")) return "INGLES";
+    return raw;
+  };
+  const materia = normalizeCurso(rawCurso || "MATEMATICA");
 
+  const existente =
+    alumnosPorDni.get(dni) ||
+    (codigo ? alumnosPorCodigo.get(codigo.trim().toLowerCase()) : undefined) ||
+    (rawCorreo ? alumnosPorCorreo.get(rawCorreo.trim().toLowerCase()) : undefined);
+
+  if (mode === "update-only") {
+    if (existente) {
+      await monserratApi.updateUsuarioAcademico(existente.id, {
+        codigo: codigo || existente.codigo || dni,
+        dni: existente.dni,
+        nombre: nombreCompleto,
+        nombres,
+        apellidos,
+        correo: correo ?? existente.correo,
+        telefono,
+        rol: "DOCENTE",
+        nivelEducativo: "SECUNDARIA",
+        materia,
+        especialidad: "SECUNDARIA",
+      }, token);
+      docentesSecundariaCreados += 1;
+    } else {
+      docentesSecundariaOmitidos += 1;
+    }
+  } else if (mode === "create-only") {
+    if (existente) {
+      docentesSecundariaOmitidos += 1;
+    } else {
+      await monserratApi.createUsuarioAcademico(
+        {
+          ...emptyUsuarioAcademico,
+          codigo: codigo || dni,
+          dni,
+          nombre: nombreCompleto,
+          nombres,
+          apellidos,
+          correo,
+          telefono,
+          rol: "DOCENTE",
+          nivelEducativo: "SECUNDARIA",
+          materia,
+          especialidad: "SECUNDARIA",
+        },
+        token
+      );
+      docentesSecundariaCreados += 1;
+    }
+  }
+}
           processedRows += 1;
           setImportProgress(Math.round((processedRows / totalRows) * 100));
         }
@@ -1019,45 +1082,45 @@ export function AcademicoTab({
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button
-                    type="button"
-                    onClick={() => void descargarPlantillaAlumnos()}
-                    className="inline-flex items-center gap-1.5 rounded-[9px] border border-monserrat-ink/12 px-2.5 py-1.5 text-[11px] font-black text-monserrat-ink/65 hover:border-monserrat-ink/30"
-                  >
-                    <FileSpreadsheet size={14} /> Plantilla
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void exportarAlumnosExcel()}
-                    className="inline-flex items-center gap-1.5 rounded-[9px] border border-monserrat-ink/12 px-2.5 py-1.5 text-[11px] font-black text-monserrat-ink/65 hover:border-monserrat-ink/30"
-                  >
-                    <Download size={14} /> Exportar alumnos
-                  </button>
-                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-[9px] bg-monserrat-ink px-2.5 py-1.5 text-[11px] font-black text-white hover:bg-monserrat-ink/90">
-                    <Upload size={14} /> Importar o actualizar
-                    <input
-                      type="file"
-                      accept=".csv,.xls,.xlsx"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) void importarAlumnosExcel(file, "upsert");
-                        e.currentTarget.value = "";
-                      }}
-                    />
-                  </label>
-                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-[9px] border border-monserrat-ink/12 bg-white px-2.5 py-1.5 text-[11px] font-black text-monserrat-ink/65 hover:border-monserrat-ink/30">
-                    <Upload size={14} /> Actualizar existentes
-                    <input
-                      type="file"
-                      accept=".csv,.xls,.xlsx"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) void importarAlumnosExcel(file, "update-only");
-                        e.currentTarget.value = "";
-                      }}
-                    />
-                  </label>
+  type="button"
+  onClick={() => void descargarPlantillaAlumnos()}
+  className="inline-flex items-center gap-1.5 rounded-[9px] border border-monserrat-ink/12 px-2.5 py-1.5 text-[11px] font-black text-monserrat-ink/65 hover:border-monserrat-ink/30"
+>
+  <FileSpreadsheet size={14} /> Plantilla
+</button>
+<button
+  type="button"
+  onClick={() => void exportarAlumnosExcel()}
+  className="inline-flex items-center gap-1.5 rounded-[9px] border border-monserrat-ink/12 px-2.5 py-1.5 text-[11px] font-black text-monserrat-ink/65 hover:border-monserrat-ink/30"
+>
+  <Download size={14} /> Exportar alumnos
+</button>
+<label className="inline-flex cursor-pointer items-center gap-1.5 rounded-[9px] bg-monserrat-ink px-2.5 py-1.5 text-[11px] font-black text-white hover:bg-monserrat-ink/90">
+  <Upload size={14} /> Importar
+  <input
+    type="file"
+    accept=".csv,.xls,.xlsx"
+    className="hidden"
+    onChange={(e) => {
+      const file = e.target.files?.[0];
+      if (file) void importarAlumnosExcel(file, "create-only");
+      e.currentTarget.value = "";
+    }}
+  />
+</label>
+<label className="inline-flex cursor-pointer items-center gap-1.5 rounded-[9px] border border-monserrat-ink/12 bg-white px-2.5 py-1.5 text-[11px] font-black text-monserrat-ink/65 hover:border-monserrat-ink/30">
+  <Upload size={14} /> Actualizar existentes
+  <input
+    type="file"
+    accept=".csv,.xls,.xlsx"
+    className="hidden"
+    onChange={(e) => {
+      const file = e.target.files?.[0];
+      if (file) void importarAlumnosExcel(file, "update-only");
+      e.currentTarget.value = "";
+    }}
+  />
+</label>
                 </div>
               </div>
               <div className="grid gap-2 md:grid-cols-[1fr_170px]">
