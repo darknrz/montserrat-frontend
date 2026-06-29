@@ -183,5 +183,8 @@ export const monserratApi = {
   updateNota: (id: number, data: { alumnoDni: string; curso: string; periodo: string; tipoEvaluacion: string; valor: number; observacion?: string }, token: string) =>
     sendJson<NotaAcademica>(`/academico/docente/notas/${id}`, "PUT", data, token),
   notasAlumno: (token: string) => getJsonAuth<NotaAcademica[]>("/academico/alumno/notas", token),
-  pensionAlumno: (token: string) => getJsonAuth<PensionEstado>("/academico/alumno/pension", token)
+  pensionAlumno: (token: string) => getJsonAuth<PensionEstado>("/academico/alumno/pension", token),
+  asistenciasAlumno: (token: string) => getJsonAuth<AsistenciaAcademica[]>("/academico/alumno/asistencias", token),
+  pensionesAlumnoDetalle: (anio: number, token: string) =>
+    getJsonAuth<PensionMensual[]>(`/academico/alumno/pension/detalle?anio=${encodeURIComponent(String(anio))}`, token)
 };

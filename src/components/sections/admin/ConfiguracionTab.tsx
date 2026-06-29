@@ -36,7 +36,7 @@ export function ConfiguracionTab({
   const [configView, setConfigView] = useState<ConfigView>("primaria-cursos");
 
   return (
-    <div className="grid gap-5">
+    <div className="flex-1 flex flex-col min-h-0 gap-5">
       <div className="grid gap-3 md:grid-cols-4">
         <AdminMetric
           icon={<BookOpen size={18} />}
@@ -60,7 +60,7 @@ export function ConfiguracionTab({
         />
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[280px_1fr]">
+      <div className="grid gap-5 xl:grid-cols-[280px_1fr] flex-1 min-h-0">
         <div className="grid content-start gap-2 rounded-[16px] border border-monserrat-ink/8 bg-white p-3 shadow-sm">
           <p className="px-2 pt-1 text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">
             Primaria
@@ -166,10 +166,26 @@ export function ConfiguracionTab({
               </span>
             </button>
           ))}
-
+          <p className="px-2 pt-3 text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">
+            Ajustes generales
+          </p>
+          <button
+            type="button"
+            onClick={() => setConfigView("ajustes-generales" as any)}
+            className={`flex items-center justify-between gap-3 rounded-[12px] px-3 py-3 text-left transition ${
+              (configView as string) === "ajustes-generales"
+                ? "bg-monserrat-red text-white"
+                : "bg-monserrat-cream/45 text-monserrat-ink/65 hover:bg-monserrat-cream"
+            }`}
+          >
+            <span className="flex min-w-0 items-center gap-2">
+              <ShieldCheck size={16} />
+              <span className="truncate text-[13px] font-black">Asistencia mínima</span>
+            </span>
+          </button>
         </div>
 
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1 flex flex-col overflow-y-auto pr-1">
           {configView === "primaria-cursos" && (
             <ConfigPanel
               title="Cursos de primaria"
@@ -243,6 +259,35 @@ export function ConfiguracionTab({
               )}
               labelAcademico={labelAcademico}
             />
+          )}
+          {configView === ("ajustes-generales" as any) && (
+            <div className="rounded-[16px] border border-monserrat-ink/8 bg-white p-5 shadow-sm grid gap-4 max-w-md">
+              <div>
+                <h3 className="font-serif text-lg font-black text-monserrat-ink">Configuración de asistencias</h3>
+                <p className="text-[12px] font-semibold text-monserrat-ink/40 mt-1">
+                  Establece el límite mínimo de asistencia requerido para evitar la inhabilitación del estudiante.
+                </p>
+              </div>
+
+              <label className="grid gap-1.5 text-[11px] font-black uppercase tracking-[0.08em] text-monserrat-ink/50">
+                Porcentaje mínimo requerido (%)
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={academicoConfig.minAsistenciaPorcentaje ?? 70}
+                  onChange={(e) => {
+                    const val = Math.min(100, Math.max(0, Number(e.target.value)));
+                    saveAcademicoConfig({ ...academicoConfig, minAsistenciaPorcentaje: val });
+                  }}
+                  className="admin-input"
+                />
+              </label>
+
+              <div className="rounded-[12px] bg-monserrat-cream/15 p-3.5 border border-monserrat-ink/6 text-[11px] font-semibold text-monserrat-ink/50 leading-relaxed">
+                Este porcentaje se utilizará en el portal de los alumnos para mostrar alertas sobre su asistencia general.
+              </div>
+            </div>
           )}
         </div>
       </div>

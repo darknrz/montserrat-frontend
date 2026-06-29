@@ -278,7 +278,7 @@ export function AdminSection({
             ))}
           </div>
 
-          <div className="flex-1 min-h-0 p-6 overflow-y-auto bg-monserrat-cream/10">
+          <div className="flex-1 min-h-0 p-6 overflow-y-auto bg-monserrat-cream/10 flex flex-col">
             {status && (
               <div className="mb-5 rounded-[12px] border border-monserrat-red/15 bg-monserrat-red/6 px-4 py-2.5 text-[12px] font-bold text-monserrat-red">
                 {status}
@@ -299,6 +299,7 @@ export function AdminSection({
             {tab === "ingresantes" && (
               <IngresantesTab
                 ingresantes={ingresantes}
+                usuariosAcademicos={usuariosAcademicos}
                 token={token}
                 isBusy={isBusy}
                 runAdminAction={runAdminAction}

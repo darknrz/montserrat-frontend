@@ -15,6 +15,7 @@ import type { FormEvent } from "react";
 import { monserratApi } from "../../../api/monserrat";
 import type { UsuarioAcademico } from "../../../types";
 import { ConfirmForceDeleteModal } from "../../ui/ConfirmForceDeleteModal";
+import { Modal } from "../../ui/Modal";
 import {
   AdminField,
   AdminMetric,
@@ -69,6 +70,7 @@ const emptyUsuarioAcademico: Omit<UsuarioAcademico, "id"> = {
   estadoMatricula: "MATRICULADO",
   pensionPagada: false,
   pensionObservacion: "",
+  createdAt: "",
 };
 
 export function AcademicoTab({
@@ -94,6 +96,9 @@ export function AcademicoTab({
   const [academicoSearch, setAcademicoSearch] = useState("");
   const [academicoNivelFiltro, setAcademicoNivelFiltro] = useState("TODOS");
   const [importSummary, setImportSummary] = useState<string | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
+  const [importMessage, setImportMessage] = useState("Importando alumnos...");
   const [forceDeleteTarget, setForceDeleteTarget] = useState<{
     id: number;
     name: string;
@@ -167,7 +172,38 @@ export function AcademicoTab({
     e.preventDefault();
     runAdminAction(async () => {
       const fotoUrl = await uploadUsuarioAcademicoPhoto();
-      const payload = { ...usuarioAcademicoForm, fotoUrl };
+      
+      // Auto-split nombre into nombres and apellidos
+      let nombres = "";
+      let apellidos = "";
+      const nombreCompleto = usuarioAcademicoForm.nombre.trim();
+      if (nombreCompleto) {
+        const parts = nombreCompleto.split(/\s+/).filter(Boolean);
+        if (parts.length >= 4) {
+          // e.g. "Juan Eduardo Salazar Torres"
+          nombres = parts.slice(0, parts.length - 2).join(" ");
+          apellidos = parts.slice(parts.length - 2).join(" ");
+        } else if (parts.length === 3) {
+          // e.g. "Juan Salazar Torres"
+          nombres = parts[0];
+          apellidos = parts.slice(1).join(" ");
+        } else if (parts.length === 2) {
+          // e.g. "Juan Salazar"
+          nombres = parts[0];
+          apellidos = parts[1];
+        } else {
+          nombres = parts[0] || "";
+          apellidos = "";
+        }
+      }
+
+      const payload = {
+        ...usuarioAcademicoForm,
+        fotoUrl,
+        nombres: nombres || usuarioAcademicoForm.nombres,
+        apellidos: apellidos || usuarioAcademicoForm.apellidos,
+        createdAt: usuarioAcademicoForm.createdAt ? usuarioAcademicoForm.createdAt : undefined,
+      };
       if (editingUsuarioAcademico) {
         await monserratApi.updateUsuarioAcademico(editingUsuarioAcademico.id, payload, token);
       } else {
@@ -211,6 +247,7 @@ export function AcademicoTab({
       nivelEducativo: alumno.nivelEducativo ?? "",
       grado: alumno.grado ?? "",
       seccion: alumno.seccion ?? "",
+      inicio_periodo: formatIsoDateToDmy(alumno.createdAt),
       estadoMatricula: alumno.estadoMatricula ?? "MATRICULADO",
       pensionPagada: alumno.pensionPagada ? "SI" : "NO",
       pensionObservacion: alumno.pensionObservacion ?? "",
@@ -235,6 +272,7 @@ export function AcademicoTab({
         nivelEducativo: "PRIMARIA",
         grado: gradosActivosPorNivel("PRIMARIA")[0] ?? "PRIMERO_PRIMARIA",
         seccion: seccionesActivasPorNivel("PRIMARIA")[0] ?? "A",
+        inicio_periodo: "10/03/2024",
         estadoMatricula: "MATRICULADO",
         pensionPagada: "NO",
         pensionObservacion: "",
@@ -244,25 +282,78 @@ export function AcademicoTab({
     XLSX.writeFile(workbook, "plantilla_alumnos_monserrat.xlsx");
   };
 
-  const importarAlumnosExcel = async (file: File) => {
+  const formatIsoDateToDmy = (iso?: string): string => {
+    if (!iso) return "";
+    const parsed = new Date(iso);
+    if (Number.isNaN(parsed.getTime())) return "";
+    const day = String(parsed.getDate()).padStart(2, "0");
+    const month = String(parsed.getMonth() + 1).padStart(2, "0");
+    const year = String(parsed.getFullYear());
+    return `${day}/${month}/${year}`;
+  };
+
+  const parseInicioPeriodo = (value: string): string | undefined => {
+    const texto = value.trim();
+    if (!texto) return undefined;
+    const isoDateTime = (() => {
+      const dmy = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+      if (!dmy) return undefined;
+      const [, dd, mm, yyyy, hh = "00", min = "00", ss = "00"] = dmy;
+      const pad = (s: string) => s.padStart(2, "0");
+      return `${yyyy}-${pad(mm)}-${pad(dd)}T${pad(hh)}:${pad(min)}:${pad(ss)}`;
+    })();
+    return isoDateTime;
+  };
+
+  const importarAlumnosExcel = async (
+    file: File,
+    mode: "upsert" | "create-only" | "update-only" = "upsert"
+  ) => {
+    const modeLabel =
+      mode === "update-only"
+        ? "Actualizando alumnos existentes..."
+        : mode === "create-only"
+        ? "Importando sólo alumnos nuevos..."
+        : "Importando y actualizando alumnos...";
     setImportSummary(null);
+    setImportProgress(0);
+    setImportMessage(modeLabel);
+    setIsImporting(true);
     const XLSX = await import("xlsx");
     const buffer = await file.arrayBuffer();
     const workbook = XLSX.read(buffer, { type: "array" });
-    const existentes = new Set(usuariosAcademicos.map((usuario) => usuario.dni));
+    const alumnosPorDni = new Map(
+      usuariosAcademicos.map((usuario) => [usuario.dni.trim(), usuario])
+    );
+    const alumnosPorCodigo = new Map(
+      usuariosAcademicos
+        .filter((usuario) => usuario.codigo)
+        .map((usuario) => [usuario.codigo!.trim().toLowerCase(), usuario])
+    );
+    const alumnosPorCorreo = new Map(
+      usuariosAcademicos
+        .filter((usuario) => usuario.correo)
+        .map((usuario) => [usuario.correo!.trim().toLowerCase(), usuario])
+    );
 
     let alumnosCreados = 0;
+    let alumnosActualizados = 0;
     let alumnosOmitidos = 0;
+    let alumnosIgnorados = 0;
     let docentesPrimariaCreados = 0;
     let docentesPrimariaOmitidos = 0;
     let docentesSecundariaCreados = 0;
     let docentesSecundariaOmitidos = 0;
 
-    await runAdminAction(async () => {
-      for (const sheetName of workbook.SheetNames) {
-        const sheet = workbook.Sheets[sheetName];
-        const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
+    const sheets = workbook.SheetNames.map((sheetName) => ({
+      sheetName,
+      rows: XLSX.utils.sheet_to_json<Record<string, unknown>>(workbook.Sheets[sheetName], { defval: "" }),
+    }));
+    const totalRows = sheets.reduce((count, sheet) => count + sheet.rows.length, 0);
+    let processedRows = 0;
 
+    await runAdminAction(async () => {
+      for (const { sheetName, rows } of sheets) {
         const sheetLower = sheetName.trim().toLowerCase().replace(/\s+/g, "_");
 
         const isDocentePrimariaSheet =
@@ -280,9 +371,7 @@ export function AcademicoTab({
 
         const isEstudiantes =
           isEstudiantesSheet ||
-          (workbook.SheetNames.length === 1 &&
-            !isDocentePrimariaSheet &&
-            !isDocenteSecundariaSheet);
+          (sheets.length === 1 && !isDocentePrimariaSheet && !isDocenteSecundariaSheet);
         const isDocentePrimaria = !isEstudiantes && isDocentePrimariaSheet;
         const isDocenteSecundaria = !isEstudiantes && !isDocentePrimaria && isDocenteSecundariaSheet;
 
@@ -312,10 +401,12 @@ export function AcademicoTab({
             "nombre",
           ]);
 
-          if (!dni || !nombreCompleto || existentes.has(dni)) {
-            if (isEstudiantes) alumnosOmitidos += 1;
-            else if (isDocentePrimaria) docentesPrimariaOmitidos += 1;
-            else if (isDocenteSecundaria) docentesSecundariaOmitidos += 1;
+          if (!dni || !nombreCompleto) {
+            alumnosOmitidos += isEstudiantes ? 1 : 0;
+            docentesPrimariaOmitidos += isDocentePrimaria ? 1 : 0;
+            docentesSecundariaOmitidos += isDocenteSecundaria ? 1 : 0;
+            processedRows += 1;
+            setImportProgress(Math.round((processedRows / totalRows) * 100));
             continue;
           }
 
@@ -341,6 +432,17 @@ export function AcademicoTab({
           const correo = rawCorreo && rawCorreo.includes("@") ? rawCorreo : undefined;
           const telefono = findVal(["telefono", "celular", "movil"]);
           const codigo = findVal(["codigo", "codigo_estudiante", "cod"]);
+          const inicioPeriodo = findVal([
+            "inicio periodo",
+            "inicio_periodo",
+            "inicio-periodo",
+            "inicio",
+            "fecha inicio",
+            "fecha_inicio",
+            "fecha-ingreso",
+            "fecha de ingreso",
+          ]);
+          const inicioPeriodoIso = parseInicioPeriodo(inicioPeriodo ?? "") || undefined;
 
           if (isEstudiantes) {
             const rawNivel = findVal([
@@ -356,40 +458,95 @@ export function AcademicoTab({
 
             if (!nivelEducativo || !grado || !seccion) {
               alumnosOmitidos += 1;
+              processedRows += 1;
+              setImportProgress(Math.round((processedRows / totalRows) * 100));
               continue;
             }
 
-            await monserratApi.createUsuarioAcademico(
-              {
-                ...emptyUsuarioAcademico,
-                codigo: codigo || dni,
-                dni,
-                nombre: nombreCompleto,
-                nombres,
-                apellidos,
-                correo,
-                telefono,
-                rol: "ALUMNO",
-                nivelEducativo,
-                grado,
-                seccion,
-                estadoMatricula:
-                  findVal(["estado matricula", "estado_matricula", "matricula", "estado"]) ||
-                  "MATRICULADO",
-                pensionPagada: parseBooleanCell(
-                  findVal(["pension", "pension pagada", "pension_pagada", "pagado"])
-                ),
-                pensionObservacion: findVal([
-                  "observacion",
-                  "observaciones",
-                  "pension observacion",
-                  "pension_observacion",
-                ]),
-              },
-              token
-            );
-            existentes.add(dni);
-            alumnosCreados += 1;
+            const payload = {
+              ...emptyUsuarioAcademico,
+              codigo: codigo || dni,
+              dni,
+              nombre: nombreCompleto,
+              nombres,
+              apellidos,
+              correo,
+              telefono,
+              rol: "ALUMNO",
+              nivelEducativo,
+              grado,
+              seccion,
+              estadoMatricula:
+                findVal(["estado matricula", "estado_matricula", "matricula", "estado"]) ||
+                "MATRICULADO",
+              pensionPagada: parseBooleanCell(
+                findVal(["pension", "pension pagada", "pension_pagada", "pagado"])
+              ),
+              pensionObservacion: findVal([
+                "observacion",
+                "observaciones",
+                "pension observacion",
+                "pension_observacion",
+              ]),
+              createdAt: inicioPeriodoIso,
+            };
+
+            const existenteByDni = alumnosPorDni.get(dni);
+            const existenteByCodigo = codigo ? alumnosPorCodigo.get(codigo.trim().toLowerCase()) : undefined;
+            const existenteByCorreo = rawCorreo ? alumnosPorCorreo.get(rawCorreo.trim().toLowerCase()) : undefined;
+            const existente = existenteByDni || existenteByCodigo || existenteByCorreo;
+
+            const codigoParaActualizar = (() => {
+              if (!codigo) return existente?.codigo || dni;
+              const candidato = codigo.trim();
+              if (existenteByCodigo && existenteByCodigo.id !== existente?.id) {
+                return existente?.codigo || dni;
+              }
+              return candidato;
+            })();
+
+            const correoParaActualizar = (() => {
+              if (!rawCorreo || !rawCorreo.includes("@")) return existente?.correo;
+              const candidato = rawCorreo.trim();
+              if (existenteByCorreo && existenteByCorreo.id !== existente?.id) {
+                return existente?.correo;
+              }
+              return candidato;
+            })();
+
+            if (mode === "update-only") {
+              if (existente) {
+                await monserratApi.updateUsuarioAcademico(existente.id, {
+                  ...payload,
+                  codigo: codigoParaActualizar,
+                  correo: correoParaActualizar,
+                  dni: existente.dni,
+                }, token);
+                alumnosActualizados += 1;
+              } else {
+                alumnosIgnorados += 1;
+              }
+            } else if (mode === "create-only") {
+              if (existente) {
+                alumnosIgnorados += 1;
+              } else {
+                await monserratApi.createUsuarioAcademico(payload, token);
+                alumnosCreados += 1;
+              }
+            } else {
+              if (existente) {
+                await monserratApi.updateUsuarioAcademico(existente.id, {
+                  ...payload,
+                  codigo: codigoParaActualizar,
+                  correo: correoParaActualizar,
+                  dni: existente.dni,
+                }, token);
+                alumnosActualizados += 1;
+              } else {
+                await monserratApi.createUsuarioAcademico(payload, token);
+                alumnosCreados += 1;
+              }
+            }
           } else if (isDocentePrimaria) {
             await monserratApi.createUsuarioAcademico(
               {
@@ -408,7 +565,6 @@ export function AcademicoTab({
               },
               token
             );
-            existentes.add(dni);
             docentesPrimariaCreados += 1;
           } else if (isDocenteSecundaria) {
             const rawCurso = findVal(["curso", "materia", "asignatura"]);
@@ -443,16 +599,29 @@ export function AcademicoTab({
               },
               token
             );
-            existentes.add(dni);
             docentesSecundariaCreados += 1;
           }
+
+          processedRows += 1;
+          setImportProgress(Math.round((processedRows / totalRows) * 100));
         }
       }
+
       setUsuariosAcademicos(await monserratApi.usuariosAcademicos(token));
 
       const parts = [];
-      if (alumnosCreados > 0 || alumnosOmitidos > 0) {
-        parts.push(`${alumnosCreados} alumnos creados (${alumnosOmitidos} omitidos)`);
+      if (mode === "create-only") {
+        parts.push(
+          `${alumnosCreados} alumnos creados, ${alumnosIgnorados} omitidos por registro existente, ${alumnosOmitidos} omitidos por datos incompletos`
+        );
+      } else if (mode === "update-only") {
+        parts.push(
+          `${alumnosActualizados} alumnos actualizados, ${alumnosIgnorados} ignorados por no existir, ${alumnosOmitidos} omitidos por datos incompletos`
+        );
+      } else {
+        parts.push(
+          `${alumnosCreados} alumnos creados, ${alumnosActualizados} actualizados, ${alumnosOmitidos} omitidos`
+        );
       }
       if (docentesPrimariaCreados > 0 || docentesPrimariaOmitidos > 0) {
         parts.push(
@@ -468,6 +637,9 @@ export function AcademicoTab({
         `Importación completada: ${parts.join(", ") || "ningún registro importado"}.`
       );
     }, "Importación completada con éxito");
+
+    setIsImporting(false);
+    setImportProgress(100);
   };
 
   const handleEditClick = (u: UsuarioAcademico) => {
@@ -481,7 +653,7 @@ export function AcademicoTab({
     : usuarioAcademicoForm.fotoUrl;
 
   return (
-    <div className="grid gap-5">
+    <div className="flex-1 flex flex-col min-h-0">
       <ConfirmForceDeleteModal
         isOpen={Boolean(forceDeleteTarget)}
         title={forceDeleteTarget?.name ?? "Usuario academico"}
@@ -496,7 +668,7 @@ export function AcademicoTab({
         }}
       />
 
-      <div className="grid gap-5 xl:grid-cols-[430px_1fr] items-start">
+      <div className="grid gap-5 xl:grid-cols-[430px_1fr] flex-1 min-h-0">
 
         {/* IZQUIERDA: formulario */}
         <form
@@ -742,24 +914,6 @@ export function AcademicoTab({
               Datos adicionales
             </summary>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <AdminField label="Nombres">
-                <input
-                  value={usuarioAcademicoForm.nombres ?? ""}
-                  onChange={(e) =>
-                    setUsuarioAcademicoForm({ ...usuarioAcademicoForm, nombres: e.target.value })
-                  }
-                  className="admin-input"
-                />
-              </AdminField>
-              <AdminField label="Apellidos">
-                <input
-                  value={usuarioAcademicoForm.apellidos ?? ""}
-                  onChange={(e) =>
-                    setUsuarioAcademicoForm({ ...usuarioAcademicoForm, apellidos: e.target.value })
-                  }
-                  className="admin-input"
-                />
-              </AdminField>
               <AdminField label="Nacimiento">
                 <input
                   type="date"
@@ -778,6 +932,16 @@ export function AcademicoTab({
                   value={usuarioAcademicoForm.direccion ?? ""}
                   onChange={(e) =>
                     setUsuarioAcademicoForm({ ...usuarioAcademicoForm, direccion: e.target.value })
+                  }
+                  className="admin-input"
+                />
+              </AdminField>
+              <AdminField label="Fecha de ingreso / inicio del periodo">
+                <input
+                  type="datetime-local"
+                  value={usuarioAcademicoForm.createdAt ?? ""}
+                  onChange={(e) =>
+                    setUsuarioAcademicoForm({ ...usuarioAcademicoForm, createdAt: e.target.value })
                   }
                   className="admin-input"
                 />
@@ -819,7 +983,7 @@ export function AcademicoTab({
         </form>
 
         {/* DERECHA: métricas + panel tabla */}
-        <div className="grid gap-5">
+        <div className="grid gap-5 flex-1 min-h-0 flex flex-col">
 
           {/* Métricas */}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -842,7 +1006,7 @@ export function AcademicoTab({
           </div>
 
           {/* Panel búsqueda + tabla */}
-          <div className="grid gap-4">
+          <div className="grid gap-4 flex-1 min-h-0 flex flex-col">
             <div className="grid gap-3 rounded-[16px] border border-monserrat-ink/8 bg-white p-3 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -869,14 +1033,27 @@ export function AcademicoTab({
                     <Download size={14} /> Exportar alumnos
                   </button>
                   <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-[9px] bg-monserrat-ink px-2.5 py-1.5 text-[11px] font-black text-white hover:bg-monserrat-ink/90">
-                    <Upload size={14} /> Importar alumnos
+                    <Upload size={14} /> Importar o actualizar
                     <input
                       type="file"
                       accept=".csv,.xls,.xlsx"
                       className="hidden"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file) void importarAlumnosExcel(file);
+                        if (file) void importarAlumnosExcel(file, "upsert");
+                        e.currentTarget.value = "";
+                      }}
+                    />
+                  </label>
+                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-[9px] border border-monserrat-ink/12 bg-white px-2.5 py-1.5 text-[11px] font-black text-monserrat-ink/65 hover:border-monserrat-ink/30">
+                    <Upload size={14} /> Actualizar existentes
+                    <input
+                      type="file"
+                      accept=".csv,.xls,.xlsx"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) void importarAlumnosExcel(file, "update-only");
                         e.currentTarget.value = "";
                       }}
                     />
@@ -912,6 +1089,20 @@ export function AcademicoTab({
                   {importSummary}
                 </p>
               )}
+              <Modal title="Importación de alumnos" isOpen={isImporting} onClose={() => setIsImporting(false)}>
+                <div className="p-6">
+                  <p className="text-sm font-bold text-monserrat-ink mb-4">{importMessage}</p>
+                  <div className="h-4 overflow-hidden rounded-full bg-monserrat-ink/10">
+                    <div
+                      className="h-full rounded-full bg-monserrat-red transition-all"
+                      style={{ width: `${importProgress}%` }}
+                    />
+                  </div>
+                  <p className="mt-3 text-xs font-black text-monserrat-ink/60">
+                    {importProgress}% completado
+                  </p>
+                </div>
+              </Modal>
             </div>
 
             <AdminTable
@@ -933,8 +1124,8 @@ export function AcademicoTab({
                 onEdit: () => handleEditClick(u),
                 onDelete: () => void eliminarUsuarioAcademico(u),
               }))}
-              className="bg-white shadow-sm"
-              bodyClassName="max-h-[600px] overflow-auto admin-table-scroll"
+              className="bg-white shadow-sm flex-1 flex flex-col min-h-0"
+              bodyClassName="overflow-auto flex-1 min-h-0 admin-table-scroll"
             />
           </div>
 

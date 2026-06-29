@@ -120,40 +120,44 @@ export function PensionesTab({
 
   const exportarPensionesExcel = async () => {
     const XLSX = await import("xlsx");
-    const rows = alumnosConPensiones.map(({ alumno, meses }) => ({
-      codigo: alumno.codigo ?? "",
-      dni: alumno.dni,
-      alumno: alumno.nombre,
-      nivel: labelFromEnum(alumno.nivelEducativo ?? ""),
-      grado: labelFromEnum(alumno.grado ?? ""),
-      seccion: alumno.seccion ?? "",
-      ...Object.fromEntries(
-        MESES_PENSION.map((mes, index) => [
-          mes,
-          meses[index + 1]?.pagada ? "PAGADO" : "PENDIENTE",
-        ])
-      ),
-      pagados: MESES_PENSION.filter((_, index) => meses[index + 1]?.pagada).length,
-      pendientes: MESES_PENSION.filter((_, index) => !meses[index + 1]?.pagada).length,
-    }));
+    const rows = alumnosConPensiones.map(({ alumno, meses }) => {
+      const mesesActivos = MESES_PENSION.map((_, index) => meses[index + 1]).filter((m) => m?.activa !== false);
+      return {
+        codigo: alumno.codigo ?? "",
+        dni: alumno.dni,
+        alumno: alumno.nombre,
+        nivel: labelFromEnum(alumno.nivelEducativo ?? ""),
+        grado: labelFromEnum(alumno.grado ?? ""),
+        seccion: alumno.seccion ?? "",
+        ...Object.fromEntries(
+          MESES_PENSION.map((mes, index) => [
+            mes,
+            meses[index + 1]?.activa === false ? "NO APLICA" : meses[index + 1]?.pagada ? "PAGADO" : "PENDIENTE",
+          ])
+        ),
+        pagados: mesesActivos.filter((m) => m?.pagada).length,
+        pendientes: mesesActivos.filter((m) => !m?.pagada).length,
+      };
+    });
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), `Pensiones ${pensionYear}`);
     XLSX.writeFile(workbook, `pensiones_monserrat_${pensionYear}.xlsx`);
   };
 
   const filtradosFinal = alumnosConPensiones.filter(({ meses }) => {
+    const mesesActivos = Object.values(meses).filter((m) => m?.activa !== false);
     if (pensionEstadoFiltro === "all") return true;
-    const pagados = Object.values(meses).filter((m) => m?.pagada).length;
-    if (pensionEstadoFiltro === "paid") return pagados === 12;
-    return pagados < 12;
+    const pagados = mesesActivos.filter((m) => m?.pagada).length;
+    if (pensionEstadoFiltro === "paid") return mesesActivos.length > 0 && pagados === mesesActivos.length;
+    return mesesActivos.some((m) => !m?.pagada);
   });
 
   const totalPagos = filtradosFinal.reduce(
-    (acc, { meses }) => acc + Object.values(meses).filter((m) => m?.pagada).length,
+    (acc, { meses }) => acc + Object.values(meses).filter((m) => m?.activa !== false && m?.pagada).length,
     0
   );
   const totalPend = filtradosFinal.reduce(
-    (acc, { meses }) => acc + Object.values(meses).filter((m) => !m?.pagada).length,
+    (acc, { meses }) => acc + Object.values(meses).filter((m) => m?.activa !== false && !m?.pagada).length,
     0
   );
   const PENSION_POR_PAGINA = 10;
@@ -162,15 +166,16 @@ export function PensionesTab({
     (pensionPagina - 1) * PENSION_POR_PAGINA,
     pensionPagina * PENSION_POR_PAGINA
   );
-  const cumplimiento =
-    filtradosFinal.length === 0
-      ? 0
-      : Math.round((totalPagos / (filtradosFinal.length * 12)) * 100);
+  const totalActivos = filtradosFinal.reduce(
+    (acc, { meses }) => acc + Object.values(meses).filter((m) => m?.activa !== false).length,
+    0
+  );
+  const cumplimiento = totalActivos === 0 ? 0 : Math.round((totalPagos / totalActivos) * 100);
 
   const gradosDelNivel = pensionNivelFiltro ? gradosActivosPorNivel(pensionNivelFiltro) : [];
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-4 flex-1 min-h-0 flex flex-col">
 
       {/* Filtros */}
       <div className="rounded-[14px] border border-monserrat-ink/8 bg-white p-3 shadow-sm">
@@ -298,7 +303,7 @@ export function PensionesTab({
       </div>
 
       {/* Lista de alumnos como cards expandibles */}
-      <div className="grid gap-2">
+      <div className="grid gap-2 flex-1 min-h-0 overflow-y-auto pr-1">
         {filtradosFinal.length === 0 ? (
           <div className="rounded-[12px] border border-monserrat-ink/8 bg-white py-12 text-center">
             <p className="text-[13px] font-semibold text-monserrat-ink/30">
@@ -319,8 +324,10 @@ export function PensionesTab({
           </div>
         ) : (
           alumnosPagina.map(({ alumno, meses }) => {
-            const pagados = Object.values(meses).filter((m) => m?.pagada).length;
-            const pct = Math.round((pagados / 12) * 100);
+            const mesesActivos = Object.values(meses).filter((m) => m?.activa !== false);
+            const pagados = mesesActivos.filter((m) => m?.pagada).length;
+            const totalActivos = mesesActivos.length || 1;
+            const pct = Math.round((pagados / totalActivos) * 100);
             const isOpen = Boolean(pensionExpandido[alumno.dni]);
             const initials = alumno.nombre
               .split(" ")
@@ -363,14 +370,14 @@ export function PensionesTab({
                   {/* Badge + barra de progreso */}
                   <div className="flex shrink-0 flex-col items-end gap-1.5">
                     <span
-                      className={`rounded-full px-2 py-0.5 text-[11px] font-black ${pagados === 12
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-black ${pagados === totalActivos
                         ? "bg-emerald-100 text-emerald-700"
                         : pagados === 0
                           ? "bg-red-100 text-red-600"
                           : "bg-amber-100 text-amber-700"
                         }`}
                     >
-                      {pagados}/12
+                      {pagados}/{totalActivos}
                     </span>
                     <div className="h-[5px] w-14 overflow-hidden rounded-full bg-monserrat-ink/10">
                       <div
@@ -402,6 +409,7 @@ export function PensionesTab({
                       {Array.from({ length: 12 }, (_, i) => {
                         const mes = i + 1;
                         const registro = meses[mes];
+                        const activa = registro?.activa !== false;
                         const pagada = Boolean(registro?.pagada);
                         const pensionBase: PensionMensual = registro ?? {
                           alumnoDni: alumno.dni,
@@ -413,26 +421,30 @@ export function PensionesTab({
                           anio: pensionYear,
                           mes,
                           pagada: false,
+                          activa: true,
                         };
                         return (
                           <button
                             key={mes}
                             type="button"
-                            title={pagada ? "Marcar como pendiente" : "Marcar como pagado"}
+                            disabled={!activa}
+                            title={!activa ? "Mes no aplicable" : pagada ? "Marcar como pendiente" : "Marcar como pagado"}
                             onClick={() => actualizarPensionMensual(pensionBase, !pagada)}
-                            className={`flex flex-col items-center gap-1 rounded-[8px] border px-1 py-2 transition-all ${pagada
+                            className={`flex flex-col items-center gap-1 rounded-[8px] border px-1 py-2 transition-all ${!activa
+                              ? "border-monserrat-ink/10 bg-monserrat-ink/10/40 text-monserrat-ink/30"
+                              : pagada
                               ? "border-emerald-200 bg-emerald-50 hover:bg-emerald-100"
                               : "border-monserrat-ink/8 bg-monserrat-cream/30 hover:bg-monserrat-cream/60"
                               }`}
                           >
                             <span
-                              className={`text-[13px] font-black leading-none ${pagada ? "text-emerald-600" : "text-monserrat-ink/20"
+                              className={`text-[13px] font-black leading-none ${!activa ? "text-monserrat-ink/30" : pagada ? "text-emerald-600" : "text-monserrat-ink/20"
                                 }`}
                             >
-                              {pagada ? "✓" : "·"}
+                              {!activa ? "—" : pagada ? "✓" : "·"}
                             </span>
                             <span
-                              className={`text-[10px] font-black ${pagada ? "text-emerald-700" : "text-monserrat-ink/35"
+                              className={`text-[10px] font-black ${!activa ? "text-monserrat-ink/40" : pagada ? "text-emerald-700" : "text-monserrat-ink/35"
                                 }`}
                             >
                               {MESES_PENSION[i]}

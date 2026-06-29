@@ -2,12 +2,13 @@ import { Edit3, Plus, Save, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { monserratApi } from "../../../api/monserrat";
-import type { Ingresante } from "../../../types";
+import type { Ingresante, UsuarioAcademico } from "../../../types";
 import { AdminField, MediaPicker } from "./adminComponents";
 import { TIPOS_SELECCION, YEARS } from "./adminShared";
 
 type IngresantesTabProps = {
   ingresantes: Ingresante[];
+  usuariosAcademicos: UsuarioAcademico[];
   token: string;
   isBusy: boolean;
   runAdminAction: (action: () => Promise<void>, successMessage: string) => void;
@@ -26,6 +27,7 @@ const emptyIngresante: Omit<Ingresante, "id"> = {
 
 export function IngresantesTab({
   ingresantes,
+  usuariosAcademicos,
   token,
   isBusy,
   runAdminAction
@@ -35,6 +37,13 @@ export function IngresantesTab({
   const [ingresantePhotoFile, setIngresantePhotoFile] = useState<File | null>(null);
   const [filterYear, setFilterYear] = useState("");
   const [filterSel, setFilterSel] = useState("");
+  const [vincularRegistrado, setVincularRegistrado] = useState(false);
+
+  const alumnos = useMemo(() => {
+    return (usuariosAcademicos || [])
+      .filter((u) => u.rol === "ALUMNO")
+      .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }, [usuariosAcademicos]);
 
   const sortedIngresantes = useMemo(() =>
     [...ingresantes].sort((a, b) => Number(b.anio) - Number(a.anio) || b.id - a.id),
@@ -95,23 +104,71 @@ export function IngresantesTab({
     : ingresanteForm.fotoUrl;
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[300px_1fr]">
+    <div className="grid gap-5 xl:grid-cols-[300px_1fr] flex-1 min-h-0">
       {/* form */}
       <form
         onSubmit={submitIngresante}
         className="grid content-start gap-3 rounded-[18px] border border-monserrat-ink/8 bg-monserrat-cream/40 p-5"
       >
-        <h4 className="font-serif text-[16px] font-black text-monserrat-ink">
-          {editingIngresante ? "Editar ingresante" : "Nuevo ingresante"}
-        </h4>
-        <AdminField label="Nombre completo">
-          <input
-            value={ingresanteForm.nombre}
-            onChange={(e) => setIngresanteForm({ ...ingresanteForm, nombre: e.target.value })}
-            className="admin-input"
-            required
-          />
-        </AdminField>
+        <div className="flex items-center justify-between">
+          <h4 className="font-serif text-[16px] font-black text-monserrat-ink">
+            {editingIngresante ? "Editar ingresante" : "Nuevo ingresante"}
+          </h4>
+          {!editingIngresante && (
+            <label className="flex items-center gap-1.5 text-[11px] font-bold text-monserrat-ink/65 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={vincularRegistrado}
+                onChange={(e) => {
+                  setVincularRegistrado(e.target.checked);
+                  setIngresanteForm((prev) => ({ ...prev, nombre: "", fotoUrl: "" }));
+                }}
+              />
+              Buscar en BD
+            </label>
+          )}
+        </div>
+        {vincularRegistrado && !editingIngresante ? (
+          <AdminField label="Seleccionar alumno del sistema">
+            <select
+              className="admin-input"
+              required
+              onChange={(e) => {
+                const selectedDni = e.target.value;
+                const match = alumnos.find((a) => a.dni === selectedDni);
+                if (match) {
+                  setIngresanteForm((prev) => ({
+                    ...prev,
+                    nombre: match.nombre,
+                    fotoUrl: match.fotoUrl ?? "",
+                  }));
+                } else {
+                  setIngresanteForm((prev) => ({
+                    ...prev,
+                    nombre: "",
+                    fotoUrl: "",
+                  }));
+                }
+              }}
+            >
+              <option value="">-- Selecciona --</option>
+              {alumnos.map((a) => (
+                <option key={a.dni} value={a.dni}>
+                  {a.nombre} ({a.dni})
+                </option>
+              ))}
+            </select>
+          </AdminField>
+        ) : (
+          <AdminField label="Nombre completo">
+            <input
+              value={ingresanteForm.nombre}
+              onChange={(e) => setIngresanteForm({ ...ingresanteForm, nombre: e.target.value })}
+              className="admin-input"
+              required
+            />
+          </AdminField>
+        )}
         <AdminField label="Universidad">
           <input
             value={ingresanteForm.universidad}
@@ -204,7 +261,7 @@ export function IngresantesTab({
       </form>
 
       {/* tabla */}
-      <div>
+      <div className="flex flex-col min-h-0">
         {/* filtros */}
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div className="flex gap-2 flex-wrap">
@@ -253,10 +310,10 @@ export function IngresantesTab({
           </p>
         </div>
 
-        <div className="overflow-hidden rounded-[16px] border border-monserrat-ink/8">
-          <div className="overflow-x-auto">
+        <div className="overflow-hidden rounded-[16px] border border-monserrat-ink/8 flex-1 min-h-0 flex flex-col bg-white shadow-sm">
+          <div className="overflow-auto flex-1 min-h-0">
             <table className="w-full min-w-[600px] border-collapse text-left text-[12.5px]">
-              <thead className="bg-monserrat-ink text-monserrat-cream">
+              <thead className="bg-monserrat-ink text-monserrat-cream sticky top-0 z-10">
                 <tr>
                   {["Nombre", "Universidad", "Carrera", "Año", "Ingreso", ""].map((h) => (
                     <th

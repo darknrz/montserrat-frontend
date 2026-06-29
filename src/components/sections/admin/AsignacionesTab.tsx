@@ -145,6 +145,7 @@ export function AsignacionesTab({
           id: curso,
           title: labelAcademico(curso),
           detail: asignacion?.docenteNombre ?? "Sin docente asignado",
+          raw: asignacion,
         };
       }),
     [asignacionesDelAula, asignacionAcademicaForm.nivelEducativo, cursosActivosPorNivel, labelAcademico]
@@ -159,48 +160,85 @@ export function AsignacionesTab({
     );
   }, [asignacionAcademicaForm.docenteDni, docentesPrimaria, profesoresDelAula]);
 
-  const autocompletarPrimariaPorGrado = (grado: string, forzarPrimaria = false) => {
-    if (!forzarPrimaria && asignacionAcademicaForm.nivelEducativo !== "PRIMARIA") {
-      setAsignacionAcademicaForm({ ...asignacionAcademicaForm, grado });
-      return;
+  const autocompletarPorGradoYSeccion = (grado: string, seccion: string, nivel: string) => {
+    const matchingSalon = academicoConfig.salones.find(
+      (s) => s.nivel === nivel && s.grado === grado && s.seccion === seccion
+    );
+    const aula = matchingSalon ? matchingSalon.aula : aulaPorGradoSeccion(nivel, grado, seccion);
+    setAulaNumero(aula);
+
+    if (nivel === "PRIMARIA") {
+      const asignacionExistente = asignacionesAcademicas.find(
+        (a) =>
+          a.nivelEducativo === "PRIMARIA" &&
+          a.grado === grado &&
+          a.seccion === seccion &&
+          a.activo
+      );
+      const docenteDisponible = docentesPrimaria.find(
+        (docente) =>
+          !asignacionesAcademicas.some(
+            (a) =>
+              a.nivelEducativo === "PRIMARIA" &&
+              a.docenteDni === docente.dni &&
+              a.activo &&
+              (a.grado !== grado || a.seccion !== seccion)
+          )
+      );
+
+      setAsignacionAcademicaForm({
+        ...asignacionAcademicaForm,
+        nivelEducativo: "PRIMARIA",
+        grado,
+        seccion,
+        curso: "MATEMATICA",
+        docenteDni: asignacionExistente?.docenteDni ?? docenteDisponible?.dni ?? "",
+      });
+    } else {
+      // SECUNDARIA
+      const curso = asignacionAcademicaForm.curso || "MATEMATICA";
+      const asignacionCurso = asignacionesAcademicas.find(
+        (a) =>
+          a.nivelEducativo === "SECUNDARIA" &&
+          a.grado === grado &&
+          a.seccion === seccion &&
+          a.curso === curso &&
+          a.activo
+      );
+      
+      const tutorAula = asignacionesAcademicas.find(
+        (a) =>
+          a.nivelEducativo === "SECUNDARIA" &&
+          a.grado === grado &&
+          a.seccion === seccion &&
+          a.activo
+      );
+
+      setTutorSecundariaDni(tutorAula?.docenteDni ?? "");
+
+      const docenteCurso = docentesSecundaria.find((docente) => docente.materia === curso);
+
+      setAsignacionAcademicaForm({
+        ...asignacionAcademicaForm,
+        nivelEducativo: "SECUNDARIA",
+        grado,
+        seccion,
+        curso,
+        docenteDni: asignacionCurso?.docenteDni ?? docenteCurso?.dni ?? "",
+      });
     }
+  };
 
-    const seccion =
-      seccionesActivasPorNivel("PRIMARIA").find((item) =>
-        alumnos.some(
-          (alumno) =>
-            alumno.nivelEducativo === "PRIMARIA" &&
-            alumno.grado === grado &&
-            alumno.seccion === item
-        )
-      ) ?? "A";
-    const asignacionExistente = asignacionesAcademicas.find(
-      (asignacion) =>
-        asignacion.nivelEducativo === "PRIMARIA" &&
-        asignacion.grado === grado &&
-        asignacion.seccion === seccion &&
-        asignacion.activo
-    );
-    const docenteDisponible = docentesPrimaria.find(
-      (docente) =>
-        !asignacionesAcademicas.some(
-          (asignacion) =>
-            asignacion.nivelEducativo === "PRIMARIA" &&
-            asignacion.docenteDni === docente.dni &&
-            asignacion.activo &&
-            (asignacion.grado !== grado || asignacion.seccion !== seccion)
-        )
-    );
-
-    setAulaNumero(aulaPorGradoSeccion("PRIMARIA", grado, seccion));
-    setAsignacionAcademicaForm({
-      ...asignacionAcademicaForm,
-      nivelEducativo: "PRIMARIA",
-      grado,
-      seccion,
-      curso: "MATEMATICA",
-      docenteDni: asignacionExistente?.docenteDni ?? docenteDisponible?.dni ?? "",
-    });
+  const handleSalonChange = (aula: string) => {
+    setAulaNumero(aula);
+    const matchingSalon = academicoConfig.salones.find((s) => s.aula === aula);
+    if (matchingSalon) {
+      autocompletarPorGradoYSeccion(
+        matchingSalon.grado,
+        matchingSalon.seccion,
+        matchingSalon.nivel
+      );
+    }
   };
 
   const submitAsignacionAcademica = (e: FormEvent) => {
@@ -279,19 +317,50 @@ export function AsignacionesTab({
   };
 
   return (
-    <div className="grid gap-5">
-      <div className="grid gap-5 xl:grid-cols-[380px_1fr]">
+    <div className="flex-1 flex flex-col min-h-0">
+      <div className="grid gap-5 xl:grid-cols-[380px_1fr] flex-1 min-h-0">
         <form
           onSubmit={submitAsignacionAcademica}
-          className="grid content-start gap-4 rounded-[18px] border border-monserrat-ink/8 bg-white p-5 shadow-sm"
+          className={`grid content-start gap-4 rounded-[18px] border bg-white p-5 shadow-sm transition-all duration-300 ${
+            editingAsignacionAcademica
+              ? "border-amber-500 ring-2 ring-amber-500/20"
+              : "border-monserrat-ink/8"
+          }`}
         >
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-red">
-              Asignacion por aula
-            </p>
-            <h4 className="mt-1 font-serif text-[20px] font-black text-monserrat-ink">
-              {editingAsignacionAcademica ? "Editar asignacion" : "Configurar salon"}
-            </h4>
+          <div className="flex flex-col gap-2">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-red">
+                  Asignacion por aula
+                </p>
+                <h4 className="mt-1 font-serif text-[20px] font-black text-monserrat-ink">
+                  {editingAsignacionAcademica ? "Editar asignación" : "Configurar salón"}
+                </h4>
+              </div>
+              
+              {editingAsignacionAcademica ? (
+                <span className="flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-black text-amber-800 border border-amber-200 uppercase tracking-wider">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                  </span>
+                  Edición
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black text-emerald-800 border border-emerald-200 uppercase tracking-wider">
+                  <span className="relative flex h-2 w-2">
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  Nuevo
+                </span>
+              )}
+            </div>
+            
+            {editingAsignacionAcademica && (
+              <div className="text-[11px] bg-amber-500/10 text-amber-800 p-2 rounded-lg border border-amber-500/20">
+                Estás editando la asignación de <strong>{editingAsignacionAcademica.docenteNombre}</strong> en <strong>{labelAcademico(editingAsignacionAcademica.grado ?? "")} - {editingAsignacionAcademica.seccion}</strong>.
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-2">
             {NIVELES.map((nivel) => (
@@ -302,35 +371,7 @@ export function AsignacionesTab({
                 onClick={() => {
                   const grado = defaultGrado(nivel);
                   const seccion = "A";
-                  if (nivel === "PRIMARIA") {
-                    autocompletarPrimariaPorGrado(grado, true);
-                    return;
-                  }
-                  const curso = asignacionAcademicaForm.curso || "MATEMATICA";
-                  const asignacionCurso = asignacionesAcademicas.find(
-                    (asignacion) =>
-                      asignacion.nivelEducativo === "SECUNDARIA" &&
-                      asignacion.grado === grado &&
-                      asignacion.seccion === seccion &&
-                      asignacion.curso === curso
-                  );
-                  const docenteCurso = docentesSecundaria.find((docente) => docente.materia === curso);
-                  const tutorAula = asignacionesAcademicas.find(
-                    (asignacion) =>
-                      asignacion.nivelEducativo === "SECUNDARIA" &&
-                      asignacion.grado === grado &&
-                      asignacion.seccion === seccion
-                  );
-                  setTutorSecundariaDni(tutorAula?.docenteDni ?? "");
-                  setAsignacionAcademicaForm({
-                    ...asignacionAcademicaForm,
-                    nivelEducativo: nivel,
-                    grado,
-                    seccion,
-                    curso,
-                    docenteDni: asignacionCurso?.docenteDni ?? docenteCurso?.dni ?? "",
-                  });
-                  setAulaNumero(aulaPorGradoSeccion(nivel, grado, seccion));
+                  autocompletarPorGradoYSeccion(grado, seccion, nivel);
                 }}
                 className={`rounded-[10px] border px-3 py-2 text-[12px] font-black transition ${
                   asignacionAcademicaForm.nivelEducativo === nivel
@@ -346,7 +387,7 @@ export function AsignacionesTab({
             <AdminField label="Salon">
               <select
                 value={aulaNumero}
-                onChange={(e) => setAulaNumero(e.target.value)}
+                onChange={(e) => handleSalonChange(e.target.value)}
                 className="admin-input"
                 required
               >
@@ -360,7 +401,12 @@ export function AsignacionesTab({
             <AdminField label="Grado">
               <select
                 value={asignacionAcademicaForm.grado ?? "PRIMERO_PRIMARIA"}
-                onChange={(e) => autocompletarPrimariaPorGrado(e.target.value)}
+                onChange={(e) => {
+                  const grado = e.target.value;
+                  const nivel = asignacionAcademicaForm.nivelEducativo ?? "PRIMARIA";
+                  const seccion = asignacionAcademicaForm.seccion ?? "A";
+                  autocompletarPorGradoYSeccion(grado, seccion, nivel);
+                }}
                 className="admin-input"
                 required
               >
@@ -378,15 +424,9 @@ export function AsignacionesTab({
                 value={asignacionAcademicaForm.seccion ?? "A"}
                 onChange={(e) => {
                   const seccion = e.target.value;
-                  setAulaNumero(
-                    aulaPorGradoSeccion(
-                      asignacionAcademicaForm.nivelEducativo,
-                      asignacionAcademicaForm.grado ??
-                        defaultGrado(asignacionAcademicaForm.nivelEducativo ?? "PRIMARIA"),
-                      seccion
-                    )
-                  );
-                  setAsignacionAcademicaForm({ ...asignacionAcademicaForm, seccion });
+                  const nivel = asignacionAcademicaForm.nivelEducativo ?? "PRIMARIA";
+                  const grado = asignacionAcademicaForm.grado ?? defaultGrado(nivel);
+                  autocompletarPorGradoYSeccion(grado, seccion, nivel);
                 }}
                 className="admin-input"
                 required
@@ -519,11 +559,15 @@ export function AsignacionesTab({
           <div className="flex gap-2">
             <button
               disabled={isBusy}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-[10px] bg-monserrat-red py-2.5 text-[12px] font-black text-white transition hover:bg-monserrat-red/85 disabled:opacity-60"
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-[10px] py-2.5 text-[12px] font-black text-white transition cursor-pointer disabled:opacity-60 ${
+                editingAsignacionAcademica
+                  ? "bg-amber-600 hover:bg-amber-700"
+                  : "bg-monserrat-red hover:bg-monserrat-red/85"
+              }`}
             >
               {editingAsignacionAcademica ? (
                 <>
-                  <Save size={13} /> Guardar
+                  <Save size={13} /> Guardar cambios
                 </>
               ) : (
                 <>
@@ -538,14 +582,14 @@ export function AsignacionesTab({
                   setEditingAsignacionAcademica(null);
                   setAsignacionAcademicaForm(emptyAsignacion);
                 }}
-                className="rounded-[10px] border border-monserrat-ink/12 px-3 hover:border-monserrat-ink/25"
+                className="flex items-center justify-center gap-1.5 rounded-[10px] border border-monserrat-ink/12 px-4 py-2.5 text-[12px] font-bold text-monserrat-ink/75 transition hover:bg-monserrat-cream/15 hover:border-monserrat-ink/25 cursor-pointer"
               >
-                <X size={14} />
+                <X size={13} /> Cancelar edición
               </button>
             )}
           </div>
         </form>
-        <div className="grid min-h-[390px] grid-rows-[auto_minmax(280px,1fr)] gap-4">
+        <div className="grid grid-rows-[auto_1fr] gap-4 h-full min-h-0">
           <div className="rounded-[16px] border border-monserrat-ink/8 bg-monserrat-cream/35 p-3">
             <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/45">
               Vista del aula seleccionada
@@ -597,7 +641,7 @@ export function AsignacionesTab({
             </div>
           </div>
           {asignacionAcademicaForm.nivelEducativo === "SECUNDARIA" ? (
-            <div className="grid min-h-0 gap-4 lg:grid-cols-2">
+            <div className="grid min-h-0 gap-4 lg:grid-cols-2 h-full">
               <RosterPanel
                 title="Alumnos del aula"
                 empty="No hay alumnos en esta aula"
@@ -608,7 +652,7 @@ export function AsignacionesTab({
                     alumno.grado ?? ""
                   )} ${labelAcademico(alumno.seccion ?? "")}`,
                 }))}
-                className="h-full min-h-[280px]"
+                className="h-full min-h-0"
                 bodyClassName="max-h-none"
               />
               <RosterPanel
@@ -618,8 +662,14 @@ export function AsignacionesTab({
                   id: curso.id,
                   title: curso.title,
                   detail: curso.detail,
+                  raw: curso.raw,
                 }))}
-                className="h-full min-h-[280px]"
+                onEdit={(asignacion) => {
+                  if (asignacion) {
+                    handleEditClick(asignacion);
+                  }
+                }}
+                className="h-full min-h-0"
                 bodyClassName="max-h-none"
               />
             </div>
@@ -634,8 +684,8 @@ export function AsignacionesTab({
                   alumno.grado ?? ""
                 )} ${labelAcademico(alumno.seccion ?? "")}`,
               }))}
-              className="h-full min-h-[280px]"
-              bodyClassName="max-h-none min-h-[220px]"
+              className="h-full min-h-0"
+              bodyClassName="max-h-none min-h-0"
             />
           )}
         </div>

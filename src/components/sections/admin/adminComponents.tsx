@@ -49,13 +49,15 @@ export function RosterPanel({
   empty,
   rows,
   className = "",
-  bodyClassName = ""
+  bodyClassName = "",
+  onEdit
 }: {
   title: string;
   empty: string;
-  rows: { id: string; title: string; detail: string }[];
+  rows: { id: string; title: string; detail: string; raw?: any }[];
   className?: string;
   bodyClassName?: string;
+  onEdit?: (raw: any) => void;
 }) {
   return (
     <div className={`overflow-hidden rounded-[16px] border border-monserrat-ink/8 bg-white shadow-sm ${className}`}>
@@ -66,9 +68,21 @@ export function RosterPanel({
         {rows.length === 0 ? (
           <p className="py-8 text-center text-sm font-semibold text-monserrat-ink/40">{empty}</p>
         ) : rows.map((row) => (
-          <div key={row.id} className="border-b border-monserrat-ink/6 px-2 py-3 last:border-b-0">
-            <p className="truncate text-sm font-black text-monserrat-ink">{row.title}</p>
-            <p className="mt-1 truncate text-[12px] font-semibold text-monserrat-ink/50">{row.detail}</p>
+          <div key={row.id} className="flex items-center justify-between border-b border-monserrat-ink/6 px-2 py-3 last:border-b-0">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-black text-monserrat-ink">{row.title}</p>
+              <p className="mt-1 truncate text-[12px] font-semibold text-monserrat-ink/50">{row.detail}</p>
+            </div>
+            {onEdit && row.raw && (
+              <button
+                type="button"
+                onClick={() => onEdit(row.raw)}
+                className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[8px] bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 transition ml-2 cursor-pointer"
+                title="Editar asignación"
+              >
+                <Edit3 size={13} />
+              </button>
+            )}
           </div>
         ))}
       </div>
@@ -317,19 +331,19 @@ export function AdminTable({
     <div className={`overflow-hidden rounded-[16px] border border-monserrat-ink/8 ${className}`}>
       <div className={`admin-table-scroll ${bodyClassName}`}>
         <table className="w-full table-fixed border-collapse text-left text-[12.5px]">
-          <thead className="bg-monserrat-ink">
+          <thead className="bg-monserrat-ink sticky top-0 z-10">
             <tr>
               {headers.map((h, i) => (
                 <th key={h}
                   className={`px-4 py-3 text-[10px] font-black uppercase tracking-[0.1em] text-monserrat-cream/70 ${i === 0 ? "w-[12%]" :   // Codigo
                     i === 1 ? "w-[30%]" :   // Nombre
-                      i === 2 ? "w-[10%]" :   // Rol
-                        i === 3 ? "w-[10%]" :   // Estado
-                          "w-[30%]"               // Detalle
+                    i === 2 ? "w-[10%]" :   // Rol
+                    i === 3 ? "w-[10%]" :   // Estado
+                    "w-[30%]"               // Detalle
                     }`}
                 >{h}</th>
               ))}
-              <th className="w-[8%] px-4 py-3"></th>
+              <th className="w-[8%] px-4 py-3 bg-monserrat-ink"></th>
             </tr>
           </thead>
           <tbody>

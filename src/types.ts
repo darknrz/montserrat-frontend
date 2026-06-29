@@ -87,6 +87,7 @@ export type UsuarioAcademico = {
   pensionPagada?: boolean;
   pensionObservacion?: string;
   debeCambiarContrasena?: boolean;
+  createdAt?: string;
 };
 
 export type PerfilAcademico = UsuarioAcademico & {
@@ -149,6 +150,7 @@ export type PensionMensual = {
   anio: number;
   mes: number;
   pagada: boolean;
+  activa?: boolean;
   observacion?: string;
   actualizadoEn?: string;
 };

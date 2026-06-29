@@ -1,9 +1,10 @@
-﻿import { BadgeCheck, BookOpen, CheckCircle2, ClipboardCheck, Clock, Edit3, GraduationCap, LogOut, Plus, Save, School, ShieldCheck, UserCheck, UserRound, UserX, WalletCards, X } from "lucide-react";
+import { BadgeCheck, BookOpen, CheckCircle2, ClipboardCheck, Clock, Edit3, GraduationCap, LogOut, Plus, Save, School, ShieldCheck, UserCheck, UserRound, UserX, WalletCards, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { monserratApi } from "../../api/monserrat";
-import type { AsignacionAcademica, AsistenciaAcademica, LoginResponse, NotaAcademica, PensionEstado, PerfilAcademico, UsuarioAcademico } from "../../types";
+import type { AsignacionAcademica, AsistenciaAcademica, LoginResponse, NotaAcademica, PensionEstado, PensionMensual, PerfilAcademico, UsuarioAcademico } from "../../types";
 import { SectionHeader } from "../ui/SectionHeader";
+import { MESES_PENSION, YEARS } from "./admin/adminShared";
 
 type Tab = "perfil" | "cursos" | "asistencia" | "notas" | "pension";
 
@@ -42,6 +43,10 @@ export function PortalAcademicoPage() {
   const [notaForm, setNotaForm] = useState(emptyNotaForm);
   const [perfilPhotoFile, setPerfilPhotoFile] = useState<File | null>(null);
   const perfilPhotoPreview = perfilPhotoFile ? URL.createObjectURL(perfilPhotoFile) : perfil.fotoUrl;
+
+  const [pensionesDetalle, setPensionesDetalle] = useState<PensionMensual[]>([]);
+  const [pensionYear, setPensionYear] = useState<number>(new Date().getFullYear());
+  const [minAsistenciaPct, setMinAsistenciaPct] = useState<number>(70);
 
   const token = session?.token ?? "";
   const isDocente = session?.rol === "DOCENTE";
@@ -120,6 +125,15 @@ export function PortalAcademicoPage() {
     const perfilData = await monserratApi.perfilAcademico(token);
     setPerfil(perfilData);
 
+    try {
+      const config = await monserratApi.academicoConfiguracion<{ minAsistenciaPorcentaje?: number }>(token);
+      if (config && config.minAsistenciaPorcentaje !== undefined) {
+        setMinAsistenciaPct(config.minAsistenciaPorcentaje);
+      }
+    } catch (e) {
+      console.error("No se pudo cargar la configuración de asistencia", e);
+    }
+
     if (session?.rol === "DOCENTE") {
       const [alumnosData, asignacionesData, asistenciasData, notasData] = await Promise.all([
         monserratApi.alumnosDocenteAcademicos(token),
@@ -136,20 +150,32 @@ export function PortalAcademicoPage() {
     }
 
     if (session?.rol === "ALUMNO") {
-      const [notasData, pensionData, asignacionesData] = await Promise.all([
+      const [notasData, pensionData, asignacionesData, asistenciasData, pensionesDetData] = await Promise.all([
         monserratApi.notasAlumno(token),
         monserratApi.pensionAlumno(token),
-        monserratApi.asignacionesAlumno(token)
+        monserratApi.asignacionesAlumno(token),
+        monserratApi.asistenciasAlumno(token),
+        monserratApi.pensionesAlumnoDetalle(pensionYear, token)
       ]);
       setNotas(notasData);
       setPension(pensionData);
       setAsignaciones(asignacionesData);
+      setAsistencias(asistenciasData);
+      setPensionesDetalle(pensionesDetData);
     }
-  }, [session?.rol, token]);
+  }, [session?.rol, token, pensionYear]);
 
   useEffect(() => {
     void loadPortal().catch((error: unknown) => setStatus(error instanceof Error ? error.message : "No se pudo cargar el portal"));
   }, [loadPortal]);
+
+  useEffect(() => {
+    if (session?.rol === "ALUMNO" && token) {
+      void monserratApi.pensionesAlumnoDetalle(pensionYear, token)
+        .then((data) => setPensionesDetalle(data))
+        .catch((err) => console.error(err));
+    }
+  }, [pensionYear, token, session?.rol]);
 
   const logout = () => {
     window.localStorage.removeItem("monserrat_academic_session");
@@ -254,7 +280,7 @@ export function PortalAcademicoPage() {
   const tabs = [
     { id: "perfil" as const, label: "Perfil", visible: true },
     { id: "cursos" as const, label: "Cursos", visible: isDocente || isAlumno },
-    { id: "asistencia" as const, label: "Asistencia", visible: isDocente },
+    { id: "asistencia" as const, label: "Asistencia", visible: isDocente || isAlumno },
     { id: "notas" as const, label: "Notas", visible: true },
     { id: "pension" as const, label: "Pension", visible: isAlumno }
   ].filter((item) => item.visible);
@@ -356,8 +382,8 @@ export function PortalAcademicoPage() {
                     </div>
                   </Field>
                 {isDocente && nivelActual === "SECUNDARIA" && <Field label="Materia"><input value={perfil.materia ?? ""} onChange={(event) => setPerfil({ ...perfil, materia: event.target.value })} className="admin-input" /></Field>}
-                {isAlumno && <Field label="Grado"><input value={perfil.grado ?? ""} onChange={(event) => setPerfil({ ...perfil, grado: event.target.value })} className="admin-input" /></Field>}
-                {isAlumno && <Field label="Seccion"><input value={perfil.seccion ?? ""} onChange={(event) => setPerfil({ ...perfil, seccion: event.target.value })} className="admin-input" /></Field>}
+                {isAlumno && <Field label="Grado"><input value={labelFromEnum(perfil.grado ?? "")} className="admin-input bg-monserrat-cream/35 text-monserrat-ink/50 cursor-not-allowed" readOnly disabled /></Field>}
+                {isAlumno && <Field label="Seccion"><input value={perfil.seccion ?? ""} className="admin-input bg-monserrat-cream/35 text-monserrat-ink/50 cursor-not-allowed" readOnly disabled /></Field>}
                 <div className="md:col-span-2 flex flex-wrap gap-3">
                   <button disabled={isBusy} className="inline-flex items-center gap-2 rounded-[12px] bg-monserrat-red px-5 py-2.5 text-sm font-black text-white disabled:opacity-60"><Save size={16} /> Guardar perfil</button>
                 </div>
@@ -468,6 +494,105 @@ export function PortalAcademicoPage() {
             </div>
           )}
 
+          {tab === "asistencia" && isAlumno && (
+            <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
+              <div className="grid gap-4">
+                <SimpleTable
+                  title="Mi historial de asistencias"
+                  headers={["Fecha", "Estado", "Docente", "Observación"]}
+                  rows={asistencias.map((asist) => [
+                    asist.fecha,
+                    labelFromEnum(asist.estado),
+                    asist.docenteNombre,
+                    asist.observacion || "-"
+                  ])}
+                />
+              </div>
+
+              <div className="grid gap-4 content-start">
+                {(() => {
+                  const total = asistencias.length;
+                  const ausentes = asistencias.filter((a) => a.estado === "AUSENTE").length;
+                  const presentes = asistencias.filter((a) => a.estado === "PRESENTE").length;
+                  const tardanzas = asistencias.filter((a) => a.estado === "TARDANZA").length;
+                  const justificados = asistencias.filter((a) => a.estado === "JUSTIFICADO").length;
+                  const pct = total === 0 ? 100 : Math.round(((total - ausentes) / total) * 100);
+                  const isBelow = pct < minAsistenciaPct;
+                  const isClose = pct >= minAsistenciaPct && pct < minAsistenciaPct + 8;
+
+                  return (
+                    <>
+                      <div className={`rounded-[18px] border p-5 shadow-sm transition-colors ${
+                        isBelow 
+                          ? "border-red-200 bg-red-50/70" 
+                          : isClose 
+                            ? "border-amber-200 bg-amber-50/70" 
+                            : "border-emerald-200 bg-emerald-50/70"
+                      }`}>
+                        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">
+                          Control de Asistencia
+                        </p>
+                        <h3 className={`mt-2 font-serif text-3xl font-black ${
+                          isBelow ? "text-red-700" : isClose ? "text-amber-700" : "text-emerald-700"
+                        }`}>
+                          {pct}%
+                        </h3>
+                        <p className="mt-1 text-xs font-bold text-monserrat-ink/60">
+                          Asistencia actual (Mínimo requerido: {minAsistenciaPct}%)
+                        </p>
+                        
+                        <div className="mt-4 flex items-start gap-2.5 rounded-[12px] bg-white p-3 shadow-sm text-[12px]">
+                          {isBelow ? (
+                            <div className="text-red-700 font-bold">
+                              <span className="block font-black text-red-800 uppercase tracking-wider text-[10px] mb-0.5">⚠️ ALERTA CRÍTICA</span>
+                              Tu porcentaje de asistencia está por debajo del {minAsistenciaPct}%. Estás en riesgo de inhabilitación por inasistencias.
+                            </div>
+                          ) : isClose ? (
+                            <div className="text-amber-700 font-bold">
+                              <span className="block font-black text-amber-800 uppercase tracking-wider text-[10px] mb-0.5">⚠️ PRECAUCIÓN</span>
+                              Estás cerca del límite del {minAsistenciaPct}%. Evita faltar a tus clases programadas.
+                            </div>
+                          ) : (
+                            <div className="text-emerald-700 font-bold">
+                              <span className="block font-black text-emerald-800 uppercase tracking-wider text-[10px] mb-0.5">✓ ESTADO ÓPTIMO</span>
+                              ¡Felicitaciones! Cuentas con un excelente porcentaje de asistencia y cumples con el reglamento.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="rounded-[18px] border border-monserrat-ink/8 bg-white p-5 shadow-sm">
+                        <p className="text-xs font-black uppercase tracking-[0.12em] text-monserrat-ink/50">Resumen Detallado</p>
+                        <div className="mt-4 grid gap-3">
+                          <div className="flex justify-between items-center rounded-[10px] bg-monserrat-cream/15 px-3.5 py-2">
+                            <span className="text-[12px] font-bold text-monserrat-ink/75">Clases Registradas</span>
+                            <span className="text-[13px] font-black text-monserrat-ink">{total}</span>
+                          </div>
+                          <div className="flex justify-between items-center rounded-[10px] bg-emerald-50 px-3.5 py-2 border border-emerald-100">
+                            <span className="text-[12px] font-bold text-emerald-700">Asistencias (Presente)</span>
+                            <span className="text-[13px] font-black text-emerald-800">{presentes}</span>
+                          </div>
+                          <div className="flex justify-between items-center rounded-[10px] bg-amber-50 px-3.5 py-2 border border-amber-100">
+                            <span className="text-[12px] font-bold text-amber-700">Tardanzas</span>
+                            <span className="text-[13px] font-black text-amber-800">{tardanzas}</span>
+                          </div>
+                          <div className="flex justify-between items-center rounded-[10px] bg-blue-50 px-3.5 py-2 border border-blue-100">
+                            <span className="text-[12px] font-bold text-blue-700">Inasistencias Justificadas</span>
+                            <span className="text-[13px] font-black text-blue-800">{justificados}</span>
+                          </div>
+                          <div className="flex justify-between items-center rounded-[10px] bg-red-50 px-3.5 py-2 border border-red-100">
+                            <span className="text-[12px] font-bold text-red-700">Faltas Injustificadas</span>
+                            <span className="text-[13px] font-black text-red-800">{ausentes}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
+
           {tab === "notas" && (
             <div className={isDocente ? "grid gap-5 lg:grid-cols-[320px_1fr]" : "grid gap-5"}>
               {isDocente && (
@@ -560,17 +685,108 @@ export function PortalAcademicoPage() {
           )}
 
           {tab === "pension" && isAlumno && (
-            <div className="grid max-w-xl gap-4 rounded-[16px] border border-monserrat-ink/8 bg-monserrat-cream/35 p-5">
-              <div className="flex items-center gap-3">
-                <div className={`flex h-12 w-12 items-center justify-center rounded-[12px] ${pension?.pagada ? "bg-emerald-600" : "bg-monserrat-red"} text-white`}>
-                  {pension?.pagada ? <CheckCircle2 size={22} /> : <WalletCards size={22} />}
+            <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
+              <div className="rounded-[18px] border border-monserrat-ink/8 bg-white p-5 shadow-sm">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-serif text-lg font-black text-monserrat-ink">Estado mensual de pensiones</h3>
+                    <p className="text-[11px] font-semibold text-monserrat-ink/50 mt-0.5">Control de cuotas mensuales correspondientes al año lectivo.</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-black uppercase text-monserrat-ink/45">Año</span>
+                    <select
+                      value={pensionYear}
+                      onChange={(e) => setPensionYear(Number(e.target.value))}
+                      className="admin-input py-1 text-xs min-w-[80px]"
+                    >
+                      {YEARS.map((y) => (
+                        <option key={y} value={y}>
+                          {y}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.12em] text-monserrat-ink/50">Estado de pension</p>
-                  <h3 className="font-serif text-2xl font-black text-monserrat-ink">{pension?.pagada ? "Pagado" : "Pendiente"}</h3>
+
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                  {Array.from({ length: 12 }, (_, i) => {
+                    const mes = i + 1;
+                    const registro = pensionesDetalle.find((p) => p.mes === mes);
+                    const activa = registro?.activa !== false;
+                    const pagada = Boolean(registro?.pagada);
+                    const obs = registro?.observacion;
+
+                    return (
+                      <div
+                        key={mes}
+                        className={`flex flex-col justify-between rounded-[14px] border p-3.5 transition-all ${
+                          !activa
+                            ? "border-monserrat-ink/8 bg-monserrat-ink/10/40 opacity-70"
+                            : pagada
+                            ? "border-emerald-200 bg-emerald-50/50"
+                            : "border-monserrat-ink/8 bg-monserrat-cream/15"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className={`text-[11px] font-black uppercase tracking-wider ${
+                            !activa
+                              ? "text-monserrat-ink/30"
+                              : pagada
+                              ? "text-emerald-700"
+                              : "text-monserrat-ink/40"
+                          }`}>
+                            {MESES_PENSION[i]}
+                          </span>
+                          <span className={`h-2 w-2 rounded-full ${
+                            !activa ? "bg-monserrat-ink/30" : pagada ? "bg-emerald-500" : "bg-monserrat-red/50"
+                          }`} />
+                        </div>
+                        <div className="mt-4">
+                          <p className={`text-[12px] font-black ${
+                            !activa ? "text-monserrat-ink/45" : pagada ? "text-emerald-800" : "text-monserrat-ink/65"
+                          }`}>
+                            {!activa ? "No aplica" : pagada ? "✓ Pagado" : "⏳ Pendiente"}
+                          </p>
+                          {obs && activa && (
+                            <p className="mt-1.5 text-[10px] font-bold text-monserrat-ink/45 line-clamp-2" title={obs}>
+                              {obs}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-              {pension?.observacion && <p className="rounded-[12px] bg-white px-4 py-3 text-sm font-semibold text-monserrat-ink/65">{pension.observacion}</p>}
+
+              <div className="grid gap-4 content-start rounded-[18px] border border-monserrat-ink/8 bg-monserrat-cream/35 p-5">
+                <div className="flex items-center gap-3">
+                  <div className={`flex h-12 w-12 items-center justify-center rounded-[12px] ${
+                    pension?.pagada ? "bg-emerald-600" : "bg-monserrat-red"
+                  } text-white`}>
+                    {pension?.pagada ? <CheckCircle2 size={22} /> : <WalletCards size={22} />}
+                  </div>
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.12em] text-monserrat-ink/50">Estado General</p>
+                    <h3 className="font-serif text-2xl font-black text-monserrat-ink">
+                      {pension?.pagada ? "Al día" : "Con Pendientes"}
+                    </h3>
+                  </div>
+                </div>
+
+                <div className="grid gap-2 border-t border-monserrat-ink/8 pt-4">
+                  <SummaryItem
+                    label="Meses pagados"
+                    value={`${pensionesDetalle.filter((p) => p.activa !== false && p.pagada).length} de ${pensionesDetalle.filter((p) => p.activa !== false).length}`}
+                  />
+                  {pension?.observacion && (
+                    <div className="rounded-[12px] bg-white p-3.5 border border-monserrat-ink/6 text-[12px] font-semibold text-monserrat-ink/60">
+                      <span className="block font-black text-[10px] uppercase text-monserrat-ink/40 tracking-wider mb-1">Nota de Tesorería</span>
+                      {pension.observacion}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </div>

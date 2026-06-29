@@ -26,6 +26,7 @@ export type AcademicoConfig = {
   seccionesPrimaria: CatalogItem[];
   seccionesSecundaria: CatalogItem[];
   salones: SalonItem[];
+  minAsistenciaPorcentaje?: number;
 };
 
 export const defaultAcademicoConfig: AcademicoConfig = {
@@ -43,7 +44,8 @@ export const defaultAcademicoConfig: AcademicoConfig = {
   seccionesPrimaria: SECCIONES.map((id) => ({ id, label: id, active: true })),
   seccionesSecundaria: SECCIONES.map((id) => ({ id, label: id, active: true })),
   salones: [...GRADOS_PRIMARIA.map((grado) => ({ nivel: "PRIMARIA", grado })), ...GRADOS_SECUNDARIA.map((grado) => ({ nivel: "SECUNDARIA", grado }))]
-    .flatMap(({ nivel, grado }) => SECCIONES.map((seccion) => ({ nivel, grado, seccion, aula: aulaPorGradoSeccion(nivel, grado, seccion), active: true })))
+    .flatMap(({ nivel, grado }) => SECCIONES.map((seccion) => ({ nivel, grado, seccion, aula: aulaPorGradoSeccion(nivel, grado, seccion), active: true }))),
+  minAsistenciaPorcentaje: 70
 };
 
 export function mergeAcademicoConfig(config: Partial<AcademicoConfig>) {
@@ -57,8 +59,9 @@ export function mergeAcademicoConfig(config: Partial<AcademicoConfig>) {
     config.seccionesSecundaria,
     config.salones,
     legacy.cursos,
-    legacy.secciones
-  ].some((items) => Array.isArray(items));
+    legacy.secciones,
+    config.minAsistenciaPorcentaje !== undefined
+  ].some((items) => Array.isArray(items) || typeof items === "boolean" && items);
 
   if (!hasSavedConfig) return defaultAcademicoConfig;
 
@@ -69,7 +72,8 @@ export function mergeAcademicoConfig(config: Partial<AcademicoConfig>) {
     gradosSecundaria: config.gradosSecundaria ?? defaultAcademicoConfig.gradosSecundaria,
     seccionesPrimaria: config.seccionesPrimaria ?? legacy.secciones ?? defaultAcademicoConfig.seccionesPrimaria,
     seccionesSecundaria: config.seccionesSecundaria ?? defaultAcademicoConfig.seccionesSecundaria,
-    salones: config.salones ?? defaultAcademicoConfig.salones
+    salones: config.salones ?? defaultAcademicoConfig.salones,
+    minAsistenciaPorcentaje: config.minAsistenciaPorcentaje ?? defaultAcademicoConfig.minAsistenciaPorcentaje
   };
 }
 

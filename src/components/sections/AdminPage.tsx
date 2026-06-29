@@ -54,7 +54,7 @@ export function AdminPage({ institution, ingresantes, videos, redes, onRefresh }
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 mt-6 w-full mx-auto max-w-7xl">
+      <div className="flex-1 min-h-0 mt-6 w-full mx-auto max-w-7xl flex flex-col">
         <AdminSection
           institution={institution}
           ingresantes={ingresantes}
