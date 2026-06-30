@@ -188,6 +188,9 @@ export type Anuncio = {
   titulo: string;
   mensaje?: string;
   verMasTexto: string;
+  imageUrl?: string;
+  imagePublicId?: string;
+  imageMimeType?: string;
   attachmentUrl?: string;
   attachmentPublicId?: string;
   attachmentResourceType?: string;
@@ -195,5 +198,6 @@ export type Anuncio = {
   mostrarEnPopup?: boolean;
   activo?: boolean;
   orden?: number;
+  expiresAt?: string;
 };
 

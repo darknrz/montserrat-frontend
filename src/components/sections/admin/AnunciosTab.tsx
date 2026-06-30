@@ -15,6 +15,9 @@ const emptyAnuncio: Omit<Anuncio, "id"> = {
   titulo: "",
   mensaje: "",
   verMasTexto: "Ver más",
+  imageUrl: "",
+  imagePublicId: "",
+  imageMimeType: "",
   attachmentUrl: "",
   attachmentPublicId: "",
   attachmentResourceType: "",
@@ -22,12 +25,14 @@ const emptyAnuncio: Omit<Anuncio, "id"> = {
   mostrarEnPopup: true,
   activo: true,
   orden: 0,
+  expiresAt: "",
 };
 
 export function AnunciosTab({ token, isBusy, runAdminAction }: AnunciosTabProps) {
   const [anuncios, setAnuncios] = useState<Anuncio[]>([]);
   const [editingAnuncio, setEditingAnuncio] = useState<Anuncio | null>(null);
   const [anuncioForm, setAnuncioForm] = useState<Omit<Anuncio, "id">>(emptyAnuncio);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,31 +45,61 @@ export function AnunciosTab({ token, isBusy, runAdminAction }: AnunciosTabProps)
       });
   }, []);
 
-  const uploadAttachment = async () => {
-    if (!attachmentFile) {
-      return {
-        attachmentUrl: anuncioForm.attachmentUrl ?? "",
-        attachmentPublicId: anuncioForm.attachmentPublicId ?? "",
-        attachmentResourceType: anuncioForm.attachmentResourceType ?? "",
-        attachmentMimeType: anuncioForm.attachmentMimeType ?? "",
-      };
+  const uploadFile = async (file: File | null, existingData: {
+    url?: string;
+    publicId?: string;
+    resourceType?: string;
+    mimeType?: string;
+  }) => {
+    if (!file) {
+      return existingData;
     }
 
-    const upload = await monserratApi.uploadMedia(attachmentFile, "anuncios", token);
+    const upload = await monserratApi.uploadMedia(file, "anuncios", token);
     return {
-      attachmentUrl: upload.secureUrl,
-      attachmentPublicId: upload.publicId,
-      attachmentResourceType: upload.resourceType,
-      attachmentMimeType: attachmentFile.type,
+      url: upload.secureUrl,
+      publicId: upload.publicId,
+      resourceType: upload.resourceType,
+      mimeType: file.type,
+    };
+  };
+
+  const uploadImage = async () => {
+    const result = await uploadFile(imageFile, {
+      url: anuncioForm.imageUrl,
+      publicId: anuncioForm.imagePublicId,
+      mimeType: anuncioForm.imageMimeType,
+    });
+    return {
+      imageUrl: result.url ?? "",
+      imagePublicId: result.publicId ?? "",
+      imageMimeType: result.mimeType ?? "",
+    };
+  };
+
+  const uploadAttachment = async () => {
+    const result = await uploadFile(attachmentFile, {
+      url: anuncioForm.attachmentUrl,
+      publicId: anuncioForm.attachmentPublicId,
+      resourceType: anuncioForm.attachmentResourceType,
+      mimeType: anuncioForm.attachmentMimeType,
+    });
+    return {
+      attachmentUrl: result.url ?? "",
+      attachmentPublicId: result.publicId ?? "",
+      attachmentResourceType: result.resourceType ?? anuncioForm.attachmentResourceType ?? "",
+      attachmentMimeType: result.mimeType ?? anuncioForm.attachmentMimeType ?? "",
     };
   };
 
   const submitAnuncio = (e: FormEvent) => {
     e.preventDefault();
     runAdminAction(async () => {
+      const image = await uploadImage();
       const attachment = await uploadAttachment();
       const payload: Omit<Anuncio, "id"> = {
         ...anuncioForm,
+        ...image,
         ...attachment,
       };
 
@@ -73,10 +108,14 @@ export function AnunciosTab({ token, isBusy, runAdminAction }: AnunciosTabProps)
         if (attachmentFile && editingAnuncio.attachmentPublicId && editingAnuncio.attachmentPublicId !== updated.attachmentPublicId) {
           await monserratApi.deleteMedia(editingAnuncio.attachmentPublicId, editingAnuncio.attachmentResourceType ?? "raw", token);
         }
+        if (imageFile && editingAnuncio.imagePublicId && editingAnuncio.imagePublicId !== updated.imagePublicId) {
+          await monserratApi.deleteMedia(editingAnuncio.imagePublicId, editingAnuncio.imageMimeType?.startsWith("image/") ? "image" : "raw", token);
+        }
       } else {
         await monserratApi.createAnuncio(payload, token);
       }
 
+      setImageFile(null);
       setAttachmentFile(null);
       setEditingAnuncio(null);
       setAnuncioForm(emptyAnuncio);
@@ -92,20 +131,26 @@ export function AnunciosTab({ token, isBusy, runAdminAction }: AnunciosTabProps)
       titulo: anuncio.titulo,
       mensaje: anuncio.mensaje ?? "",
       verMasTexto: anuncio.verMasTexto ?? "Ver más",
+      imageUrl: anuncio.imageUrl ?? "",
+      imagePublicId: anuncio.imagePublicId ?? "",
+      imageMimeType: anuncio.imageMimeType ?? "",
       attachmentUrl: anuncio.attachmentUrl ?? "",
       attachmentPublicId: anuncio.attachmentPublicId ?? "",
       attachmentResourceType: anuncio.attachmentResourceType ?? "",
       attachmentMimeType: anuncio.attachmentMimeType ?? "",
+      expiresAt: anuncio.expiresAt ?? "",
       mostrarEnPopup: anuncio.mostrarEnPopup ?? true,
       activo: anuncio.activo ?? true,
       orden: anuncio.orden ?? 0,
     });
+    setImageFile(null);
     setAttachmentFile(null);
   };
 
   const handleCancel = () => {
     setEditingAnuncio(null);
     setAnuncioForm(emptyAnuncio);
+    setImageFile(null);
     setAttachmentFile(null);
     setError(null);
   };
@@ -121,23 +166,25 @@ export function AnunciosTab({ token, isBusy, runAdminAction }: AnunciosTabProps)
     }, "Anuncio eliminado");
   };
 
-  const previewUrl = attachmentFile
-    ? URL.createObjectURL(attachmentFile)
-    : anuncioForm.attachmentUrl;
+  const imagePreviewUrl = useMemo(
+    () => (imageFile ? URL.createObjectURL(imageFile) : anuncioForm.imageUrl),
+    [imageFile, anuncioForm.imageUrl]
+  );
 
-  const previewType = attachmentFile
-    ? attachmentFile.type.startsWith("video/")
-      ? "video"
-      : attachmentFile.type.startsWith("image/")
-      ? "image"
-      : "raw"
-    : anuncioForm.attachmentResourceType === "video"
-    ? "video"
-    : anuncioForm.attachmentResourceType === "image"
-    ? "image"
-    : anuncioForm.attachmentUrl
-    ? "raw"
-    : undefined;
+  const attachmentPreviewUrl = useMemo(
+    () => (attachmentFile ? URL.createObjectURL(attachmentFile) : anuncioForm.attachmentUrl),
+    [attachmentFile, anuncioForm.attachmentUrl]
+  );
+
+  const attachmentPreviewType = useMemo(() => {
+    if (attachmentFile) {
+      return attachmentFile.type.startsWith("video/") ? "video" : attachmentFile.type.startsWith("image/") ? "image" : "raw";
+    }
+    if (anuncioForm.attachmentResourceType === "video") return "video";
+    if (anuncioForm.attachmentResourceType === "image") return "image";
+    if (anuncioForm.attachmentUrl) return "raw";
+    return undefined;
+  }, [attachmentFile, anuncioForm.attachmentResourceType, anuncioForm.attachmentUrl]);
 
   const orderedRows = useMemo(
     () => anuncios.sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0)),
@@ -190,13 +237,38 @@ export function AnunciosTab({ token, isBusy, runAdminAction }: AnunciosTabProps)
           />
         </AdminField>
 
-        <MediaPicker
-          label="Adjuntar documento o imagen"
-          accept="image/*,video/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          previewUrl={previewUrl}
-          previewType={previewType}
-          onFileChange={setAttachmentFile}
-        />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <AdminField label="Imagen del anuncio">
+            <MediaPicker
+              label="Seleccionar imagen"
+              accept="image/*"
+              previewUrl={imagePreviewUrl}
+              previewType="image"
+              onFileChange={(file) => {
+                setImageFile(file);
+              }}
+            />
+          </AdminField>
+
+          <AdminField label="Documento adjunto">
+            <MediaPicker
+              label="Seleccionar documento"
+              accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/*,video/*"
+              previewUrl={attachmentPreviewUrl}
+              previewType={attachmentPreviewType}
+              onFileChange={(file) => setAttachmentFile(file)}
+            />
+          </AdminField>
+        </div>
+
+        <AdminField label="Fecha de expiración">
+          <input
+            type="date"
+            value={anuncioForm.expiresAt ?? ""}
+            onChange={(e) => setAnuncioForm({ ...anuncioForm, expiresAt: e.target.value })}
+            className="admin-input"
+          />
+        </AdminField>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <AdminField label="Orden">

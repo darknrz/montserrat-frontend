@@ -19,11 +19,14 @@ export function AnnouncementPopup({ announcements, isOpen, onClose }: Announceme
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 px-4 py-6">
-      <div className="w-full max-w-3xl overflow-hidden rounded-[28px] bg-white shadow-[0_40px_80px_rgba(0,0,0,0.25)]">
+      <div className="w-full max-w-4xl overflow-hidden rounded-[28px] bg-white shadow-[0_40px_80px_rgba(0,0,0,0.25)]">
         <div className="flex items-start justify-between border-b border-monserrat-ink/8 bg-monserrat-cream px-6 py-4">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-red">Anuncio importante</p>
             <h2 className="mt-2 text-2xl font-black text-monserrat-ink">{primary.titulo}</h2>
+            {primary.expiresAt && (
+              <p className="mt-2 text-sm font-semibold text-monserrat-ink/70">Válido hasta {primary.expiresAt}</p>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -34,8 +37,8 @@ export function AnnouncementPopup({ announcements, isOpen, onClose }: Announceme
           </button>
         </div>
 
-        <div className="grid gap-6 p-6 lg:grid-cols-[1fr_320px]">
-          <div className="space-y-4">
+        <div className="grid gap-6 p-6 lg:grid-cols-[1.2fr_1fr]">
+          <div className="space-y-6">
             {primary.mensaje && (
               <p className="text-sm leading-7 text-monserrat-ink/85">{primary.mensaje}</p>
             )}
@@ -61,31 +64,19 @@ export function AnnouncementPopup({ announcements, isOpen, onClose }: Announceme
             </div>
           </div>
 
-          {hasAttachment && primary.attachmentResourceType === "image" && (
-            <div className="overflow-hidden rounded-[20px] border border-monserrat-ink/10 bg-monserrat-cream">
-              <img src={primary.attachmentUrl} alt={primary.titulo} className="h-full w-full object-cover" />
-            </div>
-          )}
-
-          {hasAttachment && primary.attachmentResourceType === "video" && (
-            <div className="overflow-hidden rounded-[20px] border border-monserrat-ink/10 bg-monserrat-cream">
-              <video src={primary.attachmentUrl} controls className="h-full w-full object-cover" />
-            </div>
-          )}
-
-          {hasAttachment && primary.attachmentResourceType === "raw" && (
-            <div className="rounded-[20px] border border-monserrat-ink/10 bg-monserrat-cream p-6 text-center">
-              <p className="text-sm font-black text-monserrat-ink">Documento adjunto listo para descargar.</p>
-              <a
-                href={attachmentTarget}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-4 inline-flex items-center justify-center rounded-full bg-monserrat-red px-6 py-3 text-sm font-black text-white transition hover:bg-monserrat-red/90"
-              >
-                {attachmentLabel}
-              </a>
-            </div>
-          )}
+          <div className="overflow-hidden rounded-[20px] border border-monserrat-ink/10 bg-monserrat-cream p-4">
+            {primary.imageUrl ? (
+              <img src={primary.imageUrl} alt={primary.titulo} className="h-full w-full rounded-[18px] object-cover" />
+            ) : hasAttachment && primary.attachmentResourceType === "image" ? (
+              <img src={primary.attachmentUrl} alt={primary.titulo} className="h-full w-full rounded-[18px] object-cover" />
+            ) : hasAttachment && primary.attachmentResourceType === "video" ? (
+              <video src={primary.attachmentUrl} controls className="h-full w-full rounded-[18px] object-cover" />
+            ) : (
+              <div className="flex h-full min-h-[240px] items-center justify-center rounded-[18px] bg-monserrat-cream/60 p-6 text-center text-sm font-semibold text-monserrat-ink/70">
+                No hay imagen disponible para este anuncio.
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
