@@ -205,6 +205,15 @@ export function AcademicoTab({
         apellidos: apellidos || usuarioAcademicoForm.apellidos,
         createdAt: usuarioAcademicoForm.createdAt ? usuarioAcademicoForm.createdAt : undefined,
       };
+
+      if (payload.rol === "ALUMNO") {
+        payload.grado = payload.grado || defaultGrado(payload.nivelEducativo ?? "PRIMARIA");
+        payload.seccion = payload.seccion || "A";
+      } else {
+        delete payload.grado;
+        delete payload.seccion;
+      }
+
       if (editingUsuarioAcademico) {
         await monserratApi.updateUsuarioAcademico(editingUsuarioAcademico.id, payload, token);
       } else {
@@ -228,8 +237,8 @@ export function AcademicoTab({
       ...emptyUsuarioAcademico,
       rol,
       nivelEducativo: nivel,
-      grado: rol === "ALUMNO" ? primerGrado : "",
-      seccion: rol === "ALUMNO" ? primeraSeccion : "",
+      grado: rol === "ALUMNO" ? primerGrado : undefined,
+      seccion: rol === "ALUMNO" ? primeraSeccion : undefined,
       materia: rol === "DOCENTE" && nivel === "SECUNDARIA" ? primerCurso : "",
       especialidad: rol === "DOCENTE" && nivel === "PRIMARIA" ? "Docente de aula" : "",
     });

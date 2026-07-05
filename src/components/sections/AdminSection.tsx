@@ -191,7 +191,11 @@ export function AdminSection({
     if (!token) return;
     void monserratApi
       .updateAcademicoConfiguracion(next, token)
-      .then((saved) => setAcademicoConfig(mergeAcademicoConfig(saved as AcademicoConfig)))
+      .then((saved) =>
+        setAcademicoConfig(
+          mergeAcademicoConfig({ ...(saved as AcademicoConfig), ...next })
+        )
+      )
       .catch((error: unknown) => {
         setStatus(
           error instanceof Error ? error.message : "No se pudo guardar la configuracion academica"

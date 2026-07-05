@@ -1,12 +1,13 @@
 import { BookOpen, GraduationCap, School, ShieldCheck, Users } from "lucide-react";
 import { useState } from "react";
-import { ConfigPanel, SalonConfigPanel, AdminMetric } from "./adminComponents";
+import { ConfigPanel, SalonConfigPanel, AdminMetric, CompetenciasPanel } from "./adminComponents";
 import {
   defaultAcademicoConfig,
   type AcademicoConfig,
   type ConfigView,
   type SalonItem,
 } from "./adminShared";
+
 
 type ConfiguracionTabProps = {
   academicoConfig: AcademicoConfig;
@@ -200,12 +201,11 @@ export function ConfiguracionTab({
             />
           )}
           {configView === "primaria-competencias" && (
-            <ConfigPanel
-              title="Competencias de primaria"
-              items={academicoConfig.competenciasPrimaria}
-              onChange={(items) => saveAcademicoConfig({ ...academicoConfig, competenciasPrimaria: items })}
-            />
-          )}
+  <CompetenciasPanel
+    items={academicoConfig.competenciasPrimaria}
+    onChange={(items) => saveAcademicoConfig({ ...academicoConfig, competenciasPrimaria: items })}
+  />
+)}
           {configView === "primaria-secciones" && (
             <ConfigPanel
               title="Secciones de primaria"

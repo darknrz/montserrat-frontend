@@ -158,7 +158,132 @@ export function ConfigPanel({ title, items, onChange }: { title: string; items: 
     </div>
   );
 }
+export function CompetenciasPanel({
+  items,
+  onChange,
+}: {
+  items: CatalogItem[];
+  onChange: (items: CatalogItem[]) => void;
+}) {
+  const [nuevaCompetencia, setNuevaCompetencia] = useState("");
+  const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
 
+  const updateItem = (index: number, patch: Partial<CatalogItem>) => {
+    onChange(items.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)));
+  };
+
+  const addItem = () => {
+    const label = nuevaCompetencia.trim();
+    if (!label) return;
+    const id = `C${items.length + 1}`;
+    const finalId = items.some((item) => item.id === id) ? createCatalogId(label, items) : id;
+    onChange([...items, { id: finalId, label, active: true }]);
+    setNuevaCompetencia("");
+  };
+
+  const deleteItem = (index: number) => {
+    onChange(items.filter((_, itemIndex) => itemIndex !== index));
+    setDeleteIndex(null);
+  };
+  const itemToDelete = deleteIndex === null ? null : items[deleteIndex];
+
+  return (
+    <div className="overflow-hidden rounded-[16px] border border-monserrat-ink/8 bg-white shadow-sm">
+      <div className="border-b border-monserrat-ink/8 bg-monserrat-ink px-5 py-4">
+        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-cream/70">Configuracion</p>
+        <h4 className="font-serif text-xl font-black text-white">Competencias de primaria</h4>
+      </div>
+
+      <div className="border-b border-monserrat-ink/8 bg-monserrat-cream/15 p-4">
+        <p className="mb-2 text-[11px] font-black uppercase tracking-[0.08em] text-monserrat-ink/50">
+          Escribe la nueva competencia
+        </p>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <textarea
+            value={nuevaCompetencia}
+            onChange={(e) => setNuevaCompetencia(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                addItem();
+              }
+            }}
+            placeholder="Ej: Resuelve problemas de cantidad usando estrategias y procedimientos matematicos."
+            rows={2}
+            className="flex-1 resize-none rounded-[10px] border border-monserrat-ink/10 bg-white px-3 py-2 text-sm font-semibold text-monserrat-ink outline-none focus:border-monserrat-red"
+          />
+          <button
+            type="button"
+            onClick={addItem}
+            disabled={!nuevaCompetencia.trim()}
+            className="inline-flex items-center justify-center gap-1 rounded-[10px] bg-monserrat-red px-4 py-2 text-[12px] font-black text-white transition hover:bg-monserrat-red/85 disabled:opacity-40 sm:self-start"
+          >
+            <Plus size={14} /> Agregar
+          </button>
+        </div>
+        <p className="mt-1.5 text-[11px] font-semibold text-monserrat-ink/40">
+          Enter para agregar rapido · Shift+Enter para bajar de linea · Máximo 500 caracteres
+        </p>
+      </div>
+
+      <div className="grid gap-2 p-4 max-h-[520px] overflow-y-auto">
+        {items.length === 0 && (
+          <p className="py-6 text-center text-sm font-semibold text-monserrat-ink/40">
+            Aun no hay competencias registradas.
+          </p>
+        )}
+        {items.map((item, index) => (
+          <div
+            key={item.id}
+            className={`flex items-start gap-3 rounded-[12px] border p-3 transition ${
+              item.active ? "border-monserrat-ink/8 bg-monserrat-cream/25" : "border-monserrat-ink/8 bg-white opacity-60"
+            }`}
+          >
+            <span className="mt-1 flex-shrink-0 rounded-full bg-white px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] text-monserrat-ink/40">
+              {item.id}
+            </span>
+            <textarea
+              value={item.label}
+              maxLength={500}
+              onChange={(e) => updateItem(index, { label: e.target.value })}
+              rows={2}
+              className="flex-1 resize-none rounded-[10px] border border-monserrat-ink/10 bg-white px-3 py-2 text-sm font-bold text-monserrat-ink outline-none focus:border-monserrat-red"
+            />
+            <div className="flex flex-shrink-0 flex-col gap-1.5">
+              <button
+                type="button"
+                onClick={() => updateItem(index, { active: !item.active })}
+                className={`rounded-[8px] px-2.5 py-1.5 text-[10px] font-black ${
+                  item.active ? "bg-emerald-600 text-white" : "bg-monserrat-ink/8 text-monserrat-ink/55"
+                }`}
+              >
+                {item.active ? "Activo" : "Inactivo"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleteIndex(index)}
+                className="flex h-7 w-7 items-center justify-center self-center rounded-[8px] bg-monserrat-red/8 text-monserrat-red hover:bg-monserrat-red/16"
+              >
+                <Trash2 size={13} />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {itemToDelete && (
+        <ConfirmDeleteModal
+          title="Eliminar competencia"
+          message={`Vas a eliminar "${itemToDelete.label}". Si esta vinculada a algun area curricular o docente, esa relacion se perdera.`}
+          onCancel={() => setDeleteIndex(null)}
+          onConfirm={() => {
+            if (deleteIndex !== null) deleteItem(deleteIndex);
+          }}
+        />
+      )}
+    </div>
+  );
+}
 export function SalonConfigPanel({
   nivel,
   salones,
@@ -436,6 +561,146 @@ export function CompetenciaPickerModal({
         <div className="flex justify-end gap-2 border-t border-monserrat-ink/8 px-5 py-3">
           <button type="button" onClick={onClose} className="rounded-[10px] bg-monserrat-red px-4 py-2 text-[12px] font-black text-white hover:bg-monserrat-red/85">
             Listo
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tablero Competencia -> Docente (2 columnas) y modal para elegir el docente
+// de una fila. Cada competencia (dentro de un grado/curso) tiene un solo
+// docente; un mismo docente puede repetirse en varias filas (1 -> N).
+// ---------------------------------------------------------------------------
+
+export function CompetenciaDocenteBoard({
+  competencias,
+  docentesPorCompetencia,
+  grado,
+  curso,
+  labelDocenteAsignado,
+  onEditRow,
+  headerAction,
+}: {
+  competencias: CatalogItem[];
+  docentesPorCompetencia: Record<string, string>;
+  grado: string;
+  curso: string;
+  labelDocenteAsignado: (dni: string) => string;
+  onEditRow: (competenciaId: string) => void;
+  headerAction?: ReactNode;
+}) {
+  return (
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[16px] border border-monserrat-ink/8 bg-white shadow-sm">
+      <div className="grid grid-cols-2 border-b border-monserrat-ink/8 bg-monserrat-ink">
+        <div className="flex items-center justify-between px-4 py-3">
+          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-cream/70">
+            Competencias
+          </p>
+          {headerAction}
+        </div>
+        <p className="border-l border-white/10 px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-cream/70">
+          Docentes
+        </p>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        {competencias.length === 0 ? (
+          <p className="py-8 text-center text-sm font-semibold text-monserrat-ink/40">
+            Sin competencias vinculadas a esta area
+          </p>
+        ) : (
+          competencias.map((c, i) => {
+            const key = matrixKey(grado, curso, c.id);
+            const dni = docentesPorCompetencia[key];
+            return (
+              <div
+                key={c.id}
+                onClick={() => onEditRow(c.id)}
+                className={`grid cursor-pointer grid-cols-2 border-b border-monserrat-ink/6 transition last:border-b-0 hover:bg-monserrat-cream/15 ${
+                  i % 2 === 1 ? "bg-monserrat-cream/10" : ""
+                }`}
+              >
+                <p className="px-4 py-3 text-[12.5px] font-semibold text-monserrat-ink/80">{c.label}</p>
+                <p
+                  className={`border-l border-monserrat-ink/6 px-4 py-3 text-[12.5px] font-black ${
+                    dni ? "text-monserrat-ink" : "text-monserrat-ink/35"
+                  }`}
+                >
+                  {dni ? labelDocenteAsignado(dni) : "Sin asignar"}
+                </p>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function ElegirDocenteModal({
+  competenciaLabel,
+  docentes,
+  docenteActualDni,
+  onSelect,
+  onClose,
+}: {
+  competenciaLabel: string;
+  docentes: { dni: string; nombre: string }[];
+  docenteActualDni?: string;
+  onSelect: (dni: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-[420px] overflow-hidden rounded-[18px] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+        <div className="border-b border-monserrat-ink/8 bg-monserrat-cream px-5 py-4">
+          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-red">
+            Asignar docente
+          </p>
+          <h3 className="mt-1 font-serif text-xl font-black text-monserrat-ink">{competenciaLabel}</h3>
+        </div>
+        <div className="grid max-h-[360px] gap-2 overflow-y-auto p-4">
+          {docenteActualDni && (
+            <button
+              type="button"
+              onClick={() => onSelect("")}
+              className="flex items-center justify-between rounded-[10px] border border-monserrat-ink/10 px-3 py-2 text-left text-[12.5px] font-semibold text-monserrat-ink/50 hover:border-monserrat-ink/25"
+            >
+              Quitar asignacion
+            </button>
+          )}
+          {docentes.length === 0 && (
+            <p className="py-4 text-center text-sm font-semibold text-monserrat-ink/40">
+              No hay docentes disponibles
+            </p>
+          )}
+          {docentes.map((d) => {
+            const selected = d.dni === docenteActualDni;
+            return (
+              <button
+                key={d.dni}
+                type="button"
+                onClick={() => onSelect(d.dni)}
+                className={`flex items-center justify-between rounded-[10px] border px-3 py-2 text-left text-[12.5px] font-semibold transition ${
+                  selected
+                    ? "border-monserrat-red/30 bg-monserrat-red/8 text-monserrat-red"
+                    : "border-monserrat-ink/10 text-monserrat-ink/70 hover:border-monserrat-ink/25"
+                }`}
+              >
+                <span>{d.nombre}</span>
+                {selected && <span className="text-[10px] font-black uppercase">Asignado</span>}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex justify-end gap-2 border-t border-monserrat-ink/8 px-5 py-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-[10px] bg-monserrat-red px-4 py-2 text-[12px] font-black text-white hover:bg-monserrat-red/85"
+          >
+            Cerrar
           </button>
         </div>
       </div>

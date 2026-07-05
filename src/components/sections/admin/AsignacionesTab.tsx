@@ -3,7 +3,15 @@ import type { FormEvent } from "react";
 import { Plus } from "lucide-react";
 import { monserratApi } from "../../../api/monserrat";
 import type { AsignacionAcademica, UsuarioAcademico } from "../../../types";
-import { AdminField, RosterPanel, CompetenciaPickerModal, matrixKey } from "./adminComponents";
+import {
+  AdminField,
+  RosterPanel,
+  CompetenciaPickerModal,
+  CompetenciaDocenteBoard,
+  ElegirDocenteModal,
+  matrixKey,
+} from "./adminComponents";
+
 import {
   NIVELES,
   defaultGrado,
@@ -58,8 +66,9 @@ export function AsignacionesTab({
   const [asignacionAcademicaForm, setAsignacionAcademicaForm] = useState(emptyAsignacion);
   const [aulaNumero, setAulaNumero] = useState("101");
   const [tutorSecundariaDni, setTutorSecundariaDni] = useState("");
-  const [selectedCompetencia, setSelectedCompetencia] = useState<string>("");
+  const [selectedCompetenciaPorCurso, setSelectedCompetenciaPorCurso] = useState<Record<string, string>>({});
   const [addingCompetenciaCurso, setAddingCompetenciaCurso] = useState<string | null>(null);
+  const [elegirDocenteFor, setElegirDocenteFor] = useState<string | null>(null);
 
   useEffect(() => {
     const matchingSalon = academicoConfig.salones.find(
@@ -92,11 +101,19 @@ export function AsignacionesTab({
     [usuariosAcademicos]
   );
   const docentesPrimaria = useMemo(
-    () => docentes.filter((u) => u.nivelEducativo === "PRIMARIA"),
+    () =>
+      docentes.filter((u) => {
+        const nivel = (u.nivelEducativo ?? "").toUpperCase();
+        return nivel === "PRIMARIA" || (!nivel && u.rol === "DOCENTE");
+      }),
     [docentes]
   );
   const docentesSecundaria = useMemo(
-    () => docentes.filter((u) => u.nivelEducativo === "SECUNDARIA"),
+    () =>
+      docentes.filter((u) => {
+        const nivel = (u.nivelEducativo ?? "").toUpperCase();
+        return nivel === "SECUNDARIA" || (!nivel && u.rol === "DOCENTE");
+      }),
     [docentes]
   );
 
@@ -112,14 +129,18 @@ export function AsignacionesTab({
   );
 
   const docentesDelCurso = useMemo(() => {
-    if (asignacionAcademicaForm.nivelEducativo !== "SECUNDARIA") {
-      return asignacionAcademicaForm.curso
-        ? docentesPrimaria.filter((u) => !u.materia || u.materia === asignacionAcademicaForm.curso)
-        : docentesPrimaria;
-    }
-    return docentesSecundaria.filter(
-      (u) => !u.materia || u.materia === asignacionAcademicaForm.curso
-    );
+    const docentesBase =
+      asignacionAcademicaForm.nivelEducativo !== "SECUNDARIA" ? docentesPrimaria : docentesSecundaria;
+
+    if (!asignacionAcademicaForm.curso) return docentesBase;
+
+    const docentesFiltrados = docentesBase.filter((u) => {
+      const materia = (u.materia ?? "").trim().toUpperCase();
+      const curso = asignacionAcademicaForm.curso?.trim().toUpperCase();
+      return !materia || materia === curso;
+    });
+
+    return docentesFiltrados.length > 0 ? docentesFiltrados : docentesBase;
   }, [asignacionAcademicaForm.curso, asignacionAcademicaForm.nivelEducativo, docentesPrimaria, docentesSecundaria]);
 
   const asignacionesDelAula = useMemo(
@@ -165,14 +186,23 @@ export function AsignacionesTab({
     return competenciasPrimaria.filter((c) => ids.includes(c.id));
   }, [competenciasPorCurso, competenciasPrimaria, asignacionAcademicaForm.curso]);
 
+  const cursoActual = asignacionAcademicaForm.curso ?? "";
+  const selectedCompetencia = selectedCompetenciaPorCurso[cursoActual] ?? "";
+
   useEffect(() => {
-    // Si la competencia seleccionada ya no pertenece al área actual, se limpia/actualiza
-    if (selectedCompetencia && !competenciasDelCurso.some((c) => c.id === selectedCompetencia)) {
-      setSelectedCompetencia(competenciasDelCurso[0]?.id ?? "");
-    } else if (!selectedCompetencia && competenciasDelCurso.length > 0) {
-      setSelectedCompetencia(competenciasDelCurso[0].id);
-    }
-  }, [competenciasDelCurso, selectedCompetencia]);
+    if (!cursoActual) return;
+
+    const competenciasIds = competenciasDelCurso.map((c) => c.id);
+    const seleccionActual = selectedCompetenciaPorCurso[cursoActual] ?? "";
+
+    if (seleccionActual && competenciasIds.includes(seleccionActual)) return;
+
+    const siguienteCompetencia = competenciasIds[0] ?? "";
+    setSelectedCompetenciaPorCurso((prev) => {
+      if (prev[cursoActual] === siguienteCompetencia) return prev;
+      return { ...prev, [cursoActual]: siguienteCompetencia };
+    });
+  }, [competenciasDelCurso, cursoActual, selectedCompetenciaPorCurso]);
 
   // Asignación docente por (grado, curso, competencia) -> dni, vive en academicoConfig
   const docentesPorCompetencia = academicoConfig.docentesPorCompetencia ?? {};
@@ -349,6 +379,21 @@ export function AsignacionesTab({
     saveAcademicoConfig({ ...academicoConfig, docentesPorCompetencia: next });
   };
 
+  const labelDocenteAsignado = (dni: string) =>
+    docentesPrimaria.find((d) => d.dni === dni)?.nombre ?? dni;
+
+  const asignarDocenteParaCompetencia = (competenciaId: string, docenteDni: string) => {
+    if (!asignacionAcademicaForm.grado || !asignacionAcademicaForm.curso) return;
+    const key = matrixKey(asignacionAcademicaForm.grado, asignacionAcademicaForm.curso, competenciaId);
+    const next = { ...(academicoConfig.docentesPorCompetencia ?? {}) };
+    if (docenteDni) {
+      next[key] = docenteDni;
+    } else {
+      delete next[key];
+    }
+    saveAcademicoConfig({ ...academicoConfig, docentesPorCompetencia: next });
+  };
+
   const handleGradoSelect = (gradoId: string) => {
     const seccion = "A";
     const nivel = "PRIMARIA";
@@ -363,7 +408,6 @@ export function AsignacionesTab({
 
   const handleAreaSelect = (curso: string) => {
     setAsignacionAcademicaForm({ ...asignacionAcademicaForm, curso });
-    setSelectedCompetencia("");
   };
 
   const handleEditClick = (item: AsignacionAcademica) => {
@@ -447,6 +491,7 @@ export function AsignacionesTab({
               </div>
             </div>
           </div>
+
           {esSecundaria ? (
             <div className="grid min-h-0 gap-4 lg:grid-cols-2 h-full">
               <RosterPanel
@@ -481,7 +526,7 @@ export function AsignacionesTab({
               />
             </div>
           ) : (
-            <div className="grid min-h-0 gap-4 lg:grid-cols-4 h-full">
+            <div className="grid min-h-0 gap-4 lg:grid-cols-[1fr_1fr_2fr] h-full">
               <RosterPanel
                 title="Grados"
                 empty="No hay grados activos"
@@ -513,22 +558,13 @@ export function AsignacionesTab({
                 className="h-full min-h-0"
                 bodyClassName="max-h-none"
               />
-              <RosterPanel
-                title="Competencias"
-                empty="Sin competencias vinculadas a esta área"
-                rows={competenciasDelCurso.map((competencia) => {
-                  const key = matrixKey(asignacionAcademicaForm.grado ?? "", asignacionAcademicaForm.curso ?? "", competencia.id);
-                  const dni = docentesPorCompetencia[key];
-                  const docente = docentesPrimaria.find((d) => d.dni === dni);
-                  return {
-                    id: competencia.id,
-                    title: competencia.label,
-                    detail: docente ? docente.nombre : "Sin docente asignado",
-                    raw: competencia.id,
-                  };
-                })}
-                selectedId={selectedCompetencia}
-                onSelect={(competenciaId) => setSelectedCompetencia(competenciaId)}
+              <CompetenciaDocenteBoard
+                competencias={competenciasDelCurso}
+                docentesPorCompetencia={docentesPorCompetencia}
+                grado={asignacionAcademicaForm.grado ?? ""}
+                curso={asignacionAcademicaForm.curso ?? ""}
+                labelDocenteAsignado={labelDocenteAsignado}
+                onEditRow={(competenciaId) => setElegirDocenteFor(competenciaId)}
                 headerAction={
                   asignacionAcademicaForm.curso ? (
                     <button
@@ -540,30 +576,6 @@ export function AsignacionesTab({
                     </button>
                   ) : undefined
                 }
-                className="h-full min-h-0"
-                bodyClassName="max-h-none"
-              />
-              <RosterPanel
-                title="Docentes"
-                empty="No hay docentes disponibles"
-                rows={docentesDelCurso.map((doc) => ({
-                  id: doc.dni,
-                  title: doc.nombre,
-                  detail:
-                    selectedCompetencia && doc.dni === docenteAsignadoActual
-                      ? "Asignado a esta competencia y grado"
-                      : doc.materia
-                      ? labelFromEnum(doc.materia)
-                      : "Docente primaria",
-                  raw: doc.dni,
-                }))}
-                selectedId={docenteAsignadoActual}
-                onSelect={(dni) => {
-                  if (!selectedCompetencia) return;
-                  asignarDocenteCompetencia(dni === docenteAsignadoActual ? "" : dni);
-                }}
-                className="h-full min-h-0"
-                bodyClassName="max-h-none"
               />
             </div>
           )}
@@ -578,6 +590,19 @@ export function AsignacionesTab({
           labelAcademico={labelAcademico}
           onToggle={(competenciaId) => toggleCompetenciaForCurso(addingCompetenciaCurso, competenciaId)}
           onClose={() => setAddingCompetenciaCurso(null)}
+        />
+      )}
+
+      {elegirDocenteFor && (
+        <ElegirDocenteModal
+          competenciaLabel={competenciasDelCurso.find((c) => c.id === elegirDocenteFor)?.label ?? ""}
+          docentes={docentesDelCurso.map((d) => ({ dni: d.dni, nombre: d.nombre }))}
+          docenteActualDni={docentesPorCompetencia[matrixKey(asignacionAcademicaForm.grado ?? "", asignacionAcademicaForm.curso ?? "", elegirDocenteFor)]}
+          onSelect={(dni) => {
+            asignarDocenteParaCompetencia(elegirDocenteFor, dni);
+            setElegirDocenteFor(null);
+          }}
+          onClose={() => setElegirDocenteFor(null)}
         />
       )}
     </div>
