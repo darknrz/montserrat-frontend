@@ -310,27 +310,27 @@ export function Ingresantes({ ingresantes }: IngresantesProps) {
         </div>
 
         {/* CARDS */}
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 bg- transparent">
           {visible.map((item) => (
             <div
               key={item.id}
-              className="overflow-hidden rounded-[22px] border border-monserrat-ink/8 bg-white shadow-[0_2px_16px_rgba(28,20,16,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(28,20,16,0.12)]"
+              className="overflow-hidden rounded-[22px] border border-monserrat-ink/8  shadow-[0_2px_16px_rgba(28,20,16,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(28,20,16,0.12)]"
             >
-              <div className="relative h-56 w-full overflow-hidden bg-monserrat-cream/20">
+              <div className="relative h-56 w-full overflow-hidden pb-1">
                 {item.fotoUrl ? (
                   <img
                     src={item.fotoUrl}
                     alt={item.nombre}
-                    className="h-full w-full object-cover"
+                    className="h-full w-full rounded-[16px] object-contain"
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-monserrat-red text-white">
+                  <div className="flex h-full w-full items-center justify-center rounded-[16px] bg-monserrat-red text-white">
                     <span className="text-3xl font-black">{item.nombre.slice(0, 1)}</span>
                   </div>
                 )}
               </div>
 
-              <div className="p-5">
+              <div className="p-2 text-center bg-white">
                 <p className="text-[14px] font-black uppercase tracking-[0.06em] text-monserrat-ink">
                   {item.nombre}
                 </p>
@@ -341,15 +341,7 @@ export function Ingresantes({ ingresantes }: IngresantesProps) {
                   {item.carrera}
                 </p>
 
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                  <span className="rounded-full bg-monserrat-red/10 px-3 py-1 text-[11px] font-bold text-monserrat-red">
-                    {item.anio}
-                  </span>
-                  <span className="inline-flex items-center gap-2 rounded-full bg-monserrat-ink/5 px-3 py-1 text-[11px] font-bold text-monserrat-ink">
-                    <span className="h-2.5 w-2.5 rounded-full bg-monserrat-gold" />
-                    {item.tipoSeleccion}
-                  </span>
-                </div>
+
               </div>
             </div>
           ))}

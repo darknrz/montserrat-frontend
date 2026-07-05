@@ -261,26 +261,47 @@ export function AcademicoTab({
   const descargarPlantillaAlumnos = async () => {
     const XLSX = await import("xlsx");
     const workbook = XLSX.utils.book_new();
-    const rows = [
+
+    const estudiantes = [
       {
-        codigo: "A-0001",
-        dni: "70000001",
-        nombre: "Alumno Ejemplo",
-        nombres: "Alumno",
-        apellidos: "Ejemplo",
-        correo: "alumno@correo.com",
-        telefono: "999999999",
-        nivelEducativo: "PRIMARIA",
-        grado: gradosActivosPorNivel("PRIMARIA")[0] ?? "PRIMERO_PRIMARIA",
-        seccion: seccionesActivasPorNivel("PRIMARIA")[0] ?? "A",
-        inicio_periodo: "10/03/2024",
-        estadoMatricula: "MATRICULADO",
-        pensionPagada: "NO",
-        pensionObservacion: "",
+        DNI: "71234567",
+        CODIGO: "2026001A",
+        "NOMBRE COMPLETO": "Juan Carlos Pérez Gómez",
+        CORREO: "juan.perez@colegio.edu.pe",
+        TELEFONO: "987654321",
+        GRADO: "1",
+        SECCIÓN: "A",
+        NIVEL: "PRIMARIA",
+        "INICIO PERIODO": "10/03/2024",
       },
     ];
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), "Alumnos");
-    XLSX.writeFile(workbook, "plantilla_alumnos_monserrat.xlsx");
+
+    const docentesPrimaria = [
+      {
+        DNI: "72345001",
+        CODIGO: "DOC2026001A",
+        "NOMBRE COMPLETO": "Carlos Alberto Mendoza Ruiz",
+        CORREO: "carlos.mendoza@colegio.edu.pe",
+        TELEFONO: "998700001",
+        CURSO: "COMPETENCIAS_TRANSVERSALES",
+      },
+    ];
+
+    const docentesSecundaria = [
+      {
+        DNI: "72345002",
+        CODIGO: "DOC2026002A",
+        "NOMBRE COMPLETO": "Ana María López Castillo",
+        CORREO: "ana.lopez@colegio.edu.pe",
+        TELEFONO: "998700002",
+        CURSO: "MATEMATICA",
+      },
+    ];
+
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(estudiantes), "Estudiantes");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(docentesPrimaria), "Docentes_Primaria");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(docentesSecundaria), "Docentes_Secundaria");
+    XLSX.writeFile(workbook, "plantilla_academico_monserrat.xlsx");
   };
 
   const formatIsoDateToDmy = (iso?: string): string => {
@@ -441,72 +462,114 @@ export function AcademicoTab({
             return undefined;
           };
 
-          const dni = findVal(["dni", "d.n.i", "documento"]);
-const nombreCompleto = findVal([
-  "nombre completo",
-  "nombre_completo",
-  "nombres y apellidos",
-  "apellidos y nombres",
-  "nombre",
-]);
+          const dni = findVal([
+            "dni",
+            "d.n.i",
+            "documento",
+            "documento identidad",
+            "numero documento",
+            "numero de documento",
+            "nro documento",
+            "nro.dni",
+          ]);
+          const nombreCompleto = findVal([
+            "nombre completo",
+            "nombre_completo",
+            "nombres y apellidos",
+            "apellidos y nombres",
+            "apellido y nombre",
+            "apellido completo",
+            "nombres",
+            "nombre",
+          ]);
 
-if (!dni || !nombreCompleto) {
-  alumnosOmitidos += isEstudiantes ? 1 : 0;
-  docentesPrimariaOmitidos += isDocentePrimaria ? 1 : 0;
-  docentesSecundariaOmitidos += isDocenteSecundaria ? 1 : 0;
-  processedRows += 1;
-  setImportProgress(Math.round((processedRows / totalRows) * 100));
-  continue;
-}
+          if (!dni || !nombreCompleto) {
+            alumnosOmitidos += isEstudiantes ? 1 : 0;
+            docentesPrimariaOmitidos += isDocentePrimaria ? 1 : 0;
+            docentesSecundariaOmitidos += isDocenteSecundaria ? 1 : 0;
+            processedRows += 1;
+            setImportProgress(Math.round((processedRows / totalRows) * 100));
+            continue;
+          }
 
-const nombres_col = findVal(["nombres"]);
-const apellidos_col = findVal(["apellidos", "apellido"]);
-let nombres = nombres_col;
-let apellidos = apellidos_col;
-if (!nombres || !apellidos) {
-  const parts = nombreCompleto.split(/\s+/);
-  if (parts.length >= 3) {
-    apellidos = `${parts[0]} ${parts[1]}`;
-    nombres = parts.slice(2).join(" ");
-  } else if (parts.length === 2) {
-    apellidos = parts[0];
-    nombres = parts[1];
-  } else {
-    nombres = nombreCompleto;
-    apellidos = "-";
-  }
-}
+          const nombres_col = findVal(["nombres"]);
+          const apellidos_col = findVal(["apellidos", "apellido", "apellido paterno", "apellido materno"]);
+          let nombres = nombres_col;
+          let apellidos = apellidos_col;
+          if (!nombres || !apellidos) {
+            const parts = nombreCompleto.split(/\s+/);
+            if (parts.length >= 3) {
+              apellidos = `${parts[0]} ${parts[1]}`;
+              nombres = parts.slice(2).join(" ");
+            } else if (parts.length === 2) {
+              apellidos = parts[0];
+              nombres = parts[1];
+            } else {
+              nombres = nombreCompleto;
+              apellidos = "-";
+            }
+          }
 
-const rawCorreo = findVal(["correo", "correo electronico", "email", "e-mail"]);
-const correo = rawCorreo && rawCorreo.includes("@") ? rawCorreo : undefined;
-const telefono = findVal(["telefono", "celular", "movil"]);
-const codigo = findVal(["codigo", "codigo_estudiante", "cod", "code"]);
-const inicioPeriodo = findRawValue([
-  "inicio periodo",
-  "inicio_periodo",
-  "inicio-periodo",
-  "inicio",
-  "fecha inicio",
-  "fecha_inicio",
-  "fecha-ingreso",
-  "fecha de ingreso",
-]);
-const inicioPeriodoIso = parseInicioPeriodo(inicioPeriodo);
+          const rawCorreo = findVal([
+            "correo",
+            "correo electronico",
+            "email",
+            "e-mail",
+            "mail",
+          ]);
+          const correo = rawCorreo && rawCorreo.includes("@") ? rawCorreo : undefined;
+          const telefono = findVal([
+            "telefono",
+            "teléfono",
+            "celular",
+            "movil",
+            "whatsapp",
+          ]);
+          const codigo = findVal([
+            "codigo",
+            "codigo_estudiante",
+            "cod",
+            "code",
+            "codigo docente",
+            "codigodocente",
+          ]);
+          const inicioPeriodo = findRawValue([
+            "inicio periodo",
+            "inicio_periodo",
+            "inicio-periodo",
+            "inicio",
+            "fecha inicio",
+            "fecha_inicio",
+            "fecha-ingreso",
+            "fecha de ingreso",
+            "periodo inicio",
+            "inicio del periodo",
+            "fecha de inicio del periodo",
+          ]);
+          const inicioPeriodoIso = parseInicioPeriodo(inicioPeriodo);
 
           if (isEstudiantes) {
             const rawNivel = findVal([
-  "nivel",
-  "nivel educativo",
-  "nivel_educativo",
-  "nivel (primaria o secundaria)",
-  "nivel(primaria o secundaria)",
-]);
-const nivelEducativo = normalizeNivel(rawNivel || "PRIMARIA");
+              "nivel",
+              "nivel educativo",
+              "nivel_educativo",
+              "nivel (primaria o secundaria)",
+              "nivel(primaria o secundaria)",
+              "nivel de estudio",
+            ]);
+            const nivelEducativo = normalizeNivel(rawNivel || "PRIMARIA");
 
-const rawGrado = findVal(["grado", "grado_academico", "grado academico"]);
-const grado = normalizeGrado(rawGrado, nivelEducativo);
+            const rawGrado = findVal([
+              "grado",
+              "grado_academico",
+              "grado academico",
+              "nivel grado",
+              "grado escolar",
+            ]);
+            const grado = normalizeGrado(rawGrado, nivelEducativo);
 
-const seccion = findVal(["seccion", "seccion ", "aula", "sección"]).toUpperCase().trim() || "A";
+            const seccion =
+              findVal(["seccion", "seccion ", "aula", "sección", "seccion/aula"]).toUpperCase().trim() || "A";
 
             if (!nivelEducativo || !grado || !seccion) {
               alumnosOmitidos += 1;
@@ -600,6 +663,26 @@ const seccion = findVal(["seccion", "seccion ", "aula", "sección"]).toUpperCase
               }
             }
           } else if (isDocentePrimaria) {
+  const rawCurso = findVal(["curso", "materia", "asignatura", "competencia"]);
+  const normalizeCurso = (val: string): string => {
+    const raw = val
+      .toUpperCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    if (raw.includes("MATEMATICA")) return "MATEMATICA";
+    if (raw.includes("COMUNICACION")) return "COMUNICACION";
+    if (raw.includes("CIENCIA") || raw.includes("TECNOLOGIA")) return "CIENCIA_TECNOLOGIA";
+    if (raw.includes("HISTORIA")) return "HISTORIA";
+    if (raw.includes("INGLES")) return "INGLES";
+    if (raw.includes("ARTE")) return "ARTE_CULTURA";
+    if (raw.includes("PERSONAL")) return "PERSONAL_SOCIAL";
+    if (raw.includes("RELIGION") || raw.includes("RELIGIOSA")) return "EDUCACION_RELIGIOSA";
+    if (raw.includes("FISICA")) return "EDUCACION_FISICA";
+    if (raw.includes("CASTELLANO")) return "CASTELLANO_SEGUNDA_LENGUA";
+    if (raw.includes("COMPETENCIAS")) return "COMPETENCIAS_TRANSVERSALES";
+    return raw;
+  };
+  const materia = normalizeCurso(rawCurso || "");
   const existente =
     alumnosPorDni.get(dni) ||
     (codigo ? alumnosPorCodigo.get(codigo.trim().toLowerCase()) : undefined) ||
@@ -617,7 +700,7 @@ const seccion = findVal(["seccion", "seccion ", "aula", "sección"]).toUpperCase
         telefono,
         rol: "DOCENTE",
         nivelEducativo: "PRIMARIA",
-        materia: "",
+        materia,
         especialidad: "PRIMARIA",
       }, token);
       docentesPrimariaCreados += 1; // reutilizamos el contador como "procesados"
@@ -640,7 +723,7 @@ const seccion = findVal(["seccion", "seccion ", "aula", "sección"]).toUpperCase
           telefono,
           rol: "DOCENTE",
           nivelEducativo: "PRIMARIA",
-          materia: "",
+          materia,
           especialidad: "PRIMARIA",
         },
         token

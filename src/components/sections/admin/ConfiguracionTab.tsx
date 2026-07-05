@@ -40,7 +40,7 @@ export function ConfiguracionTab({
       <div className="grid gap-3 md:grid-cols-4">
         <AdminMetric
           icon={<BookOpen size={18} />}
-          label="Cursos primaria"
+          label="Áreas curriculares"
           value={String(cursosPrimariaActivos.length)}
         />
         <AdminMetric
@@ -69,8 +69,14 @@ export function ConfiguracionTab({
             {
               id: "primaria-cursos" as const,
               icon: <BookOpen size={16} />,
-              title: "Cursos",
+              title: "Áreas curriculares",
               count: academicoConfig.cursosPrimaria.length,
+            },
+            {
+              id: "primaria-competencias" as const,
+              icon: <ShieldCheck size={16} />,
+              title: "Competencias",
+              count: academicoConfig.competenciasPrimaria.length,
             },
             {
               id: "primaria-grados" as const,
@@ -188,9 +194,16 @@ export function ConfiguracionTab({
         <div className="min-w-0 flex-1 flex flex-col overflow-y-auto pr-1">
           {configView === "primaria-cursos" && (
             <ConfigPanel
-              title="Cursos de primaria"
+              title="Áreas curriculares"
               items={academicoConfig.cursosPrimaria}
               onChange={(items) => saveAcademicoConfig({ ...academicoConfig, cursosPrimaria: items })}
+            />
+          )}
+          {configView === "primaria-competencias" && (
+            <ConfigPanel
+              title="Competencias de primaria"
+              items={academicoConfig.competenciasPrimaria}
+              onChange={(items) => saveAcademicoConfig({ ...academicoConfig, competenciasPrimaria: items })}
             />
           )}
           {configView === "primaria-secciones" && (

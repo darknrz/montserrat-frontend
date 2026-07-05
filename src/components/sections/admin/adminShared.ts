@@ -16,10 +16,17 @@ export const ADMIN_TAB_STORAGE_KEY = "monserrat_admin_active_tab";
 export type Tab = "institucion" | "ingresantes" | "anuncios" | "videos" | "redes" | "academico" | "asignaciones" | "pensiones" | "configuracion";
 export type CatalogItem = { id: string; label: string; active: boolean };
 export type SalonItem = { nivel: string; grado: string; seccion: string; aula: string; active: boolean };
-export type ConfigView = "primaria-cursos" | "primaria-grados" | "primaria-secciones" | "primaria-salones" | "secundaria-cursos" | "secundaria-grados" | "secundaria-secciones" | "secundaria-salones";
+export type ConfigView = "primaria-cursos" | "primaria-competencias" | "primaria-grados" | "primaria-secciones" | "primaria-salones" | "secundaria-cursos" | "secundaria-grados" | "secundaria-secciones" | "secundaria-salones";
 
 export type AcademicoConfig = {
   cursosPrimaria: CatalogItem[];
+  competenciasPrimaria: CatalogItem[];
+  // mapeo: cursoId -> lista de competenciasPrimaria ids
+  competenciasPorCursoPrimaria?: Record<string, string[]>;
+  // mapeo: `${gradoId}||${cursoId}||${competenciaId}` -> docenteDni
+  // Permite que un mismo docente enseñe la misma competencia en varios grados,
+  // y que cada competencia de cada área curricular tenga su propio docente por grado.
+  docentesPorCompetencia?: Record<string, string>;
   cursosSecundaria: CatalogItem[];
   gradosPrimaria: CatalogItem[];
   gradosSecundaria: CatalogItem[];
@@ -30,15 +37,56 @@ export type AcademicoConfig = {
   ingresantesModelo?: string;
 };
 
+// ---------------------------------------------------------------------------
+// IMPORTANTE: LABEL_OVERRIDES y labelFromEnum deben declararse ANTES de
+// defaultAcademicoConfig, porque defaultAcademicoConfig los usa de inmediato
+// (dentro de los .map()) al momento de cargarse el módulo. Si se declaran
+// más abajo en el archivo, se produce:
+// "Uncaught ReferenceError: Cannot access 'LABEL_OVERRIDES' before initialization"
+// ---------------------------------------------------------------------------
+
+const LABEL_OVERRIDES: Record<string, string> = {
+  ARTE_CULTURA: "Arte y Cultura",
+  PERSONAL_SOCIAL: "Personal Social",
+  EDUCACION_RELIGIOSA: "Educacion Religiosa",
+  EDUCACION_FISICA: "Educacion Fisica",
+  CASTELLANO_SEGUNDA_LENGUA: "Castellano como Segunda Lengua",
+  COMPETENCIAS_TRANSVERSALES: "Competencias Transversales",
+  CIENCIA_TECNOLOGIA: "Ciencia y Tecnologia"
+};
+
+export function labelFromEnum(value: string) {
+  if (!value) return "";
+  const override = LABEL_OVERRIDES[value];
+  if (override) return override;
+  return value
+    .toLowerCase()
+    .split("_")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 export const defaultAcademicoConfig: AcademicoConfig = {
   cursosPrimaria: [
-    "MATEMATICA",
-    "COMUNICACION",
-    "CIENCIA_TECNOLOGIA",
-    "ARTE_CULTURA",
+    "INGLES",
     "PERSONAL_SOCIAL",
-    "EDUCACION_FISICA"
+    "EDUCACION_RELIGIOSA",
+    "EDUCACION_FISICA",
+    "COMUNICACION",
+    "ARTE_CULTURA",
+    "CASTELLANO_SEGUNDA_LENGUA",
+    "MATEMATICA",
+    "CIENCIA_TECNOLOGIA",
+    "COMPETENCIAS_TRANSVERSALES"
   ].map((id) => ({ id, label: labelFromEnum(id), active: true })),
+  competenciasPrimaria: [
+    { id: "C1", label: "Indaga mediante métodos científicos para construir sus conocimientos.", active: true },
+    { id: "C2", label: "Explica el mundo físico basándose en conocimientos sobre los seres vivos, materia y energía, biodiversidad, Tierra y universo.", active: true },
+    { id: "C3", label: "Diseña y construye soluciones tecnológicas para resolver problemas de su entorno.", active: true },
+  ],
+  competenciasPorCursoPrimaria: {},
+  docentesPorCompetencia: {},
   cursosSecundaria: CURSOS.map((id) => ({ id, label: labelFromEnum(id), active: true })),
   gradosPrimaria: GRADOS_PRIMARIA.map((id) => ({ id, label: labelFromEnum(id), active: true })),
   gradosSecundaria: GRADOS_SECUNDARIA.map((id) => ({ id, label: labelFromEnum(id), active: true })),
@@ -73,6 +121,9 @@ export function mergeAcademicoConfig(config: Partial<AcademicoConfig>) {
 
   return {
     cursosPrimaria: config.cursosPrimaria ?? legacy.cursos ?? defaultAcademicoConfig.cursosPrimaria,
+    competenciasPrimaria: config.competenciasPrimaria ?? defaultAcademicoConfig.competenciasPrimaria,
+    competenciasPorCursoPrimaria: config.competenciasPorCursoPrimaria ?? defaultAcademicoConfig.competenciasPorCursoPrimaria,
+    docentesPorCompetencia: config.docentesPorCompetencia ?? defaultAcademicoConfig.docentesPorCompetencia,
     cursosSecundaria: config.cursosSecundaria ?? legacy.cursos ?? defaultAcademicoConfig.cursosSecundaria,
     gradosPrimaria: config.gradosPrimaria ?? defaultAcademicoConfig.gradosPrimaria,
     gradosSecundaria: config.gradosSecundaria ?? defaultAcademicoConfig.gradosSecundaria,
@@ -130,15 +181,6 @@ export function aulaPorGradoSeccion(nivel: string | undefined, grado: string, se
   const gradoIndex = Math.max(grados.indexOf(grado as never), 0) + 1;
   const seccionIndex = Math.max(SECCIONES.indexOf(seccion as never), 0) + 1;
   return String(base + gradoIndex * 10 + seccionIndex);
-}
-
-export function labelFromEnum(value: string) {
-  return value
-    .toLowerCase()
-    .split("_")
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
 }
 
 export function normalizeNivel(value: unknown) {

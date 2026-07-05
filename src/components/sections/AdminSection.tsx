@@ -177,6 +177,7 @@ export function AdminSection({
   const labelAcademico = (id: string) =>
     [
       ...academicoConfig.cursosPrimaria,
+      ...academicoConfig.competenciasPrimaria,
       ...academicoConfig.cursosSecundaria,
       ...academicoConfig.gradosPrimaria,
       ...academicoConfig.gradosSecundaria,

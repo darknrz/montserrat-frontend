@@ -37,6 +37,7 @@ export function PortalAcademicoPage() {
   const [isBusy, setIsBusy] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const BIMESTRES = ["Primer Bimestre", "Segundo Bimestre", "Tercer Bimestre", "Cuarto Bimestre"] as const;
   const [asistenciaFecha, setAsistenciaFecha] = useState(new Date().toISOString().slice(0, 10));
   const [asistenciaBulk, setAsistenciaBulk] = useState<Record<string, string>>({});
   const emptyNotaForm = { id: 0, alumnoDni: "", curso: "", periodo: "", tipoEvaluacion: "EXAMEN", valor: 0, observacion: "" };
@@ -680,7 +681,14 @@ export function PortalAcademicoPage() {
                       <option value="PROYECTO">Proyecto</option>
                     </select>
                   </Field>
-                  <Field label="Periodo"><input value={notaForm.periodo} onChange={(event) => setNotaForm({ ...notaForm, periodo: event.target.value })} className="admin-input" placeholder="Ej: Bimestre 1" required /></Field>
+                  <Field label="Periodo">
+                    <select value={notaForm.periodo} onChange={(event) => setNotaForm({ ...notaForm, periodo: event.target.value })} className="admin-input" required>
+                      <option value="">Selecciona un periodo</option>
+                      {BIMESTRES.map((periodo) => (
+                        <option key={periodo} value={periodo}>{periodo}</option>
+                      ))}
+                    </select>
+                  </Field>
                   <Field label="Nota (0-20)"><input type="number" min="0" max="20" step="0.1" value={notaForm.valor || ""} onChange={(event) => setNotaForm({ ...notaForm, valor: Number(event.target.value) })} className="admin-input" placeholder="0 - 20" required /></Field>
                   <Field label="Observacion"><textarea value={notaForm.observacion} onChange={(event) => setNotaForm({ ...notaForm, observacion: event.target.value })} className="admin-input" placeholder="Opcional" /></Field>
 
