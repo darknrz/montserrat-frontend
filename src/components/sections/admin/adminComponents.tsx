@@ -1,7 +1,26 @@
-import { Edit3, ImagePlus, Plus, Save, Trash2, Upload } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Edit3, ImagePlus, Plus, Save, Search, Trash2, Upload } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { createCatalogId, aulaPorGradoSeccion, type CatalogItem, type SalonItem } from "./adminShared";
+
+// Cierra cualquier modal con la tecla Escape. Un solo hook compartido
+// evita repetir el mismo useEffect en cada modal de la app.
+function useEscapeToClose(onClose: () => void) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+}
+
+function normalizarTexto(texto: string) {
+  return texto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
 
 export function AdminField({ label, children, className = "" }: { label: string; children: ReactNode; className?: string }) {
   return (
@@ -405,6 +424,7 @@ export function SalonConfigPanel({
 }
 
 export function ConfirmDeleteModal({ title, message, onCancel, onConfirm }: { title: string; message: string; onCancel: () => void; onConfirm: () => void }) {
+  useEscapeToClose(onCancel);
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm">
       <div className="w-full max-w-[420px] overflow-hidden rounded-[18px] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
@@ -521,39 +541,116 @@ export function matrixKey(grado: string, curso: string, competencia: string) {
 export function CompetenciaPickerModal({
   curso,
   catalogo,
-  yaVinculadas,
+  competenciasPorCurso,
   labelAcademico,
   onToggle,
   onClose,
 }: {
   curso: string;
   catalogo: CatalogItem[];
-  yaVinculadas: string[];
+  // Mapa completo cursoId -> ids de competencias vinculadas a ESE curso.
+  // Se necesita completo (no solo las del curso actual) para saber si una
+  // competencia ya pertenece a otra área y así poder "moverla" en un clic.
+  competenciasPorCurso: Record<string, string[]>;
   labelAcademico: (id: string) => string;
   onToggle: (competenciaId: string) => void;
   onClose: () => void;
 }) {
+  const [busqueda, setBusqueda] = useState("");
+  useEscapeToClose(onClose);
+
+  const yaVinculadas = competenciasPorCurso[curso] ?? [];
+
+  // Cada competencia solo puede pertenecer a un área curricular a la vez
+  // (así es en el currículo real: una competencia es de Matemática O de
+  // Comunicación, no de ambas). Este mapa dice, para cada competencia que
+  // NO está en el área actual, a cuál otra área pertenece hoy.
+  const areaActualDeCompetencia = useMemo(() => {
+    const map: Record<string, string> = {};
+    Object.entries(competenciasPorCurso).forEach(([cursoId, ids]) => {
+      if (cursoId === curso) return;
+      (ids ?? []).forEach((id) => {
+        map[id] = cursoId;
+      });
+    });
+    return map;
+  }, [competenciasPorCurso, curso]);
+
+  const filtro = normalizarTexto(busqueda.trim());
+
+  const catalogoOrdenado = useMemo(() => {
+    // Las ya vinculadas aquí primero, luego libres, luego las de otras áreas
+    return [...catalogo].sort((a, b) => {
+      const rank = (id: string) => (yaVinculadas.includes(id) ? 0 : areaActualDeCompetencia[id] ? 2 : 1);
+      return rank(a.id) - rank(b.id);
+    });
+  }, [catalogo, yaVinculadas, areaActualDeCompetencia]);
+
+  const catalogoFiltrado = useMemo(() => {
+    if (!filtro) return catalogoOrdenado;
+    return catalogoOrdenado.filter(
+      (c) => normalizarTexto(c.label).includes(filtro) || normalizarTexto(c.id).includes(filtro)
+    );
+  }, [catalogoOrdenado, filtro]);
+
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-[420px] overflow-hidden rounded-[18px] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+      <div className="w-full max-w-[460px] overflow-hidden rounded-[18px] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
         <div className="border-b border-monserrat-ink/8 bg-monserrat-cream px-5 py-4">
           <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-red">Vincular competencias</p>
           <h3 className="mt-1 font-serif text-xl font-black text-monserrat-ink">{labelAcademico(curso)}</h3>
+          <p className="mt-1 text-[11px] font-semibold text-monserrat-ink/45">
+            {yaVinculadas.length} de {catalogo.length} vinculada{yaVinculadas.length === 1 ? "" : "s"}
+          </p>
         </div>
+
+        <div className="border-b border-monserrat-ink/8 bg-white px-5 py-3">
+          <div className="relative">
+            <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-monserrat-ink/35" />
+            <input
+              autoFocus
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Buscar competencia..."
+              className="w-full rounded-[10px] border border-monserrat-ink/10 bg-white py-2 pl-9 pr-3 text-[12.5px] font-semibold text-monserrat-ink outline-none focus:border-monserrat-red"
+            />
+          </div>
+        </div>
+
         <div className="grid max-h-[360px] gap-2 overflow-y-auto p-4">
-          {catalogo.map((c) => {
+          {catalogoFiltrado.length === 0 && (
+            <p className="py-6 text-center text-sm font-semibold text-monserrat-ink/40">
+              Ninguna competencia coincide con "{busqueda}"
+            </p>
+          )}
+          {catalogoFiltrado.map((c) => {
             const linked = yaVinculadas.includes(c.id);
+            const otraArea = areaActualDeCompetencia[c.id];
             return (
               <button
                 key={c.id}
                 type="button"
                 onClick={() => onToggle(c.id)}
-                className={`flex items-center justify-between rounded-[10px] border px-3 py-2 text-left text-[12.5px] font-semibold transition ${
-                  linked ? "border-monserrat-red/30 bg-monserrat-red/8 text-monserrat-red" : "border-monserrat-ink/10 text-monserrat-ink/70 hover:border-monserrat-ink/25"
+                title={otraArea ? `Mover desde ${labelAcademico(otraArea)}` : undefined}
+                className={`flex items-start justify-between gap-3 rounded-[10px] border px-3 py-2 text-left text-[12.5px] font-semibold transition ${
+                  linked
+                    ? "border-monserrat-red/30 bg-monserrat-red/8 text-monserrat-red"
+                    : otraArea
+                    ? "border-amber-400/40 bg-amber-50 text-monserrat-ink/60"
+                    : "border-monserrat-ink/10 text-monserrat-ink/70 hover:border-monserrat-ink/25"
                 }`}
               >
-                <span>{c.label}</span>
-                <span className="text-[10px] font-black uppercase">{linked ? "Vinculada" : "Vincular"}</span>
+                <span className="min-w-0">
+                  <span className="block">{c.label}</span>
+                  {otraArea && (
+                    <span className="mt-0.5 block text-[10px] font-black uppercase text-amber-600">
+                      En {labelAcademico(otraArea)} · clic para mover aquí
+                    </span>
+                  )}
+                </span>
+                <span className="flex-shrink-0 text-[10px] font-black uppercase">
+                  {linked ? "Vinculada" : otraArea ? "Mover" : "Vincular"}
+                </span>
               </button>
             );
           })}
@@ -581,7 +678,7 @@ export function CompetenciaDocenteBoard({
   curso,
   labelDocenteAsignado,
   onEditRow,
-  headerAction,
+  onEditCompetencia,
 }: {
   competencias: CatalogItem[];
   docentesPorCompetencia: Record<string, string>;
@@ -589,26 +686,30 @@ export function CompetenciaDocenteBoard({
   curso: string;
   labelDocenteAsignado: (dni: string) => string;
   onEditRow: (competenciaId: string) => void;
-  headerAction?: ReactNode;
+  onEditCompetencia?: () => void;
 }) {
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[16px] border border-monserrat-ink/8 bg-white shadow-sm">
       <div className="grid grid-cols-2 border-b border-monserrat-ink/8 bg-monserrat-ink">
-        <div className="flex items-center justify-between px-4 py-3">
-          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-cream/70">
-            Competencias
-          </p>
-          {headerAction}
-        </div>
+        <p className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-cream/70">
+          Competencias
+        </p>
         <p className="border-l border-white/10 px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-cream/70">
           Docentes
         </p>
       </div>
       <div className="flex-1 overflow-y-auto">
         {competencias.length === 0 ? (
-          <p className="py-8 text-center text-sm font-semibold text-monserrat-ink/40">
-            Sin competencias vinculadas a esta area
-          </p>
+          <button
+            type="button"
+            onClick={() => onEditCompetencia?.()}
+            className="flex w-full flex-col items-center gap-1 py-8 text-center text-sm font-semibold text-monserrat-ink/40 transition hover:text-monserrat-red"
+          >
+            <span>Sin competencias vinculadas a esta area</span>
+            <span className="text-[11px] font-black uppercase tracking-[0.08em] text-monserrat-red/70">
+              Click para vincular
+            </span>
+          </button>
         ) : (
           competencias.map((c, i) => {
             const key = matrixKey(grado, curso, c.id);
@@ -616,14 +717,19 @@ export function CompetenciaDocenteBoard({
             return (
               <div
                 key={c.id}
-                onClick={() => onEditRow(c.id)}
-                className={`grid cursor-pointer grid-cols-2 border-b border-monserrat-ink/6 transition last:border-b-0 hover:bg-monserrat-cream/15 ${
+                className={`grid grid-cols-2 border-b border-monserrat-ink/6 last:border-b-0 ${
                   i % 2 === 1 ? "bg-monserrat-cream/10" : ""
                 }`}
               >
-                <p className="px-4 py-3 text-[12.5px] font-semibold text-monserrat-ink/80">{c.label}</p>
                 <p
-                  className={`border-l border-monserrat-ink/6 px-4 py-3 text-[12.5px] font-black ${
+                  onClick={() => onEditCompetencia?.()}
+                  className="cursor-pointer px-4 py-3 text-[12.5px] font-semibold text-monserrat-ink/80 transition hover:bg-monserrat-cream/20 hover:text-monserrat-red"
+                >
+                  {c.label}
+                </p>
+                <p
+                  onClick={() => onEditRow(c.id)}
+                  className={`cursor-pointer border-l border-monserrat-ink/6 px-4 py-3 text-[12.5px] font-black transition hover:bg-monserrat-cream/20 ${
                     dni ? "text-monserrat-ink" : "text-monserrat-ink/35"
                   }`}
                 >
@@ -651,6 +757,17 @@ export function ElegirDocenteModal({
   onSelect: (dni: string) => void;
   onClose: () => void;
 }) {
+  const [busqueda, setBusqueda] = useState("");
+  useEscapeToClose(onClose);
+
+  // El buscador solo aparece si hay varios docentes para elegir; con pocos,
+  // solo estorba y hace más largo el flujo sin necesidad.
+  const mostrarBuscador = docentes.length > 6;
+  const filtro = normalizarTexto(busqueda.trim());
+  const docentesFiltrados = !filtro
+    ? docentes
+    : docentes.filter((d) => normalizarTexto(d.nombre).includes(filtro));
+
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm">
       <div className="w-full max-w-[420px] overflow-hidden rounded-[18px] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
@@ -660,6 +777,22 @@ export function ElegirDocenteModal({
           </p>
           <h3 className="mt-1 font-serif text-xl font-black text-monserrat-ink">{competenciaLabel}</h3>
         </div>
+
+        {mostrarBuscador && (
+          <div className="border-b border-monserrat-ink/8 bg-white px-5 py-3">
+            <div className="relative">
+              <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-monserrat-ink/35" />
+              <input
+                autoFocus
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                placeholder="Buscar docente..."
+                className="w-full rounded-[10px] border border-monserrat-ink/10 bg-white py-2 pl-9 pr-3 text-[12.5px] font-semibold text-monserrat-ink outline-none focus:border-monserrat-red"
+              />
+            </div>
+          </div>
+        )}
+
         <div className="grid max-h-[360px] gap-2 overflow-y-auto p-4">
           {docenteActualDni && (
             <button
@@ -675,7 +808,12 @@ export function ElegirDocenteModal({
               No hay docentes disponibles
             </p>
           )}
-          {docentes.map((d) => {
+          {docentes.length > 0 && docentesFiltrados.length === 0 && (
+            <p className="py-4 text-center text-sm font-semibold text-monserrat-ink/40">
+              Ningún docente coincide con la búsqueda
+            </p>
+          )}
+          {docentesFiltrados.map((d) => {
             const selected = d.dni === docenteActualDni;
             return (
               <button

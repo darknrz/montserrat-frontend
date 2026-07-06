@@ -16,7 +16,7 @@ export const ADMIN_TAB_STORAGE_KEY = "monserrat_admin_active_tab";
 export type Tab = "institucion" | "ingresantes" | "anuncios" | "videos" | "redes" | "academico" | "asignaciones" | "pensiones" | "configuracion";
 export type CatalogItem = { id: string; label: string; active: boolean };
 export type SalonItem = { nivel: string; grado: string; seccion: string; aula: string; active: boolean };
-export type ConfigView = "primaria-cursos" | "primaria-competencias" | "primaria-grados" | "primaria-secciones" | "primaria-salones" | "secundaria-cursos" | "secundaria-grados" | "secundaria-secciones" | "secundaria-salones";
+export type ConfigView = "primaria-cursos" | "primaria-competencias" | "primaria-grados" | "primaria-secciones" | "primaria-salones" | "secundaria-cursos" | "secundaria-competencias" | "secundaria-grados" | "secundaria-secciones" | "secundaria-salones";
 
 export type AcademicoConfig = {
   cursosPrimaria: CatalogItem[];
@@ -28,6 +28,11 @@ export type AcademicoConfig = {
   // y que cada competencia de cada área curricular tenga su propio docente por grado.
   docentesPorCompetencia?: Record<string, string>;
   cursosSecundaria: CatalogItem[];
+  competenciasSecundaria: CatalogItem[];
+  // mapeo: cursoId -> lista de competenciasSecundaria ids
+  competenciasPorCursoSecundaria?: Record<string, string[]>;
+  // mapeo: `${gradoId}||${cursoId}||${competenciaId}` -> docenteDni para secundaria
+  docentesPorCompetenciaSecundaria?: Record<string, string>;
   gradosPrimaria: CatalogItem[];
   gradosSecundaria: CatalogItem[];
   seccionesPrimaria: CatalogItem[];
@@ -81,13 +86,45 @@ export const defaultAcademicoConfig: AcademicoConfig = {
     "COMPETENCIAS_TRANSVERSALES"
   ].map((id) => ({ id, label: labelFromEnum(id), active: true })),
   competenciasPrimaria: [
-    { id: "C1", label: "Indaga mediante métodos científicos para construir sus conocimientos.", active: true },
-    { id: "C2", label: "Explica el mundo físico basándose en conocimientos sobre los seres vivos, materia y energía, biodiversidad, Tierra y universo.", active: true },
-    { id: "C3", label: "Diseña y construye soluciones tecnológicas para resolver problemas de su entorno.", active: true },
+    { id: "C1", label: "Construye su identidad.", active: true },
+    { id: "C2", label: "Convive y participa democráticamente en la búsqueda del bien común.", active: true },
+    { id: "C3", label: "Construye interpretaciones históricas.", active: true },
+    { id: "C4", label: "Gestiona responsablemente el espacio y el ambiente.", active: true },
+    { id: "C5", label: "Gestiona responsablemente los recursos económicos.", active: true },
+    { id: "C6", label: "Construye su identidad como persona humana, amada por Dios, digna, libre y trascendente, comprendiendo la doctrina de su propia religión y abierta al diálogo con las que le son cercanas.", active: true },
+    { id: "C7", label: "Asume la experiencia del encuentro personal y comunitario con Dios en su proyecto de vida, en coherencia con su creencia religiosa.", active: true },
+    { id: "C8", label: "Se desenvuelve de manera autónoma a través de su motricidad.", active: true },
+    { id: "C9", label: "Asume una vida saludable.", active: true },
+    { id: "C10", label: "Interactúa a través de sus habilidades sociomotrices.", active: true },
+    { id: "C11", label: "Se comunica oralmente en su lengua materna.", active: true },
+    { id: "C12", label: "Lee diversos tipos de textos escritos.", active: true },
+    { id: "C13", label: "Escribe diversos tipos de textos.", active: true },
+    { id: "C14", label: "Aprecia de manera crítica manifestaciones artístico-culturales.", active: true },
+    { id: "C15", label: "Crea proyectos desde los lenguajes artísticos.", active: true },
+    { id: "C16", label: "Se comunica oralmente en castellano como segunda lengua.", active: true },
+    { id: "C17", label: "Se comunica oralmente en inglés como lengua extranjera.", active: true },
+    { id: "C18", label: "Lee diversos tipos de textos en inglés como lengua extranjera.", active: true },
+    { id: "C19", label: "Escribe diversos tipos de textos en inglés como lengua extranjera.", active: true },
+    { id: "C20", label: "Resuelve problemas de cantidad.", active: true },
+    { id: "C21", label: "Resuelve problemas de regularidad, equivalencia y cambio.", active: true },
+    { id: "C22", label: "Resuelve problemas de forma, movimiento y localización.", active: true },
+    { id: "C23", label: "Resuelve problemas de gestión de datos e incertidumbre.", active: true },
+    { id: "C24", label: "Indaga mediante métodos científicos para construir conocimientos.", active: true },
+    { id: "C25", label: "Explica el mundo físico basándose en conocimientos sobre los seres vivos, materia y energía, biodiversidad, Tierra y Universo.", active: true },
+    { id: "C26", label: "Diseña y construye soluciones tecnológicas para resolver problemas de su entorno.", active: true },
+    { id: "C27", label: "Se desenvuelve en entornos virtuales generados por las TIC.", active: true },
+    { id: "C28", label: "Gestiona su aprendizaje de manera autónoma.", active: true },
   ],
   competenciasPorCursoPrimaria: {},
   docentesPorCompetencia: {},
   cursosSecundaria: CURSOS.map((id) => ({ id, label: labelFromEnum(id), active: true })),
+  competenciasSecundaria: [
+    { id: "CS1", label: "Resuelve problemas de cantidad.", active: true },
+    { id: "CS2", label: "Resuelve problemas de regularidad, equivalencia y cambio.", active: true },
+    { id: "CS3", label: "Resuelve problemas de forma, movimiento y localización.", active: true },
+  ],
+  competenciasPorCursoSecundaria: {},
+  docentesPorCompetenciaSecundaria: {},
   gradosPrimaria: GRADOS_PRIMARIA.map((id) => ({ id, label: labelFromEnum(id), active: true })),
   gradosSecundaria: GRADOS_SECUNDARIA.map((id) => ({ id, label: labelFromEnum(id), active: true })),
   seccionesPrimaria: SECCIONES.map((id) => ({ id, label: id, active: true })),
@@ -125,6 +162,9 @@ export function mergeAcademicoConfig(config: Partial<AcademicoConfig>) {
     competenciasPorCursoPrimaria: config.competenciasPorCursoPrimaria ?? defaultAcademicoConfig.competenciasPorCursoPrimaria,
     docentesPorCompetencia: config.docentesPorCompetencia ?? defaultAcademicoConfig.docentesPorCompetencia,
     cursosSecundaria: config.cursosSecundaria ?? legacy.cursos ?? defaultAcademicoConfig.cursosSecundaria,
+    competenciasSecundaria: config.competenciasSecundaria ?? defaultAcademicoConfig.competenciasSecundaria,
+    competenciasPorCursoSecundaria: config.competenciasPorCursoSecundaria ?? defaultAcademicoConfig.competenciasPorCursoSecundaria,
+    docentesPorCompetenciaSecundaria: config.docentesPorCompetenciaSecundaria ?? defaultAcademicoConfig.docentesPorCompetenciaSecundaria,
     gradosPrimaria: config.gradosPrimaria ?? defaultAcademicoConfig.gradosPrimaria,
     gradosSecundaria: config.gradosSecundaria ?? defaultAcademicoConfig.gradosSecundaria,
     seccionesPrimaria: config.seccionesPrimaria ?? legacy.secciones ?? defaultAcademicoConfig.seccionesPrimaria,

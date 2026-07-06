@@ -132,6 +132,12 @@ export function ConfiguracionTab({
               count: academicoConfig.cursosSecundaria.length,
             },
             {
+              id: "secundaria-competencias" as const,
+              icon: <ShieldCheck size={16} />,
+              title: "Competencias",
+              count: academicoConfig.competenciasSecundaria.length,
+            },
+            {
               id: "secundaria-grados" as const,
               icon: <GraduationCap size={16} />,
               title: "Grados",
@@ -229,6 +235,12 @@ export function ConfiguracionTab({
               onChange={(items) =>
                 saveAcademicoConfig({ ...academicoConfig, cursosSecundaria: items })
               }
+            />
+          )}
+          {configView === "secundaria-competencias" && (
+            <CompetenciasPanel
+              items={academicoConfig.competenciasSecundaria}
+              onChange={(items) => saveAcademicoConfig({ ...academicoConfig, competenciasSecundaria: items })}
             />
           )}
           {configView === "secundaria-secciones" && (
