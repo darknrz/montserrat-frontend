@@ -653,26 +653,26 @@ export function AsignacionesTab({
   return (
     <div className="flex-1 flex flex-col min-h-0">
       {/* Selector de Nivel */}
-      <div className="flex gap-2 pb-4 border-b border-white/10">
+      <div className="flex gap-3 pb-4 border-b border-monserrat-ink/10 mb-4 flex-none">
         <button
           onClick={() => cambiarNivel("PRIMARIA")}
-          className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+          className={`px-5 py-2 rounded-xl text-xs font-black tracking-wide uppercase transition-all duration-300 ${
             !esSecundaria
-              ? "bg-monserrat-gold text-monserrat-navy"
-              : "bg-white/10 text-monserrat-cream hover:bg-white/20"
+              ? "bg-monserrat-red text-white shadow-md shadow-monserrat-red/10 scale-105"
+              : "bg-monserrat-cream/40 text-monserrat-ink/60 border border-monserrat-ink/8 hover:bg-monserrat-cream/70 hover:text-monserrat-ink"
           }`}
         >
-          PRIMARIA
+          Primaria
         </button>
         <button
           onClick={() => cambiarNivel("SECUNDARIA")}
-          className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+          className={`px-5 py-2 rounded-xl text-xs font-black tracking-wide uppercase transition-all duration-300 ${
             esSecundaria
-              ? "bg-monserrat-gold text-monserrat-navy"
-              : "bg-white/10 text-monserrat-cream hover:bg-white/20"
+              ? "bg-monserrat-red text-white shadow-md shadow-monserrat-red/10 scale-105"
+              : "bg-monserrat-cream/40 text-monserrat-ink/60 border border-monserrat-ink/8 hover:bg-monserrat-cream/70 hover:text-monserrat-ink"
           }`}
         >
-          SECUNDARIA
+          Secundaria
         </button>
       </div>
 

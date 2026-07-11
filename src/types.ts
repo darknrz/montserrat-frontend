@@ -132,6 +132,7 @@ export type NotaAcademica = {
   tipoEvaluacion?: string;
   valor: number;
   observacion?: string;
+  competenciaId?: string;
 };
 
 export type PensionEstado = {

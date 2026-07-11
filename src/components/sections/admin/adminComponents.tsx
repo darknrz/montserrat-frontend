@@ -1,4 +1,4 @@
-import { Edit3, ImagePlus, Plus, Save, Search, Trash2, Upload } from "lucide-react";
+import { Edit3, ImagePlus, Plus, Save, Search, Trash2, Upload, User, UserCheck, UserPlus, BookOpen, Check, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { createCatalogId, aulaPorGradoSeccion, type CatalogItem, type SalonItem } from "./adminShared";
@@ -90,26 +90,31 @@ export function RosterPanel({
         <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-cream/70">{title}</p>
         {headerAction}
       </div>
-      <div className={`max-h-[420px] overflow-y-auto p-3 ${bodyClassName}`}>
+      <div className={`max-h-[420px] overflow-y-auto p-1.5 ${bodyClassName}`}>
         {rows.length === 0 ? (
           <p className="py-8 text-center text-sm font-semibold text-monserrat-ink/40">{empty}</p>
         ) : rows.map((row) => (
           <div
             key={row.id}
             onClick={() => onSelect?.(row.id)}
-            className={`flex items-center justify-between border-b border-monserrat-ink/6 px-2 py-3 last:border-b-0 cursor-pointer transition ${selectedId === row.id ? "bg-monserrat-red/8 border-monserrat-red/20" : "hover:bg-monserrat-cream/10"}`}>
+            className={`flex items-center justify-between border-b border-monserrat-ink/6 pl-3 pr-2 py-3 last:border-b-0 cursor-pointer transition-all duration-200 border-l-[3px] rounded-r-lg ${
+              selectedId === row.id
+                ? "bg-monserrat-red/6 border-monserrat-red/20 border-l-monserrat-red"
+                : "border-l-transparent hover:bg-monserrat-cream/15 hover:border-l-monserrat-cream/60"
+            }`}
+          >
             <div className="min-w-0 flex-1">
-              <p className={`truncate text-sm font-black ${selectedId === row.id ? "text-monserrat-red" : "text-monserrat-ink"}`}>{row.title}</p>
-              <p className={`mt-1 truncate text-[12px] font-semibold ${selectedId === row.id ? "text-monserrat-red/70" : "text-monserrat-ink/50"}`}>{row.detail}</p>
+              <p className={`truncate text-[13px] font-black ${selectedId === row.id ? "text-monserrat-red" : "text-monserrat-ink"}`}>{row.title}</p>
+              <p className={`mt-0.5 truncate text-[11px] font-semibold ${selectedId === row.id ? "text-monserrat-red/70" : "text-monserrat-ink/45"}`}>{row.detail}</p>
             </div>
             {onEdit && row.raw && (
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onEdit(row.raw); }}
-                className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[8px] bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 transition ml-2 cursor-pointer"
+                className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-[8px] bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 transition ml-2 cursor-pointer"
                 title="Editar asignación"
               >
-                <Edit3 size={13} />
+                <Edit3 size={12} />
               </button>
             )}
           </div>
@@ -690,12 +695,12 @@ export function CompetenciaDocenteBoard({
 }) {
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[16px] border border-monserrat-ink/8 bg-white shadow-sm">
-      <div className="grid grid-cols-2 border-b border-monserrat-ink/8 bg-monserrat-ink">
-        <p className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-cream/70">
-          Competencias
+      <div className="grid grid-cols-[1.4fr_1fr] border-b border-monserrat-ink/8 bg-monserrat-ink">
+        <p className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-cream/70 flex items-center gap-1.5">
+          <BookOpen size={11} /> Competencias vinculadas
         </p>
-        <p className="border-l border-white/10 px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-cream/70">
-          Docentes
+        <p className="border-l border-white/10 px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-cream/70 flex items-center gap-1.5">
+          <User size={11} /> Docente Asignado
         </p>
       </div>
       <div className="flex-1 overflow-y-auto">
@@ -703,11 +708,11 @@ export function CompetenciaDocenteBoard({
           <button
             type="button"
             onClick={() => onEditCompetencia?.()}
-            className="flex w-full flex-col items-center gap-1 py-8 text-center text-sm font-semibold text-monserrat-ink/40 transition hover:text-monserrat-red"
+            className="flex w-full flex-col items-center gap-1.5 py-12 text-center text-sm font-semibold text-monserrat-ink/40 transition hover:text-monserrat-red"
           >
-            <span>Sin competencias vinculadas a esta area</span>
-            <span className="text-[11px] font-black uppercase tracking-[0.08em] text-monserrat-red/70">
-              Click para vincular
+            <span>Sin competencias vinculadas a esta área</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.08em] text-monserrat-red bg-monserrat-red/6 border border-monserrat-red/10 rounded-full px-3 py-1">
+              Click para vincular competencias
             </span>
           </button>
         ) : (
@@ -717,24 +722,35 @@ export function CompetenciaDocenteBoard({
             return (
               <div
                 key={c.id}
-                className={`grid grid-cols-2 border-b border-monserrat-ink/6 last:border-b-0 ${
-                  i % 2 === 1 ? "bg-monserrat-cream/10" : ""
+                className={`grid grid-cols-[1.4fr_1fr] border-b border-monserrat-ink/6 last:border-b-0 items-center min-h-[50px] ${
+                  i % 2 === 1 ? "bg-monserrat-cream/5" : ""
                 }`}
               >
-                <p
+                <div
                   onClick={() => onEditCompetencia?.()}
-                  className="cursor-pointer px-4 py-3 text-[12.5px] font-semibold text-monserrat-ink/80 transition hover:bg-monserrat-cream/20 hover:text-monserrat-red"
+                  className="cursor-pointer px-4 py-3 text-[12.5px] font-semibold text-monserrat-ink/80 transition-all hover:translate-x-0.5 hover:text-monserrat-red"
                 >
                   {c.label}
-                </p>
-                <p
-                  onClick={() => onEditRow(c.id)}
-                  className={`cursor-pointer border-l border-monserrat-ink/6 px-4 py-3 text-[12.5px] font-black transition hover:bg-monserrat-cream/20 ${
-                    dni ? "text-monserrat-ink" : "text-monserrat-ink/35"
-                  }`}
-                >
-                  {dni ? labelDocenteAsignado(dni) : "Sin asignar"}
-                </p>
+                </div>
+                <div className="border-l border-monserrat-ink/6 h-full px-4 py-2 flex items-center min-w-0">
+                  {dni ? (
+                    <div
+                      onClick={() => onEditRow(c.id)}
+                      className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-500/20 bg-emerald-500/6 text-emerald-800 text-[12.5px] font-black transition-all hover:bg-emerald-500/10 hover:border-emerald-500/35 truncate w-full"
+                    >
+                      <UserCheck size={13} className="shrink-0 text-emerald-600" />
+                      <span className="truncate">{labelDocenteAsignado(dni)}</span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onEditRow(c.id)}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-dashed border-monserrat-red/30 bg-monserrat-red/4 text-monserrat-red transition-all hover:bg-monserrat-red/8 hover:border-monserrat-red/50 text-[11px] font-black uppercase tracking-wider cursor-pointer"
+                    >
+                      <UserPlus size={12} /> Asignar docente
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })
@@ -760,9 +776,12 @@ export function ElegirDocenteModal({
   const [busqueda, setBusqueda] = useState("");
   useEscapeToClose(onClose);
 
-  // El buscador solo aparece si hay varios docentes para elegir; con pocos,
-  // solo estorba y hace más largo el flujo sin necesidad.
-  const mostrarBuscador = docentes.length > 6;
+  const getInitials = (name: string) => {
+    const parts = name.split(" ");
+    return parts.map(p => p[0]).slice(0, 2).join("").toUpperCase();
+  };
+
+  const mostrarBuscador = docentes.length > 5;
   const filtro = normalizarTexto(busqueda.trim());
   const docentesFiltrados = !filtro
     ? docentes
@@ -770,46 +789,46 @@ export function ElegirDocenteModal({
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-[420px] overflow-hidden rounded-[18px] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
-        <div className="border-b border-monserrat-ink/8 bg-monserrat-cream px-5 py-4">
+      <div className="w-full max-w-[440px] overflow-hidden rounded-[20px] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.28)] flex flex-col max-h-[90vh]">
+        <div className="border-b border-monserrat-ink/8 bg-monserrat-cream px-6 py-4 flex-none">
           <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-red">
             Asignar docente
           </p>
-          <h3 className="mt-1 font-serif text-xl font-black text-monserrat-ink">{competenciaLabel}</h3>
+          <h3 className="mt-1 font-serif text-lg font-black text-monserrat-ink leading-snug">{competenciaLabel}</h3>
         </div>
 
         {mostrarBuscador && (
-          <div className="border-b border-monserrat-ink/8 bg-white px-5 py-3">
+          <div className="border-b border-monserrat-ink/8 bg-white px-6 py-3 flex-none">
             <div className="relative">
               <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-monserrat-ink/35" />
               <input
                 autoFocus
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
-                placeholder="Buscar docente..."
-                className="w-full rounded-[10px] border border-monserrat-ink/10 bg-white py-2 pl-9 pr-3 text-[12.5px] font-semibold text-monserrat-ink outline-none focus:border-monserrat-red"
+                placeholder="Buscar docente por nombre..."
+                className="w-full rounded-[10px] border border-monserrat-ink/10 bg-white py-2 pl-9 pr-3 text-[12.5px] font-semibold text-monserrat-ink outline-none focus:border-monserrat-red focus:ring-1 focus:ring-monserrat-red/20"
               />
             </div>
           </div>
         )}
 
-        <div className="grid max-h-[360px] gap-2 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto p-6 grid gap-2.5">
           {docenteActualDni && (
             <button
               type="button"
               onClick={() => onSelect("")}
-              className="flex items-center justify-between rounded-[10px] border border-monserrat-ink/10 px-3 py-2 text-left text-[12.5px] font-semibold text-monserrat-ink/50 hover:border-monserrat-ink/25"
+              className="flex items-center justify-center gap-1.5 rounded-[12px] border border-dashed border-red-500/30 bg-red-500/4 py-2.5 text-center text-[12.5px] font-black text-red-600 hover:bg-red-500/10 hover:border-red-500/50 transition-all cursor-pointer flex-none mb-1.5"
             >
-              Quitar asignacion
+              <X size={13} /> Quitar docente asignado
             </button>
           )}
           {docentes.length === 0 && (
-            <p className="py-4 text-center text-sm font-semibold text-monserrat-ink/40">
+            <p className="py-8 text-center text-sm font-semibold text-monserrat-ink/40">
               No hay docentes disponibles
             </p>
           )}
           {docentes.length > 0 && docentesFiltrados.length === 0 && (
-            <p className="py-4 text-center text-sm font-semibold text-monserrat-ink/40">
+            <p className="py-8 text-center text-sm font-semibold text-monserrat-ink/40">
               Ningún docente coincide con la búsqueda
             </p>
           )}
@@ -820,25 +839,30 @@ export function ElegirDocenteModal({
                 key={d.dni}
                 type="button"
                 onClick={() => onSelect(d.dni)}
-                className={`flex items-center justify-between rounded-[10px] border px-3 py-2 text-left text-[12.5px] font-semibold transition ${
+                className={`flex items-center justify-between rounded-[12px] border p-2.5 text-left text-[12.5px] font-semibold transition-all cursor-pointer ${
                   selected
-                    ? "border-monserrat-red/30 bg-monserrat-red/8 text-monserrat-red"
-                    : "border-monserrat-ink/10 text-monserrat-ink/70 hover:border-monserrat-ink/25"
+                    ? "border-monserrat-red/40 bg-monserrat-red/8 text-monserrat-red shadow-sm shadow-monserrat-red/5 scale-[1.01]"
+                    : "border-monserrat-ink/8 text-monserrat-ink/75 bg-white hover:border-monserrat-red/25 hover:bg-monserrat-cream/5"
                 }`}
               >
-                <span>{d.nombre}</span>
-                {selected && <span className="text-[10px] font-black uppercase">Asignado</span>}
+                <div className="flex items-center min-w-0">
+                  <div className={`h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-black mr-2.5 shrink-0 ${selected ? 'bg-monserrat-red text-white' : 'bg-monserrat-cream text-monserrat-ink/70'}`}>
+                    {getInitials(d.nombre)}
+                  </div>
+                  <span className="truncate">{d.nombre}</span>
+                </div>
+                {selected && <Check size={13} className="shrink-0 text-monserrat-red ml-2" />}
               </button>
             );
           })}
         </div>
-        <div className="flex justify-end gap-2 border-t border-monserrat-ink/8 px-5 py-3">
+        <div className="flex justify-end gap-2 border-t border-monserrat-ink/8 px-6 py-4 bg-monserrat-cream/20 flex-none">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-[10px] bg-monserrat-red px-4 py-2 text-[12px] font-black text-white hover:bg-monserrat-red/85"
+            className="rounded-[12px] border border-monserrat-ink/15 bg-white px-5 py-2.5 text-[12px] font-black text-monserrat-ink hover:bg-monserrat-cream/10 transition-all cursor-pointer"
           >
-            Cerrar
+            Cancelar
           </button>
         </div>
       </div>

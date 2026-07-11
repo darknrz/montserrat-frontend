@@ -40,8 +40,14 @@ export function PortalAcademicoPage() {
   const BIMESTRES = ["Primer Bimestre", "Segundo Bimestre", "Tercer Bimestre", "Cuarto Bimestre"] as const;
   const [asistenciaFecha, setAsistenciaFecha] = useState(new Date().toISOString().slice(0, 10));
   const [asistenciaBulk, setAsistenciaBulk] = useState<Record<string, string>>({});
-  const emptyNotaForm = { id: 0, alumnoDni: "", curso: "", periodo: "", tipoEvaluacion: "EXAMEN", valor: 0, observacion: "" };
+  const emptyNotaForm = { id: 0, alumnoDni: "", curso: "", periodo: "", tipoEvaluacion: "EXAMEN", valor: 0, observacion: "", competenciaId: "" };
   const [notaForm, setNotaForm] = useState(emptyNotaForm);
+  const [selectedCurso, setSelectedCurso] = useState("");
+  const [selectedGrado, setSelectedGrado] = useState("");
+  const [selectedSeccion, setSelectedSeccion] = useState("");
+  const [selectedAlumnoDni, setSelectedAlumnoDni] = useState("");
+  const [academicoConfig, setAcademicoConfig] = useState<any>(null);
+  const [gridCalificaciones, setGridCalificaciones] = useState<Record<string, { valor: number, observacion: string }>>({});
   const [perfilPhotoFile, setPerfilPhotoFile] = useState<File | null>(null);
   const perfilPhotoPreview = perfilPhotoFile ? URL.createObjectURL(perfilPhotoFile) : perfil.fotoUrl;
 
@@ -64,7 +70,7 @@ export function PortalAcademicoPage() {
     }, []);
   }, [asignaciones]);
 
-    const salonRows = useMemo(() => {
+  const salonRows = useMemo(() => {
     const grouped = new Map<string, { nivel: string; grado?: string; seccion?: string; alumnos: string[]; cursos: string[] }>();
     asignaciones.forEach((item) => {
       const key = `${item.nivelEducativo ?? ""}-${item.grado ?? ""}-${item.seccion ?? ""}`;
@@ -78,8 +84,12 @@ export function PortalAcademicoPage() {
         });
       }
       const current = grouped.get(key)!;
-      if (item.alumnoNombre && !current.alumnos.includes(item.alumnoNombre)) current.alumnos.push(item.alumnoNombre);
-      if (item.curso && !current.cursos.includes(item.curso)) current.cursos.push(item.curso);
+      if (item.alumnoDni && !current.alumnos.includes(item.alumnoDni)) {
+        current.alumnos.push(item.alumnoDni);
+      }
+      if (item.curso && !current.cursos.includes(item.curso)) {
+        current.cursos.push(item.curso);
+      }
     });
     return Array.from(grouped.values()).map((item) => ({
       ...item,
@@ -128,9 +138,12 @@ export function PortalAcademicoPage() {
     setPerfil(perfilData);
 
     try {
-      const config = await monserratApi.academicoConfiguracion<{ minAsistenciaPorcentaje?: number }>(token);
-      if (config && config.minAsistenciaPorcentaje !== undefined) {
-        setMinAsistenciaPct(config.minAsistenciaPorcentaje);
+      const config = await monserratApi.academicoConfiguracion<any>(token);
+      if (config) {
+        setAcademicoConfig(config);
+        if (config.minAsistenciaPorcentaje !== undefined) {
+          setMinAsistenciaPct(config.minAsistenciaPorcentaje);
+        }
       }
     } catch (e) {
       console.error("No se pudo cargar la configuración de asistencia", e);
@@ -147,6 +160,12 @@ export function PortalAcademicoPage() {
       setAsignaciones(asignacionesData);
       setAsistencias(asistenciasData);
       setNotas(notasData);
+
+      const uniqueCursos = Array.from(new Set(asignacionesData.map((a) => a.curso)));
+      if (uniqueCursos.length > 0) {
+        setSelectedCurso(uniqueCursos[0]);
+      }
+
       // Inicializar bulk con todos como PRESENTE
       setNotaForm((current) => ({ ...current, alumnoDni: current.alumnoDni || alumnosData[0]?.dni || "", curso: current.curso || asignacionesData[0]?.curso || "" }));
     }
@@ -170,6 +189,270 @@ export function PortalAcademicoPage() {
   useEffect(() => {
     void loadPortal().catch((error: unknown) => setStatus(error instanceof Error ? error.message : "No se pudo cargar el portal"));
   }, [loadPortal]);
+
+  // Derived states for qualitative grading in Primaria
+  const cursosAlumno = useMemo(() => {
+    return Array.from(new Set(asignaciones.map((a) => a.curso)));
+  }, [asignaciones]);
+
+  const getNotaAlumno = (curso: string, compId: string, periodo: string) => {
+    return notas.find((n) => 
+      n.curso === curso && 
+      n.competenciaId === compId && 
+      n.periodo === periodo
+    );
+  };
+
+  const getCompetenciasDeCurso = (curso: string) => {
+    const mappings = academicoConfig?.competenciasPorCursoPrimaria ?? {
+      INGLES: ["C17", "C18", "C19"],
+      PERSONAL_SOCIAL: ["C1", "C2", "C3", "C4", "C5"],
+      EDUCACION_RELIGIOSA: ["C6", "C7"],
+      EDUCACION_FISICA: ["C8", "C9", "C10"],
+      COMUNICACION: ["C11", "C12", "C13"],
+      ARTE_CULTURA: ["C14", "C15"],
+      CASTELLANO_SEGUNDA_LENGUA: ["C16", "C29", "C30"],
+      MATEMATICA: ["C20", "C21", "C22", "C23"],
+      CIENCIA_TECNOLOGIA: ["C24", "C25", "C26"],
+      COMPETENCIAS_TRANSVERSALES: ["C27", "C28"]
+    };
+    const compIds = mappings[curso] ?? [];
+    const catalog = academicoConfig?.competenciasPrimaria ?? [
+      { id: "C1", label: "Construye su identidad." },
+      { id: "C2", label: "Convive y participa democráticamente en la búsqueda del bien común." },
+      { id: "C3", label: "Construye interpretaciones históricas." },
+      { id: "C4", label: "Gestiona responsablemente el espacio y el ambiente." },
+      { id: "C5", label: "Gestiona responsablemente los recursos económicos." },
+      { id: "C6", label: "Construye su identidad como persona humana, amada por Dios, digna, libre y trascendente, comprendiendo la doctrina de su propia religión y abierta al diálogo con las que le son cercanas." },
+      { id: "C7", label: "Asume la experiencia del encuentro personal y comunitario con Dios en su proyecto de vida, en coherencia con su creencia religiosa." },
+      { id: "C8", label: "Se desenvuelve de manera autónoma a través de su motricidad." },
+      { id: "C9", label: "Asume una vida saludable." },
+      { id: "C10", label: "Interactúa a través de sus habilidades sociomotrices." },
+      { id: "C11", label: "Se comunica oralmente en su lengua materna." },
+      { id: "C12", label: "Lee diversos tipos de textos escritos." },
+      { id: "C13", label: "Escribe diversos tipos de textos." },
+      { id: "C14", label: "Aprecia de manera crítica manifestaciones artístico-culturales." },
+      { id: "C15", label: "Crea proyectos desde los lenguajes artísticos." },
+      { id: "C16", label: "Se comunica oralmente en castellano como segunda lengua." },
+      { id: "C17", label: "Se comunica oralmente en inglés como lengua extranjera." },
+      { id: "C18", label: "Lee diversos tipos de textos en inglés como lengua extranjera." },
+      { id: "C19", label: "Escribe diversos tipos de textos en inglés como lengua extranjera." },
+      { id: "C20", label: "Resuelve problemas de cantidad." },
+      { id: "C21", label: "Resuelve problemas de regularidad, equivalencia y cambio." },
+      { id: "C22", label: "Resuelve problemas de forma, movimiento y localización." },
+      { id: "C23", label: "Resuelve problemas de gestión de datos e incertidumbre." },
+      { id: "C24", label: "Indaga mediante métodos científicos para construir conocimientos." },
+      { id: "C25", label: "Explica el mundo físico basándose en conocimientos sobre los seres vivos, materia y energía, biodiversidad, Tierra y Universo." },
+      { id: "C26", label: "Diseña y construye soluciones tecnológicas para resolver problemas de su entorno." },
+      { id: "C27", label: "Se desenvuelve en entornos virtuales generados por las TIC." },
+      { id: "C28", label: "Gestiona su aprendizaje de manera autónoma." },
+      { id: "C29", label: "Lee diversos tipos de textos escritos en castellano como segunda lengua." },
+      { id: "C30", label: "Escribe diversos tipos de textos en castellano como segunda lengua." }
+    ];
+    return compIds.map((id: string) => {
+      const match = catalog.find((c: any) => c.id === id);
+      return { id, label: match ? match.label : id };
+    });
+  };
+
+  const getNLBg = (val: string) => {
+    if (val === "AD") return "bg-emerald-50 border-emerald-200 text-emerald-700";
+    if (val === "A") return "bg-green-50 border-green-200 text-green-700";
+    if (val === "B") return "bg-amber-50 border-amber-200 text-amber-700";
+    if (val === "C") return "bg-rose-50 border-rose-200 text-rose-700";
+    return "bg-slate-50 border-slate-200 text-slate-400";
+  };
+
+  const salonesDeCurso = useMemo(() => {
+    if (!selectedCurso) return [];
+    const map = new Map<string, { grado: string; seccion: string }>();
+    asignaciones
+      .filter((a) => a.curso === selectedCurso)
+      .forEach((a) => {
+        if (a.grado && a.seccion) {
+          map.set(`${a.grado}||${a.seccion}`, { grado: a.grado, seccion: a.seccion });
+        }
+      });
+    return Array.from(map.values());
+  }, [selectedCurso, asignaciones]);
+
+  const alumnosFiltrados = useMemo(() => {
+    if (!selectedCurso || !selectedGrado || !selectedSeccion) return [];
+    return alumnos.filter((al) => {
+      return asignaciones.some(
+        (a) =>
+          a.alumnoDni === al.dni &&
+          a.curso === selectedCurso &&
+          a.grado === selectedGrado &&
+          a.seccion === selectedSeccion
+      );
+    });
+  }, [selectedCurso, selectedGrado, selectedSeccion, alumnos, asignaciones]);
+
+  // Automatically select first salon when course changes
+  useEffect(() => {
+    if (salonesDeCurso.length > 0) {
+      setSelectedGrado(salonesDeCurso[0].grado);
+      setSelectedSeccion(salonesDeCurso[0].seccion);
+    } else {
+      setSelectedGrado("");
+      setSelectedSeccion("");
+    }
+  }, [selectedCurso, salonesDeCurso]);
+
+  // Automatically select first alumno when list changes
+  useEffect(() => {
+    if (alumnosFiltrados.length > 0) {
+      setSelectedAlumnoDni(alumnosFiltrados[0].dni);
+    } else {
+      setSelectedAlumnoDni("");
+    }
+  }, [alumnosFiltrados]);
+
+  const competenciasCurso = useMemo(() => {
+    if (!selectedCurso) return [];
+    const mappings = academicoConfig?.competenciasPorCursoPrimaria ?? {
+      INGLES: ["C17", "C18", "C19"],
+      PERSONAL_SOCIAL: ["C1", "C2", "C3", "C4", "C5"],
+      EDUCACION_RELIGIOSA: ["C6", "C7"],
+      EDUCACION_FISICA: ["C8", "C9", "C10"],
+      COMUNICACION: ["C11", "C12", "C13"],
+      ARTE_CULTURA: ["C14", "C15"],
+      CASTELLANO_SEGUNDA_LENGUA: ["C16", "C29", "C30"],
+      MATEMATICA: ["C20", "C21", "C22", "C23"],
+      CIENCIA_TECNOLOGIA: ["C24", "C25", "C26"],
+      COMPETENCIAS_TRANSVERSALES: ["C27", "C28"]
+    };
+    const compIds = mappings[selectedCurso] ?? [];
+    const catalog = academicoConfig?.competenciasPrimaria ?? [
+      { id: "C1", label: "Construye su identidad." },
+      { id: "C2", label: "Convive y participa democráticamente en la búsqueda del bien común." },
+      { id: "C3", label: "Construye interpretaciones históricas." },
+      { id: "C4", label: "Gestiona responsablemente el espacio y el ambiente." },
+      { id: "C5", label: "Gestiona responsablemente los recursos económicos." },
+      { id: "C6", label: "Construye su identidad como persona humana, amada por Dios, digna, libre y trascendente, comprendiendo la doctrina de su propia religión y abierta al diálogo con las que le son cercanas." },
+      { id: "C7", label: "Asume la experiencia del encuentro personal y comunitario con Dios en su proyecto de vida, en coherencia con su creencia religiosa." },
+      { id: "C8", label: "Se desenvuelve de manera autónoma a través de su motricidad." },
+      { id: "C9", label: "Asume una vida saludable." },
+      { id: "C10", label: "Interactúa a través de sus habilidades sociomotrices." },
+      { id: "C11", label: "Se comunica oralmente en su lengua materna." },
+      { id: "C12", label: "Lee diversos tipos de textos escritos." },
+      { id: "C13", label: "Escribe diversos tipos de textos." },
+      { id: "C14", label: "Aprecia de manera crítica manifestaciones artístico-culturales." },
+      { id: "C15", label: "Crea proyectos desde los lenguajes artísticos." },
+      { id: "C16", label: "Se comunica oralmente en castellano como segunda lengua." },
+      { id: "C17", label: "Se comunica oralmente en inglés como lengua extranjera." },
+      { id: "C18", label: "Lee diversos tipos de textos en inglés como lengua extranjera." },
+      { id: "C19", label: "Escribe diversos tipos de textos en inglés como lengua extranjera." },
+      { id: "C20", label: "Resuelve problemas de cantidad." },
+      { id: "C21", label: "Resuelve problemas de regularidad, equivalencia y cambio." },
+      { id: "C22", label: "Resuelve problemas de forma, movimiento y localización." },
+      { id: "C23", label: "Resuelve problemas de gestión de datos e incertidumbre." },
+      { id: "C24", label: "Indaga mediante métodos científicos para construir conocimientos." },
+      { id: "C25", label: "Explica el mundo físico basándose en conocimientos sobre los seres vivos, materia y energía, biodiversidad, Tierra y Universo." },
+      { id: "C26", label: "Diseña y construye soluciones tecnológicas para resolver problemas de su entorno." },
+      { id: "C27", label: "Se desenvuelve en entornos virtuales generados por las TIC." },
+      { id: "C28", label: "Gestiona su aprendizaje de manera autónoma." },
+      { id: "C29", label: "Lee diversos tipos de textos escritos en castellano como segunda lengua." },
+      { id: "C30", label: "Escribe diversos tipos de textos en castellano como segunda lengua." }
+    ];
+    return compIds.map((id: string) => {
+      const match = catalog.find((c: any) => c.id === id);
+      return { id, label: match ? match.label : id };
+    });
+  }, [selectedCurso, academicoConfig]);
+
+  useEffect(() => {
+    if (!selectedAlumnoDni || !selectedCurso) {
+      setGridCalificaciones({});
+      return;
+    }
+    const initialGrid: Record<string, { valor: number, observacion: string }> = {};
+    notas.forEach((nota) => {
+      if (nota.alumnoDni === selectedAlumnoDni && nota.curso === selectedCurso && nota.competenciaId) {
+        initialGrid[`${nota.competenciaId}||${nota.periodo}`] = {
+          valor: nota.valor,
+          observacion: nota.observacion ?? ""
+        };
+      }
+    });
+    setGridCalificaciones(initialGrid);
+  }, [selectedAlumnoDni, selectedCurso, notas]);
+
+  const numToLetter = (val: number): string => {
+    if (val === 4) return "AD";
+    if (val === 3) return "A";
+    if (val === 2) return "B";
+    if (val === 1) return "C";
+    return "";
+  };
+
+  const letterToNum = (letra: string): number => {
+    if (letra === "AD") return 4;
+    if (letra === "A") return 3;
+    if (letra === "B") return 2;
+    if (letra === "C") return 1;
+    return 0;
+  };
+
+  const saveGridCalificaciones = async () => {
+    if (!selectedAlumnoDni || !selectedCurso) return;
+    setIsBusy(true);
+    setStatus(null);
+    try {
+      const promises = [];
+      const periodos = ["Primer Bimestre", "Segundo Bimestre", "Tercer Bimestre", "Cuarto Bimestre", "Calificación Final"];
+      
+      for (const comp of competenciasCurso) {
+        for (const periodo of periodos) {
+          const key = `${comp.id}||${periodo}`;
+          const currentVal = gridCalificaciones[key]?.valor ?? 0;
+          const currentObs = gridCalificaciones[key]?.observacion ?? "";
+          
+          const existing = notas.find((n) => 
+            n.alumnoDni === selectedAlumnoDni &&
+            n.curso === selectedCurso &&
+            n.competenciaId === comp.id &&
+            n.periodo === periodo
+          );
+          
+          const hasChanged = !existing || existing.valor !== currentVal || (existing.observacion ?? "") !== currentObs;
+          
+          if (hasChanged) {
+            const payload = {
+              alumnoDni: selectedAlumnoDni,
+              curso: selectedCurso,
+              periodo: periodo,
+              tipoEvaluacion: "EXAMEN",
+              valor: currentVal,
+              observacion: currentObs,
+              competenciaId: comp.id
+            };
+            
+            if (existing) {
+              promises.push(monserratApi.updateNota(existing.id, payload, token));
+            } else if (currentVal > 0 || currentObs.trim().length > 0) {
+              promises.push(monserratApi.registrarNota(payload, token));
+            }
+          }
+        }
+      }
+      
+      if (promises.length > 0) {
+        await Promise.all(promises);
+        const notasData = await monserratApi.notasDocente(token);
+        setNotas(notasData);
+        alert("¡Calificaciones guardadas exitosamente!");
+      } else {
+        alert("No se detectaron cambios para guardar.");
+      }
+    } catch (e) {
+      console.error("Error al guardar calificaciones", e);
+      setStatus("No se pudieron guardar las calificaciones");
+    } finally {
+      setIsBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (session?.rol === "ALUMNO" && token) {
@@ -620,101 +903,362 @@ export function PortalAcademicoPage() {
           )}
 
           {tab === "notas" && (
-            <div className={isDocente ? "grid gap-5 lg:grid-cols-[320px_1fr]" : "grid gap-5"}>
-              {isDocente && (
-                <form
-                  onSubmit={submitNota}
-                  className={`grid content-start gap-3 rounded-[16px] border-2 p-4 transition-all duration-200 ${
-                    notaForm.id
-                      ? "border-blue-400 bg-blue-50/60"
-                      : "border-monserrat-ink/8 bg-monserrat-cream/35"
-                  }`}
-                >
-                  {/* Barra de modo: Nueva nota / Editando nota */}
-                  <div className="flex items-center justify-between gap-2 pb-1">
-                    {notaForm.id ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-3 py-1 text-[11px] font-black uppercase tracking-wide text-blue-700">
-                        <Edit3 size={11} /> Editando nota #{notaForm.id}
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-black uppercase tracking-wide text-emerald-700">
-                        <Plus size={11} /> Nueva nota
-                      </span>
-                    )}
-                    {notaForm.id > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setNotaForm(emptyNotaForm)}
-                        className="inline-flex items-center gap-1 rounded-[8px] border border-blue-200 bg-white px-3 py-1 text-[12px] font-bold text-blue-600 hover:bg-blue-50 transition-colors"
-                      >
-                        <X size={12} /> Cancelar edicion
-                      </button>
-                    )}
+            nivelActual === "PRIMARIA" ? (
+              isDocente ? (
+                <div className="grid gap-5">
+                  {/* Filtros de Calificaciones */}
+                  <div className="rounded-[18px] border border-monserrat-ink/8 bg-white p-5 shadow-sm">
+                    <div className="mb-4">
+                      <h3 className="font-serif text-lg font-black text-monserrat-ink">Evaluación por Competencias (Primaria)</h3>
+                      <p className="text-[11px] font-semibold text-monserrat-ink/50 mt-0.5">Define los niveles de logro (NL) cualitativos y redacta las conclusiones descriptivas.</p>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-[1.5fr_1fr_1.5fr_1.2fr]">
+                      <Field label="Área Curricular">
+                        <select
+                          value={selectedCurso}
+                          onChange={(e) => setSelectedCurso(e.target.value)}
+                          className="admin-input"
+                        >
+                          <option value="">Selecciona un curso</option>
+                          {cursosDisponibles.map((curso) => (
+                            <option key={curso} value={curso}>{labelFromEnum(curso)}</option>
+                          ))}
+                        </select>
+                      </Field>
+                      
+                      <Field label="Grado y Sección">
+                        <select
+                          value={`${selectedGrado}||${selectedSeccion}`}
+                          onChange={(e) => {
+                            const parts = e.target.value.split("||");
+                            setSelectedGrado(parts[0] || "");
+                            setSelectedSeccion(parts[1] || "");
+                          }}
+                          className="admin-input"
+                          disabled={!selectedCurso}
+                        >
+                          <option value="">Selecciona un salón</option>
+                          {salonesDeCurso.map((s) => (
+                            <option key={`${s.grado}||${s.seccion}`} value={`${s.grado}||${s.seccion}`}>
+                              {labelFromEnum(s.grado)} - Secc. {s.seccion}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+
+                      <Field label="Estudiante">
+                        <select
+                          value={selectedAlumnoDni}
+                          onChange={(e) => setSelectedAlumnoDni(e.target.value)}
+                          className="admin-input"
+                          disabled={!selectedGrado || !selectedSeccion}
+                        >
+                          <option value="">Selecciona un estudiante</option>
+                          {alumnosFiltrados.map((a) => (
+                            <option key={a.dni} value={a.dni}>{a.nombre}</option>
+                          ))}
+                        </select>
+                      </Field>
+                      
+                      <div className="flex items-end">
+                        <button
+                          disabled={isBusy || !selectedAlumnoDni}
+                          onClick={saveGridCalificaciones}
+                          className="w-full flex items-center justify-center gap-2 rounded-xl bg-monserrat-red text-white py-2.5 text-xs font-black hover:opacity-90 transition-all shadow-md shadow-monserrat-red/10 disabled:opacity-50"
+                        >
+                          <Save size={14} /> Guardar Calificaciones
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
-                  <h3 className={`font-serif text-lg font-black ${notaForm.id ? "text-blue-700" : "text-monserrat-ink"}`}>
-                    {notaForm.id ? "Editar nota" : "Registrar nota"}
-                  </h3>
+                  {/* Matriz de Evaluación */}
+                  {selectedAlumnoDni ? (
+                    <div className="rounded-[18px] border border-monserrat-ink/8 bg-white p-5 shadow-sm overflow-x-auto">
+                      <div className="mb-4 flex items-center justify-between">
+                        <h4 className="text-[13px] font-black uppercase tracking-wider text-monserrat-ink/65">
+                          Matriz de Logro: {alumnos.find((a) => a.dni === selectedAlumnoDni)?.nombre}
+                        </h4>
+                        <div className="flex gap-4 text-[10px] font-black text-monserrat-ink/45">
+                          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-emerald-500/20 inline-block"></span> AD (Logro Destacado)</span>
+                          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-green-500/20 inline-block"></span> A (Logro Esperado)</span>
+                          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-amber-500/20 inline-block"></span> B (En Proceso)</span>
+                          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-rose-500/20 inline-block"></span> C (En Inicio)</span>
+                        </div>
+                      </div>
+                      <table className="w-full min-w-[950px] border-collapse text-left text-xs text-monserrat-ink">
+                        <thead>
+                          <tr className="border-b border-monserrat-ink/10 bg-slate-50 text-[10px] font-black uppercase tracking-wider text-monserrat-ink/50">
+                            <th className="py-3 px-4 w-[24%]">Competencias</th>
+                            <th className="py-3 px-4 w-[16%]">I Bimestre</th>
+                            <th className="py-3 px-4 w-[16%]">II Bimestre</th>
+                            <th className="py-3 px-4 w-[16%]">III Bimestre</th>
+                            <th className="py-3 px-4 w-[16%]">IV Bimestre</th>
+                            <th className="py-3 px-4 w-[12%]">Promedio Final</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-monserrat-ink/5">
+                          {competenciasCurso.map((comp) => (
+                            <tr key={comp.id} className="hover:bg-slate-50/30 transition-colors">
+                              <td className="py-3.5 px-4 align-top">
+                                <span className="font-bold text-monserrat-ink/90 block mb-1 text-[11px]">{comp.id}</span>
+                                <p className="text-[10.5px] leading-relaxed text-monserrat-ink/55 font-medium">{comp.label}</p>
+                              </td>
+                              {["Primer Bimestre", "Segundo Bimestre", "Tercer Bimestre", "Cuarto Bimestre"].map((periodo) => {
+                                const val = numToLetter(gridCalificaciones[`${comp.id}||${periodo}`]?.valor ?? 0);
+                                return (
+                                  <td key={periodo} className="py-3.5 px-4 align-top">
+                                    <div className="flex flex-col gap-2">
+                                      <select
+                                        value={val}
+                                        onChange={(e) => {
+                                          const l = e.target.value;
+                                          const n = letterToNum(l);
+                                          setGridCalificaciones((curr) => ({
+                                            ...curr,
+                                            [`${comp.id}||${periodo}`]: {
+                                              valor: n,
+                                              observacion: curr[`${comp.id}||${periodo}`]?.observacion ?? ""
+                                            }
+                                          }));
+                                        }}
+                                        className={`w-full rounded-lg border px-2 py-1 text-xs font-black outline-none transition-all ${getNLBg(val)}`}
+                                      >
+                                        <option value="">—</option>
+                                        <option value="AD">AD</option>
+                                        <option value="A">A</option>
+                                        <option value="B">B</option>
+                                        <option value="C">C</option>
+                                      </select>
+                                      <textarea
+                                        placeholder="Conclusión..."
+                                        rows={2}
+                                        value={gridCalificaciones[`${comp.id}||${periodo}`]?.observacion ?? ""}
+                                        onChange={(e) => {
+                                          const text = e.target.value;
+                                          setGridCalificaciones((curr) => ({
+                                            ...curr,
+                                            [`${comp.id}||${periodo}`]: {
+                                              valor: curr[`${comp.id}||${periodo}`]?.valor ?? 0,
+                                              observacion: text
+                                            }
+                                          }));
+                                        }}
+                                        className="w-full rounded-lg border border-slate-200 bg-white p-1.5 text-[10.5px] text-slate-700 outline-none focus:border-monserrat-red focus:ring-1 focus:ring-monserrat-red/10 transition-all resize-none"
+                                      />
+                                    </div>
+                                  </td>
+                                );
+                              })}
+                              <td className="py-3.5 px-4 align-top">
+                                <select
+                                  value={numToLetter(gridCalificaciones[`${comp.id}||Calificación Final`]?.valor ?? 0)}
+                                  onChange={(e) => {
+                                    const l = e.target.value;
+                                    const n = letterToNum(l);
+                                    setGridCalificaciones((curr) => ({
+                                      ...curr,
+                                      [`${comp.id}||Calificación Final`]: {
+                                        valor: n,
+                                        observacion: ""
+                                      }
+                                    }));
+                                  }}
+                                  className={`w-full rounded-lg border px-2 py-1.5 text-xs font-black outline-none transition-all ${getNLBg(numToLetter(gridCalificaciones[`${comp.id}||Calificación Final`]?.valor ?? 0))}`}
+                                >
+                                  <option value="">—</option>
+                                  <option value="AD">AD</option>
+                                  <option value="A">A</option>
+                                  <option value="B">B</option>
+                                  <option value="C">C</option>
+                                </select>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="rounded-[18px] border border-dashed border-monserrat-ink/20 bg-slate-50/50 p-12 text-center text-slate-400 font-medium">
+                      Selecciona un Área Curricular, Salón y Estudiante para registrar las calificaciones.
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Vista Alumno Primaria (Libreta) */
+                <div className="grid gap-5">
+                  <div className="rounded-[18px] border border-monserrat-ink/8 bg-white p-5 shadow-sm">
+                    <h3 className="font-serif text-lg font-black text-monserrat-ink">Libreta de Notas Virtual (Primaria)</h3>
+                    <p className="text-[11px] font-semibold text-monserrat-ink/50 mt-0.5">Progreso y calificaciones cualitativas correspondientes al año escolar actual.</p>
+                  </div>
 
-                  <Field label="Alumno">
-                    <select value={notaForm.alumnoDni} onChange={(event) => setNotaForm({ ...notaForm, alumnoDni: event.target.value })} className="admin-input" required>
-                      <option value="">Selecciona un alumno</option>
-                      {alumnos.map((alumno) => <option key={alumno.dni} value={alumno.dni}>{alumno.nombre}</option>)}
-                    </select>
-                  </Field>
-                  <Field label="Curso">
-                    {cursosDisponibles.length > 0 ? (
-                      <select value={notaForm.curso} onChange={(event) => setNotaForm({ ...notaForm, curso: event.target.value })} className="admin-input" required>
-                        <option value="">Selecciona un curso</option>
-                        {cursosDisponibles.map((curso) => <option key={curso} value={curso}>{curso}</option>)}
-                      </select>
-                    ) : (
-                      <input value={notaForm.curso} onChange={(event) => setNotaForm({ ...notaForm, curso: event.target.value })} className="admin-input" placeholder="Nombre del curso" required />
-                    )}
-                  </Field>
-                  <Field label="Tipo de evaluacion">
-                    <select value={notaForm.tipoEvaluacion} onChange={(event) => setNotaForm({ ...notaForm, tipoEvaluacion: event.target.value })} className="admin-input" required>
-                      <option value="EXAMEN">Examen</option>
-                      <option value="PRACTICA">Practica</option>
-                      <option value="TAREA">Tarea</option>
-                      <option value="PARTICIPACION">Participacion</option>
-                      <option value="PROYECTO">Proyecto</option>
-                    </select>
-                  </Field>
-                  <Field label="Periodo">
-                    <select value={notaForm.periodo} onChange={(event) => setNotaForm({ ...notaForm, periodo: event.target.value })} className="admin-input" required>
-                      <option value="">Selecciona un periodo</option>
-                      {BIMESTRES.map((periodo) => (
-                        <option key={periodo} value={periodo}>{periodo}</option>
-                      ))}
-                    </select>
-                  </Field>
-                  <Field label="Nota (0-20)"><input type="number" min="0" max="20" step="0.1" value={notaForm.valor || ""} onChange={(event) => setNotaForm({ ...notaForm, valor: Number(event.target.value) })} className="admin-input" placeholder="0 - 20" required /></Field>
-                  <Field label="Observacion"><textarea value={notaForm.observacion} onChange={(event) => setNotaForm({ ...notaForm, observacion: event.target.value })} className="admin-input" placeholder="Opcional" /></Field>
-
-                  <button
-                    disabled={isBusy}
-                    className={`inline-flex items-center justify-center gap-2 rounded-[12px] py-2.5 text-sm font-black text-white disabled:opacity-60 transition-colors ${
-                      notaForm.id ? "bg-blue-600 hover:bg-blue-700" : "bg-monserrat-red hover:opacity-90"
+                  <div className="grid gap-5">
+                    {cursosAlumno.map((cursoId) => {
+                      const comps = getCompetenciasDeCurso(cursoId);
+                      return (
+                        <div key={cursoId} className="rounded-[18px] border border-monserrat-ink/8 bg-white p-5 shadow-sm">
+                          <h4 className="font-serif text-base font-black text-monserrat-red mb-4">{labelFromEnum(cursoId)}</h4>
+                          <div className="overflow-x-auto">
+                            <table className="w-full min-w-[850px] border-collapse text-left text-xs text-monserrat-ink">
+                              <thead>
+                                <tr className="border-b border-monserrat-ink/10 bg-slate-50 text-[10px] font-black uppercase tracking-wider text-monserrat-ink/50">
+                                  <th className="py-2.5 px-4 w-[28%]">Competencias</th>
+                                  <th className="py-2.5 px-4 w-[15%]">I Bimestre</th>
+                                  <th className="py-2.5 px-4 w-[15%]">II Bimestre</th>
+                                  <th className="py-2.5 px-4 w-[15%]">III Bimestre</th>
+                                  <th className="py-2.5 px-4 w-[15%]">IV Bimestre</th>
+                                  <th className="py-2.5 px-4 w-[12%]">Nota Final</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-monserrat-ink/5">
+                                {comps.map((comp) => (
+                                  <tr key={comp.id}>
+                                    <td className="py-3 px-4 align-top">
+                                      <span className="font-bold text-monserrat-ink/90 block mb-0.5 text-[11px]">{comp.id}</span>
+                                      <p className="text-[10.5px] leading-relaxed text-monserrat-ink/55 font-medium">{comp.label}</p>
+                                    </td>
+                                    {["Primer Bimestre", "Segundo Bimestre", "Tercer Bimestre", "Cuarto Bimestre"].map((periodo) => {
+                                      const nota = getNotaAlumno(cursoId, comp.id, periodo);
+                                      const letra = nota ? numToLetter(nota.valor) : "";
+                                      return (
+                                        <td key={periodo} className="py-3 px-4 align-top">
+                                          <div className="flex flex-col gap-1">
+                                            {letra ? (
+                                              <span className={`inline-flex self-start items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-black ${getNLBg(letra)} border`}>
+                                                {letra}
+                                              </span>
+                                            ) : (
+                                              <span className="text-slate-300 font-bold">—</span>
+                                            )}
+                                            {nota?.observacion && (
+                                              <p className="text-[10px] italic text-monserrat-ink/45 mt-1 leading-snug bg-slate-50 p-1.5 rounded-lg border border-slate-100">{nota.observacion}</p>
+                                            )}
+                                          </div>
+                                        </td>
+                                      );
+                                    })}
+                                    <td className="py-3 px-4 align-top">
+                                      {(() => {
+                                        const finalNota = getNotaAlumno(cursoId, comp.id, "Calificación Final");
+                                        const finalLetra = finalNota ? numToLetter(finalNota.valor) : "";
+                                        return finalLetra ? (
+                                          <span className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-black ${getNLBg(finalLetra)} border`}>
+                                            {finalLetra}
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-300 font-bold">—</span>
+                                        );
+                                      })()}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )
+            ) : (
+              /* Vista Secundaria / Original */
+              <div className={isDocente ? "grid gap-5 lg:grid-cols-[320px_1fr]" : "grid gap-5"}>
+                {isDocente && (
+                  <form
+                    onSubmit={submitNota}
+                    className={`grid content-start gap-3 rounded-[16px] border-2 p-4 transition-all duration-200 ${
+                      notaForm.id
+                        ? "border-blue-400 bg-blue-50/60"
+                        : "border-monserrat-ink/8 bg-monserrat-cream/35"
                     }`}
                   >
-                    {notaForm.id
-                      ? <><Edit3 size={15} /> Actualizar nota</>
-                      : <><GraduationCap size={15} /> Registrar nota</>
-                    }
-                  </button>
-                </form>
-              )}
-              <SimpleTable
-                title={isDocente ? "Notas registradas" : "Mis notas"}
-                headers={isDocente ? ["Alumno", "Curso", "Tipo", "Nota"] : ["Curso", "Tipo", "Nota", "Docente"]}
-                rows={notas.map((nota) => isDocente ? [nota.alumnoNombre, labelFromEnum(nota.curso), labelFromEnum(nota.tipoEvaluacion ?? ""), String(nota.valor)] : [labelFromEnum(nota.curso), labelFromEnum(nota.tipoEvaluacion ?? ""), String(nota.valor), nota.docenteNombre])}
-                onRowClick={isDocente ? (index) => {
-                  const nota = notas[index];
-                  setNotaForm({ id: nota.id, alumnoDni: nota.alumnoDni, curso: nota.curso, periodo: nota.periodo, tipoEvaluacion: nota.tipoEvaluacion ?? "EXAMEN", valor: nota.valor, observacion: nota.observacion ?? "" });
-                } : undefined}
-              />
-            </div>
+                    {/* Barra de modo: Nueva nota / Editando nota */}
+                    <div className="flex items-center justify-between gap-2 pb-1">
+                      {notaForm.id ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-3 py-1 text-[11px] font-black uppercase tracking-wide text-blue-700">
+                          <Edit3 size={11} /> Editando nota #{notaForm.id}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-black uppercase tracking-wide text-emerald-700">
+                          <Plus size={11} /> Nueva nota
+                        </span>
+                      )}
+                      {notaForm.id > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setNotaForm(emptyNotaForm)}
+                          className="inline-flex items-center gap-1 rounded-[8px] border border-blue-200 bg-white px-3 py-1 text-[12px] font-bold text-blue-600 hover:bg-blue-50 transition-colors"
+                        >
+                          <X size={12} /> Cancelar edicion
+                        </button>
+                      )}
+                    </div>
+
+                    <h3 className={`font-serif text-lg font-black ${notaForm.id ? "text-blue-700" : "text-monserrat-ink"}`}>
+                      {notaForm.id ? "Editar nota" : "Registrar nota"}
+                    </h3>
+
+                    <Field label="Alumno">
+                      <select value={notaForm.alumnoDni} onChange={(event) => setNotaForm({ ...notaForm, alumnoDni: event.target.value })} className="admin-input" required>
+                        <option value="">Selecciona un alumno</option>
+                        {alumnos.map((alumno) => <option key={alumno.dni} value={alumno.dni}>{alumno.nombre}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="Curso">
+                      {cursosDisponibles.length > 0 ? (
+                        <select value={notaForm.curso} onChange={(event) => setNotaForm({ ...notaForm, curso: event.target.value })} className="admin-input" required>
+                          <option value="">Selecciona un curso</option>
+                          {cursosDisponibles.map((curso) => <option key={curso} value={curso}>{curso}</option>)}
+                        </select>
+                      ) : (
+                        <input value={notaForm.curso} onChange={(event) => setNotaForm({ ...notaForm, curso: event.target.value })} className="admin-input" placeholder="Nombre del curso" required />
+                      )}
+                    </Field>
+                    <Field label="Tipo de evaluacion">
+                      <select value={notaForm.tipoEvaluacion} onChange={(event) => setNotaForm({ ...notaForm, tipoEvaluacion: event.target.value })} className="admin-input" required>
+                        <option value="EXAMEN">Examen</option>
+                        <option value="PRACTICA">Practica</option>
+                        <option value="TAREA">Tarea</option>
+                        <option value="PARTICIPACION">Participacion</option>
+                        <option value="PROYECTO">Proyecto</option>
+                      </select>
+                    </Field>
+                    <Field label="Periodo">
+                      <select value={notaForm.periodo} onChange={(event) => setNotaForm({ ...notaForm, periodo: event.target.value })} className="admin-input" required>
+                        <option value="">Selecciona un periodo</option>
+                        {BIMESTRES.map((periodo) => (
+                          <option key={periodo} value={periodo}>{periodo}</option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Nota (0-20)"><input type="number" min="0" max="20" step="0.1" value={notaForm.valor || ""} onChange={(event) => setNotaForm({ ...notaForm, valor: Number(event.target.value) })} className="admin-input" placeholder="0 - 20" required /></Field>
+                    <Field label="Observacion"><textarea value={notaForm.observacion} onChange={(event) => setNotaForm({ ...notaForm, observacion: event.target.value })} className="admin-input" placeholder="Opcional" /></Field>
+
+                    <button
+                      disabled={isBusy}
+                      className={`inline-flex items-center justify-center gap-2 rounded-[12px] py-2.5 text-sm font-black text-white disabled:opacity-60 transition-colors ${
+                        notaForm.id ? "bg-blue-600 hover:bg-blue-700" : "bg-monserrat-red hover:opacity-90"
+                      }`}
+                    >
+                      {notaForm.id
+                        ? <><Edit3 size={15} /> Actualizar nota</>
+                        : <><GraduationCap size={15} /> Registrar nota</>
+                      }
+                    </button>
+                  </form>
+                )}
+                <SimpleTable
+                  title={isDocente ? "Notas registradas" : "Mis notas"}
+                  headers={isDocente ? ["Alumno", "Curso", "Tipo", "Nota"] : ["Curso", "Tipo", "Nota", "Docente"]}
+                  rows={notas.map((nota) => isDocente ? [nota.alumnoNombre, labelFromEnum(nota.curso), labelFromEnum(nota.tipoEvaluacion ?? ""), String(nota.valor)] : [labelFromEnum(nota.curso), labelFromEnum(nota.tipoEvaluacion ?? ""), String(nota.valor), nota.docenteNombre])}
+                  onRowClick={isDocente ? (index) => {
+                    const nota = notas[index];
+                    setNotaForm({ id: nota.id, alumnoDni: nota.alumnoDni, curso: nota.curso, periodo: nota.periodo, tipoEvaluacion: nota.tipoEvaluacion ?? "EXAMEN", valor: nota.valor, observacion: nota.observacion ?? "" });
+                  } : undefined}
+                />
+              </div>
+            )
           )}
 
           {tab === "pension" && isAlumno && (
