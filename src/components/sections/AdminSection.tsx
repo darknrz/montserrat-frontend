@@ -183,6 +183,7 @@ export function AdminSection({
       ...academicoConfig.gradosSecundaria,
       ...academicoConfig.seccionesPrimaria,
       ...academicoConfig.seccionesSecundaria,
+      ...(academicoConfig.nivelesAcademicos ?? []),
     ].find((item) => item.id === id)?.label ?? labelFromEnum(id);
 
   const saveAcademicoConfig = (next: AcademicoConfig) => {

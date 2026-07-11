@@ -196,6 +196,27 @@ export function ConfiguracionTab({
               <span className="truncate text-[13px] font-black">Asistencia mínima</span>
             </span>
           </button>
+          <button
+            type="button"
+            onClick={() => setConfigView("niveles-academicos" as any)}
+            className={`flex items-center justify-between gap-3 rounded-[12px] px-3 py-3 text-left transition ${
+              (configView as string) === "niveles-academicos"
+                ? "bg-monserrat-red text-white"
+                : "bg-monserrat-cream/45 text-monserrat-ink/65 hover:bg-monserrat-cream"
+            }`}
+          >
+            <span className="flex min-w-0 items-center gap-2">
+              <GraduationCap size={16} />
+              <span className="truncate text-[13px] font-black">Niveles académicos</span>
+            </span>
+            <span
+              className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
+                (configView as string) === "niveles-academicos" ? "bg-white/18" : "bg-white"
+              }`}
+            >
+              {academicoConfig.nivelesAcademicos?.length ?? 0}
+            </span>
+          </button>
         </div>
 
         <div className="min-w-0 flex-1 flex flex-col overflow-y-auto pr-1">
@@ -324,6 +345,15 @@ export function ConfiguracionTab({
                 Este porcentaje se utilizará en el portal de los alumnos para mostrar alertas sobre su asistencia general.
               </div>
             </div>
+          )}
+          {configView === ("niveles-academicos" as any) && (
+            <ConfigPanel
+              title="Niveles académicos"
+              items={academicoConfig.nivelesAcademicos ?? []}
+              onChange={(items) =>
+                saveAcademicoConfig({ ...academicoConfig, nivelesAcademicos: items })
+              }
+            />
           )}
         </div>
       </div>

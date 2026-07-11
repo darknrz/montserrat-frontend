@@ -18,6 +18,7 @@ import {
   aulaPorGradoSeccion,
   labelFromEnum,
   type AcademicoConfig,
+  getGradosPorNivelAcademico,
 } from "./adminShared";
 
 type AsignacionesTabProps = {
@@ -64,6 +65,69 @@ export function AsignacionesTab({
   const [editingAsignacionAcademica, setEditingAsignacionAcademica] =
     useState<AsignacionAcademica | null>(null);
   const [asignacionAcademicaForm, setAsignacionAcademicaForm] = useState(emptyAsignacion);
+  const [selectedNivelAcademico, setSelectedNivelAcademico] = useState<string>("");
+
+  const getNivelesAcademicosPorNivelEducativo = (nivelEducativo: "PRIMARIA" | "SECUNDARIA") => {
+    const todos = academicoConfig.nivelesAcademicos ?? [];
+    return todos.filter((n) => {
+      if (!n.active) return false;
+      const grados = getGradosPorNivelAcademico(n.id);
+      return grados.some((g) => {
+        if (nivelEducativo === "PRIMARIA") {
+          return g.endsWith("_PRIMARIA");
+        } else {
+          return g.endsWith("_SECUNDARIA");
+        }
+      });
+    });
+  };
+
+  useEffect(() => {
+    if (!selectedNivelAcademico && academicoConfig.nivelesAcademicos?.length) {
+      const activeNiveles = getNivelesAcademicosPorNivelEducativo(
+        asignacionAcademicaForm.nivelEducativo as "PRIMARIA" | "SECUNDARIA"
+      );
+      if (activeNiveles.length > 0) {
+        setSelectedNivelAcademico(activeNiveles[0].id);
+      }
+    }
+  }, [academicoConfig.nivelesAcademicos, asignacionAcademicaForm.nivelEducativo, selectedNivelAcademico]);
+
+  // Synchronize selectedNivelAcademico when the selected grade changes
+  useEffect(() => {
+    const currentGrado = asignacionAcademicaForm.grado;
+    if (!currentGrado) return;
+
+    if (selectedNivelAcademico) {
+      const gradesInCurrentLevel = getGradosPorNivelAcademico(selectedNivelAcademico);
+      if (gradesInCurrentLevel.includes(currentGrado)) {
+        return; // Already matched
+      }
+    }
+
+    const levelsContainingGrado = (academicoConfig.nivelesAcademicos ?? []).filter((n) =>
+      n.active && getGradosPorNivelAcademico(n.id).includes(currentGrado)
+    );
+    if (levelsContainingGrado.length > 0) {
+      setSelectedNivelAcademico(levelsContainingGrado[0].id);
+    }
+  }, [asignacionAcademicaForm.grado, academicoConfig.nivelesAcademicos, selectedNivelAcademico]);
+
+  const handleNivelAcademicoSelect = (nivelAcademicoId: string) => {
+    setSelectedNivelAcademico(nivelAcademicoId);
+    const educationalLevel = asignacionAcademicaForm.nivelEducativo;
+    const matchingGrados = getGradosPorNivelAcademico(nivelAcademicoId).filter(g => 
+      educationalLevel === "SECUNDARIA" ? g.endsWith("_SECUNDARIA") : g.endsWith("_PRIMARIA")
+    );
+    if (matchingGrados.length > 0) {
+      const targetGrado = matchingGrados[0];
+      if (educationalLevel === "SECUNDARIA") {
+        handleGradoSelectSecundaria(targetGrado);
+      } else {
+        handleGradoSelect(targetGrado);
+      }
+    }
+  };
   const [aulaNumero, setAulaNumero] = useState("101");
   const [tutorSecundariaDni, setTutorSecundariaDni] = useState("");
   const [selectedCompetenciaPorCurso, setSelectedCompetenciaPorCurso] = useState<Record<string, string>>({});
@@ -559,9 +623,16 @@ export function AsignacionesTab({
   const esSecundaria = asignacionAcademicaForm.nivelEducativo === "SECUNDARIA";
 
   const cambiarNivel = (nivel: "PRIMARIA" | "SECUNDARIA") => {
-    const defaultGradoPrimaria = "PRIMERO_PRIMARIA";
-    const defaultGradoSecundaria = "PRIMERO_SECUNDARIA";
-    const grado = nivel === "PRIMARIA" ? defaultGradoPrimaria : defaultGradoSecundaria;
+    const niveles = getNivelesAcademicosPorNivelEducativo(nivel);
+    const defaultNivelAcademico = niveles[0]?.id ?? "";
+    setSelectedNivelAcademico(defaultNivelAcademico);
+
+    const matchingGrados = defaultNivelAcademico 
+      ? getGradosPorNivelAcademico(defaultNivelAcademico).filter(g => 
+          nivel === "SECUNDARIA" ? g.endsWith("_SECUNDARIA") : g.endsWith("_PRIMARIA")
+        )
+      : [];
+    const grado = matchingGrados[0] ?? (nivel === "PRIMARIA" ? "PRIMERO_PRIMARIA" : "PRIMERO_SECUNDARIA");
     const curso = asignacionAcademicaForm.curso || cursosActivosPorNivel(nivel)[0] || "MATEMATICA";
 
     setAsignacionAcademicaForm({
@@ -609,16 +680,32 @@ export function AsignacionesTab({
         <div className="grid grid-rows-[auto_1fr] gap-4 h-full min-h-0">
 
           {esSecundaria ? (
-            <div className="grid min-h-0 gap-4 lg:grid-cols-[1fr_1fr_2fr] h-full">
+            <div className="grid min-h-0 gap-4 lg:grid-cols-[1fr_1fr_1fr_2fr] h-full">
+              <RosterPanel
+                title="Nivel Académico"
+                empty="No hay niveles académicos activos"
+                rows={getNivelesAcademicosPorNivelEducativo("SECUNDARIA").map((n) => ({
+                  id: n.id,
+                  title: n.label,
+                  detail: n.id,
+                  raw: n.id,
+                }))}
+                selectedId={selectedNivelAcademico}
+                onSelect={(id) => handleNivelAcademicoSelect(id)}
+                className="h-full min-h-0"
+                bodyClassName="max-h-none"
+              />
               <RosterPanel
                 title="Grados"
                 empty="No hay grados activos"
-                rows={academicoConfig.gradosSecundaria.filter((g) => g.active).map((grado) => ({
-                  id: grado.id,
-                  title: labelAcademico(grado.id),
-                  detail: grado.label,
-                  raw: grado.id,
-                }))}
+                rows={academicoConfig.gradosSecundaria
+                  .filter((g) => g.active)
+                  .map((grado) => ({
+                    id: grado.id,
+                    title: labelAcademico(grado.id),
+                    detail: grado.label,
+                    raw: grado.id,
+                  }))}
                 selectedId={asignacionAcademicaForm.grado}
                 onSelect={(grado) => handleGradoSelectSecundaria(grado)}
                 className="h-full min-h-0"
@@ -654,16 +741,32 @@ export function AsignacionesTab({
               />
             </div>
           ) : (
-            <div className="grid min-h-0 gap-4 lg:grid-cols-[1fr_1fr_2fr] h-full">
+            <div className="grid min-h-0 gap-4 lg:grid-cols-[1fr_1fr_1fr_2fr] h-full">
+              <RosterPanel
+                title="Nivel Académico"
+                empty="No hay niveles académicos activos"
+                rows={getNivelesAcademicosPorNivelEducativo("PRIMARIA").map((n) => ({
+                  id: n.id,
+                  title: n.label,
+                  detail: n.id,
+                  raw: n.id,
+                }))}
+                selectedId={selectedNivelAcademico}
+                onSelect={(id) => handleNivelAcademicoSelect(id)}
+                className="h-full min-h-0"
+                bodyClassName="max-h-none"
+              />
               <RosterPanel
                 title="Grados"
                 empty="No hay grados activos"
-                rows={academicoConfig.gradosPrimaria.filter((g) => g.active).map((grado) => ({
-                  id: grado.id,
-                  title: labelAcademico(grado.id),
-                  detail: grado.label,
-                  raw: grado.id,
-                }))}
+                rows={academicoConfig.gradosPrimaria
+                  .filter((g) => g.active)
+                  .map((grado) => ({
+                    id: grado.id,
+                    title: labelAcademico(grado.id),
+                    detail: grado.label,
+                    raw: grado.id,
+                  }))}
                 selectedId={asignacionAcademicaForm.grado}
                 onSelect={(grado) => handleGradoSelect(grado)}
                 className="h-full min-h-0"

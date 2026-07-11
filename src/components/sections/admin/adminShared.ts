@@ -6,7 +6,19 @@ export const NIVELES = ["PRIMARIA", "SECUNDARIA"] as const;
 export const GRADOS_PRIMARIA = ["PRIMERO_PRIMARIA", "SEGUNDO_PRIMARIA", "TERCERO_PRIMARIA", "CUARTO_PRIMARIA", "QUINTO_PRIMARIA", "SEXTO_PRIMARIA"] as const;
 export const GRADOS_SECUNDARIA = ["PRIMERO_SECUNDARIA", "SEGUNDO_SECUNDARIA", "TERCERO_SECUNDARIA", "CUARTO_SECUNDARIA", "QUINTO_SECUNDARIA"] as const;
 export const SECCIONES = ["A", "B", "C", "D"] as const;
-export const CURSOS = ["MATEMATICA", "COMUNICACION", "CIENCIA_TECNOLOGIA", "HISTORIA", "INGLES"] as const;
+export const CURSOS = [
+  "DPCC",
+  "CIENCIAS_SOCIALES",
+  "EDUCACION_RELIGIOSA",
+  "EDUCACION_TRABAJO",
+  "EDUCACION_FISICA",
+  "COMUNICACION",
+  "ARTE_CULTURA",
+  "CASTELLANO_SEGUNDA_LENGUA",
+  "INGLES",
+  "MATEMATICA",
+  "CIENCIA_TECNOLOGIA"
+] as const;
 export const ESTADOS_USUARIO = ["ACTIVO", "INACTIVO", "SUSPENDIDO"] as const;
 export const ESTADOS_MATRICULA = ["MATRICULADO", "RETIRADO", "TRASLADADO", "EGRESADO"] as const;
 export const MESES_PENSION = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Set", "Oct", "Nov", "Dic"] as const;
@@ -40,6 +52,7 @@ export type AcademicoConfig = {
   salones: SalonItem[];
   minAsistenciaPorcentaje?: number;
   ingresantesModelo?: string;
+  nivelesAcademicos?: CatalogItem[];
 };
 
 // ---------------------------------------------------------------------------
@@ -57,7 +70,10 @@ const LABEL_OVERRIDES: Record<string, string> = {
   EDUCACION_FISICA: "Educacion Fisica",
   CASTELLANO_SEGUNDA_LENGUA: "Castellano como Segunda Lengua",
   COMPETENCIAS_TRANSVERSALES: "Competencias Transversales",
-  CIENCIA_TECNOLOGIA: "Ciencia y Tecnologia"
+  CIENCIA_TECNOLOGIA: "Ciencia y Tecnologia",
+  DPCC: "Desarrollo Personal, Ciudadanía y Cívica",
+  CIENCIAS_SOCIALES: "Ciencias Sociales",
+  EDUCACION_TRABAJO: "Educación para el Trabajo"
 };
 
 export function labelFromEnum(value: string) {
@@ -114,16 +130,67 @@ export const defaultAcademicoConfig: AcademicoConfig = {
     { id: "C26", label: "Diseña y construye soluciones tecnológicas para resolver problemas de su entorno.", active: true },
     { id: "C27", label: "Se desenvuelve en entornos virtuales generados por las TIC.", active: true },
     { id: "C28", label: "Gestiona su aprendizaje de manera autónoma.", active: true },
+    { id: "C29", label: "Lee diversos tipos de textos escritos en castellano como segunda lengua.", active: true },
+    { id: "C30", label: "Escribe diversos tipos de textos en castellano como segunda lengua.", active: true }
   ],
-  competenciasPorCursoPrimaria: {},
+  competenciasPorCursoPrimaria: {
+    INGLES: ["C17", "C18", "C19"],
+    PERSONAL_SOCIAL: ["C1", "C2", "C3", "C4", "C5"],
+    EDUCACION_RELIGIOSA: ["C6", "C7"],
+    EDUCACION_FISICA: ["C8", "C9", "C10"],
+    COMUNICACION: ["C11", "C12", "C13"],
+    ARTE_CULTURA: ["C14", "C15"],
+    CASTELLANO_SEGUNDA_LENGUA: ["C16", "C29", "C30"],
+    MATEMATICA: ["C20", "C21", "C22", "C23"],
+    CIENCIA_TECNOLOGIA: ["C24", "C25", "C26"],
+    COMPETENCIAS_TRANSVERSALES: ["C27", "C28"]
+  },
   docentesPorCompetencia: {},
   cursosSecundaria: CURSOS.map((id) => ({ id, label: labelFromEnum(id), active: true })),
   competenciasSecundaria: [
-    { id: "CS1", label: "Resuelve problemas de cantidad.", active: true },
-    { id: "CS2", label: "Resuelve problemas de regularidad, equivalencia y cambio.", active: true },
-    { id: "CS3", label: "Resuelve problemas de forma, movimiento y localización.", active: true },
+    { id: "CS1", label: "Construye su identidad.", active: true },
+    { id: "CS2", label: "Convive y participa democráticamente en la búsqueda del bien común.", active: true },
+    { id: "CS3", label: "Construye interpretaciones históricas.", active: true },
+    { id: "CS4", label: "Gestiona responsablemente el espacio y el ambiente.", active: true },
+    { id: "CS5", label: "Gestiona responsablemente los recursos económicos.", active: true },
+    { id: "CS6", label: "Construye su identidad como persona humana, amada por Dios, digna, libre y trascendente, comprendiendo la doctrina de su propia religión, abierto al diálogo con las que le son cercanas.", active: true },
+    { id: "CS7", label: "Asume la experiencia del encuentro personal y comunitario con Dios en su proyecto de vida en coherencia con su creencia religiosa.", active: true },
+    { id: "CS8", label: "Gestiona proyectos de emprendimiento económico o social.", active: true },
+    { id: "CS9", label: "Se desenvuelve de manera autónoma a través de su motricidad.", active: true },
+    { id: "CS10", label: "Asume una vida saludable.", active: true },
+    { id: "CS11", label: "Interactúa a través de sus habilidades sociomotrices.", active: true },
+    { id: "CS12", label: "Se comunica oralmente en su lengua materna.", active: true },
+    { id: "CS13", label: "Lee diversos tipos de textos escritos.", active: true },
+    { id: "CS14", label: "Escribe diversos tipos de textos.", active: true },
+    { id: "CS15", label: "Aprecia de manera crítica manifestaciones artístico-culturales.", active: true },
+    { id: "CS16", label: "Crea proyectos desde los lenguajes artísticos.", active: true },
+    { id: "CS17", label: "Se comunica oralmente en lengua materna.", active: true },
+    { id: "CS18", label: "Lee diversos tipos de textos escritos.", active: true },
+    { id: "CS19", label: "Escribe diversos tipos de textos.", active: true },
+    { id: "CS20", label: "Se comunica oralmente en inglés como lengua extranjera.", active: true },
+    { id: "CS21", label: "Lee diversos tipos de textos en inglés como lengua extranjera.", active: true },
+    { id: "CS22", label: "Escribe diversos tipos de textos en inglés como lengua extranjera.", active: true },
+    { id: "CS23", label: "Resuelve problemas de cantidad.", active: true },
+    { id: "CS24", label: "Resuelve problemas de regularidad, equivalencia y cambio.", active: true },
+    { id: "CS25", label: "Resuelve problemas de movimiento, forma y localización.", active: true },
+    { id: "CS26", label: "Resuelve problemas de gestión de datos e incertidumbre.", active: true },
+    { id: "CS27", label: "Indaga mediante métodos científicos para construir sus conocimientos.", active: true },
+    { id: "CS28", label: "Explica el mundo físico basándose en conocimientos sobre los seres vivos, materia y energía, biodiversidad, Tierra y universo.", active: true },
+    { id: "CS29", label: "Diseña y construye soluciones tecnológicas para resolver problemas de su entorno.", active: true }
   ],
-  competenciasPorCursoSecundaria: {},
+  competenciasPorCursoSecundaria: {
+    DPCC: ["CS1", "CS2"],
+    CIENCIAS_SOCIALES: ["CS3", "CS4", "CS5"],
+    EDUCACION_RELIGIOSA: ["CS6", "CS7"],
+    EDUCACION_TRABAJO: ["CS8"],
+    EDUCACION_FISICA: ["CS9", "CS10", "CS11"],
+    COMUNICACION: ["CS12", "CS13", "CS14"],
+    ARTE_CULTURA: ["CS15", "CS16"],
+    CASTELLANO_SEGUNDA_LENGUA: ["CS17", "CS18", "CS19"],
+    INGLES: ["CS20", "CS21", "CS22"],
+    MATEMATICA: ["CS23", "CS24", "CS25", "CS26"],
+    CIENCIA_TECNOLOGIA: ["CS27", "CS28", "CS29"]
+  },
   docentesPorCompetenciaSecundaria: {},
   gradosPrimaria: GRADOS_PRIMARIA.map((id) => ({ id, label: labelFromEnum(id), active: true })),
   gradosSecundaria: GRADOS_SECUNDARIA.map((id) => ({ id, label: labelFromEnum(id), active: true })),
@@ -131,8 +198,18 @@ export const defaultAcademicoConfig: AcademicoConfig = {
   seccionesSecundaria: SECCIONES.map((id) => ({ id, label: id, active: true })),
   salones: [...GRADOS_PRIMARIA.map((grado) => ({ nivel: "PRIMARIA", grado })), ...GRADOS_SECUNDARIA.map((grado) => ({ nivel: "SECUNDARIA", grado }))]
     .flatMap(({ nivel, grado }) => SECCIONES.map((seccion) => ({ nivel, grado, seccion, aula: aulaPorGradoSeccion(nivel, grado, seccion), active: true }))),
-  minAsistenciaPorcentaje: 70
-  ,ingresantesModelo: "card-grid"
+  minAsistenciaPorcentaje: 70,
+  ingresantesModelo: "card-grid",
+  nivelesAcademicos: [
+    { id: "1RO_PRIM", label: "1ro prim", active: true },
+    { id: "2DO_PRIM", label: "2do prim", active: true },
+    { id: "3RO_PRIM", label: "3ro prim", active: true },
+    { id: "4TO_PRIM", label: "4to prim", active: true },
+    { id: "PREFORMATIVO", label: "preformativo", active: true },
+    { id: "CICLADO", label: "ciclado", active: true },
+    { id: "ANUAL", label: "anual", active: true },
+    { id: "LETRAS_CIENCIAS", label: "Letras/Ciencias", active: true }
+  ]
 };
 
 // available templates for ingresantes
@@ -171,7 +248,8 @@ export function mergeAcademicoConfig(config: Partial<AcademicoConfig>) {
     seccionesSecundaria: config.seccionesSecundaria ?? defaultAcademicoConfig.seccionesSecundaria,
     salones: config.salones ?? defaultAcademicoConfig.salones,
     minAsistenciaPorcentaje: config.minAsistenciaPorcentaje ?? defaultAcademicoConfig.minAsistenciaPorcentaje,
-    ingresantesModelo: (config as any).ingresantesModelo ?? defaultAcademicoConfig.ingresantesModelo
+    ingresantesModelo: (config as any).ingresantesModelo ?? defaultAcademicoConfig.ingresantesModelo,
+    nivelesAcademicos: config.nivelesAcademicos ?? defaultAcademicoConfig.nivelesAcademicos
   };
 }
 
@@ -276,4 +354,20 @@ export function normalizeGrado(value: unknown, nivel: string) {
 export function parseBooleanCell(value: unknown) {
   const normalized = String(value ?? "").trim().toUpperCase();
   return normalized === "SI" || normalized === "SÍ" || normalized === "TRUE" || normalized === "1" || normalized === "PAGADA";
+}
+
+export function getGradosPorNivelAcademico(nivelAcademicoId: string): string[] {
+  if (!nivelAcademicoId) return [];
+  const cleanId = nivelAcademicoId.toUpperCase().replace(/[^A-Z0-9_]/g, "_");
+  if (cleanId.includes("1RO_PRIM") || cleanId === "1_PRIM") return ["PRIMERO_PRIMARIA"];
+  if (cleanId.includes("2DO_PRIM") || cleanId === "2_PRIM") return ["SEGUNDO_PRIMARIA"];
+  if (cleanId.includes("3RO_PRIM") || cleanId === "3_PRIM") return ["TERCERO_PRIMARIA"];
+  if (cleanId.includes("4TO_PRIM") || cleanId === "4_PRIM") return ["CUARTO_PRIMARIA"];
+  if (cleanId.includes("PREFORMATIVO")) return ["QUINTO_PRIMARIA"];
+  if (cleanId.includes("CICLADO")) return ["SEXTO_PRIMARIA", "PRIMERO_SECUNDARIA"];
+  if (cleanId.includes("ANUAL")) return ["PRIMERO_SECUNDARIA", "SEGUNDO_SECUNDARIA", "TERCERO_SECUNDARIA"];
+  if (cleanId.includes("LETRAS_CIENCIAS") || cleanId.includes("LETRAS") || cleanId.includes("CIENCIAS")) {
+    return ["TERCERO_SECUNDARIA", "CUARTO_SECUNDARIA", "QUINTO_SECUNDARIA"];
+  }
+  return [];
 }
