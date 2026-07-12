@@ -928,7 +928,7 @@ export function PortalAcademicoPage() {
                       
                       <Field label="Grado y Sección">
                         <select
-                          value={`${selectedGrado}||${selectedSeccion}`}
+                          value={selectedGrado && selectedSeccion ? `${selectedGrado}||${selectedSeccion}` : ""}
                           onChange={(e) => {
                             const parts = e.target.value.split("||");
                             setSelectedGrado(parts[0] || "");

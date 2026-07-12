@@ -387,8 +387,8 @@ export function AcademicoTab({
         : "Importando y actualizando alumnos...";
     setImportSummary(null);
     setImportProgress(0);
-    setImportMessage(modeLabel);
     setIsImporting(true);
+    let nextGeneratedDni = 30000001;
     const XLSX = await import("xlsx");
     const buffer = await file.arrayBuffer();
     const workbook = XLSX.read(buffer, { type: "array" });
@@ -471,7 +471,7 @@ export function AcademicoTab({
             return undefined;
           };
 
-          const dni = findVal([
+          let dni = findVal([
             "dni",
             "d.n.i",
             "documento",
@@ -482,6 +482,7 @@ export function AcademicoTab({
             "nro.dni",
           ]);
           const nombreCompleto = findVal([
+            "alumno",
             "nombre completo",
             "nombre_completo",
             "nombres y apellidos",
@@ -491,6 +492,28 @@ export function AcademicoTab({
             "nombres",
             "nombre",
           ]);
+
+          if (!dni && nombreCompleto && isEstudiantes) {
+            // Buscar si ya existe un estudiante con ese nombre
+            const existenteByName = usuariosAcademicos.find(
+              (u) =>
+                u.rol === "ALUMNO" &&
+                u.nombre.trim().toLowerCase() === nombreCompleto.trim().toLowerCase()
+            );
+            if (existenteByName) {
+              dni = existenteByName.dni;
+            } else {
+              // Generar un DNI único
+              while (
+                usuariosAcademicos.some((u) => u.dni === String(nextGeneratedDni)) ||
+                Array.from(alumnosPorDni.keys()).includes(String(nextGeneratedDni))
+              ) {
+                nextGeneratedDni++;
+              }
+              dni = String(nextGeneratedDni);
+              nextGeneratedDni++;
+            }
+          }
 
           if (!dni || !nombreCompleto) {
             alumnosOmitidos += isEstudiantes ? 1 : 0;
@@ -566,7 +589,23 @@ export function AcademicoTab({
               "nivel(primaria o secundaria)",
               "nivel de estudio",
             ]);
-            const nivelEducativo = normalizeNivel(rawNivel || "PRIMARIA");
+            const rawNivelAcademico = findVal([
+              "nivel academico",
+              "nivel_academico",
+              "nivel-academico",
+              "ciclo",
+            ]);
+
+            let nivelEducativo = normalizeNivel(rawNivel);
+            if (!nivelEducativo && rawNivelAcademico) {
+              const na = rawNivelAcademico.toLowerCase();
+              if (na.includes("prim") || na.includes("preformativo")) {
+                nivelEducativo = "PRIMARIA";
+              } else if (na.includes("sec") || na.includes("anual") || na.includes("letras") || na.includes("ciencias")) {
+                nivelEducativo = "SECUNDARIA";
+              }
+            }
+            if (!nivelEducativo) nivelEducativo = "PRIMARIA";
 
             const rawGrado = findVal([
               "grado",
@@ -575,7 +614,16 @@ export function AcademicoTab({
               "nivel grado",
               "grado escolar",
             ]);
-            const grado = normalizeGrado(rawGrado, nivelEducativo);
+            let grado = normalizeGrado(rawGrado, nivelEducativo);
+
+            if (!grado && rawNivelAcademico) {
+              const gradosPorNivelAc = getGradosPorNivelAcademico(rawNivelAcademico);
+              if (gradosPorNivelAc.length > 0) {
+                // Tomar el grado que coincida con el nivel educativo
+                const matchingGrado = gradosPorNivelAc.find((g) => g.endsWith(nivelEducativo));
+                grado = matchingGrado || gradosPorNivelAc[0];
+              }
+            }
 
             const seccion =
               findVal(["seccion", "seccion ", "aula", "sección", "seccion/aula"]).toUpperCase().trim() || "A";
@@ -589,7 +637,7 @@ export function AcademicoTab({
 
             const payload = {
               ...emptyUsuarioAcademico,
-              codigo: codigo || dni,
+              codigo: codigo || undefined,
               dni,
               nombre: nombreCompleto,
               nombres,
@@ -952,10 +1000,10 @@ export function AcademicoTab({
             <AdminField label="Codigo">
               <input
                 value={usuarioAcademicoForm.codigo ?? ""}
-                onChange={(e) =>
-                  setUsuarioAcademicoForm({ ...usuarioAcademicoForm, codigo: e.target.value })
-                }
                 className="admin-input"
+                disabled
+                title="El código se genera automáticamente"
+                placeholder="Se generará automáticamente"
               />
             </AdminField>
             <AdminField label="Nombre completo" className="sm:col-span-2">
@@ -1186,7 +1234,7 @@ export function AcademicoTab({
         </form>
 
         {/* DERECHA: métricas + panel tabla */}
-        <div className="grid gap-5 flex-1 min-h-0 flex flex-col">
+        <div className="flex flex-col gap-5 flex-1 min-h-0">
 
           {/* Métricas */}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -1209,7 +1257,7 @@ export function AcademicoTab({
           </div>
 
           {/* Panel búsqueda + tabla */}
-          <div className="grid gap-4 flex-1 min-h-0 flex flex-col">
+          <div className="flex flex-col gap-4 flex-1 min-h-0">
             <div className="grid gap-3 rounded-[16px] border border-monserrat-ink/8 bg-white p-3 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
