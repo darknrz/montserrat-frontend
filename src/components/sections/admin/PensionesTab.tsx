@@ -109,8 +109,8 @@ export function PensionesTab({
       });
   }, [alumnos, pensionSearch, pensionYear, pensiones, pensionNivelFiltro, pensionGradoFiltro]);
 
-  const actualizarPensionMensual = (pension: PensionMensual, pagada: boolean) => {
-    runAdminAction(async () => {
+  const actualizarPensionMensual = async (pension: PensionMensual, pagada: boolean) => {
+    try {
       const saved = await monserratApi.updatePensionAcademica(
         {
           alumnoDni: pension.alumnoDni,
@@ -128,7 +128,11 @@ export function PensionesTab({
             : item
         )
       );
-    }, pagada ? "Pensión marcada como pagada" : "Pensión marcada como pendiente");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "No se pudo actualizar la pensión"
+      );
+    }
   };
 
   const exportarPensionesExcel = async () => {
@@ -234,7 +238,6 @@ export function PensionesTab({
               strokeLinecap="round"
               strokeDasharray={`${(cumplimiento / 100) * CIRCUNFERENCIA} ${CIRCUNFERENCIA}`}
               transform="rotate(-90 36 36)"
-              style={{ transition: "stroke-dasharray 0.4s ease" }}
             />
             <text x="36" y="41" textAnchor="middle" fontSize="15" fontWeight="900" fill="#1c1a17">
               {cumplimiento}%
@@ -262,7 +265,7 @@ export function PensionesTab({
               <div key={t.mes} className="flex flex-1 flex-col items-center gap-1" title={`${MESES_PENSION[t.mes - 1]}: ${t.pct}% cobrado`}>
                 <div className="relative h-11 w-full overflow-hidden rounded-t-[4px] bg-monserrat-ink/6">
                   <div
-                    className="absolute bottom-0 w-full rounded-t-[4px] bg-emerald-500 transition-all"
+                    className="absolute bottom-0 w-full rounded-t-[4px] bg-emerald-500"
                     style={{ height: `${t.pct}%` }}
                   />
                 </div>
@@ -525,7 +528,7 @@ export function PensionesTab({
                               disabled={!activa}
                               title={tooltip}
                               onClick={() => actualizarPensionMensual(pensionBase, !pagada)}
-                              className={`relative mx-auto flex h-6 w-6 items-center justify-center rounded-[6px] border text-[11px] font-black transition-all ${
+                              className={`relative mx-auto flex h-6 w-6 items-center justify-center rounded-[6px] border text-[11px] font-black ${
                                 !activa
                                   ? "cursor-default border-transparent bg-monserrat-ink/6 text-monserrat-ink/20"
                                   : pagada
