@@ -1,4 +1,4 @@
-import type { Anuncio, AsignacionAcademica, AsistenciaAcademica, ChatbotConversationResponse, ChatbotMessageDTO, Ingresante, Institution, LoginResponse, MediaUploadResponse, NotaAcademica, PensionEstado, PensionMensual, PerfilAcademico, RedSocial, UsuarioAcademico, Video } from "../types";
+import type { Anuncio, AsignacionAcademica, AsistenciaAcademica, ChatbotConversationResponse, ChatbotMessageDTO, Ingresante, Institution, LoginResponse, MediaUploadResponse, NotaAcademica, PensionEstado, PensionMensual, PeriodoBimestre, PerfilAcademico, RedSocial, UsuarioAcademico, Video } from "../types";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -190,5 +190,15 @@ export const monserratApi = {
   pensionAlumno: (token: string) => getJsonAuth<PensionEstado>("/academico/alumno/pension", token),
   asistenciasAlumno: (token: string) => getJsonAuth<AsistenciaAcademica[]>("/academico/alumno/asistencias", token),
   pensionesAlumnoDetalle: (anio: number, token: string) =>
-    getJsonAuth<PensionMensual[]>(`/academico/alumno/pension/detalle?anio=${encodeURIComponent(String(anio))}`, token)
+    getJsonAuth<PensionMensual[]>(`/academico/alumno/pension/detalle?anio=${encodeURIComponent(String(anio))}`, token),
+  
+  // Períodos Bimestrales
+  listarPeriodosBimestres: (anio: number, token: string) =>
+    getJsonAuth<PeriodoBimestre[]>(`/academico/periodos-bimestres?anio=${encodeURIComponent(String(anio))}`, token),
+  crearPeriodoBimestre: (data: Omit<PeriodoBimestre, 'id' | 'createdAt' | 'updatedAt'>, token: string) =>
+    sendJson<PeriodoBimestre>("/academico/periodos-bimestres", "POST", data, token),
+  actualizarPeriodoBimestre: (id: number, data: Omit<PeriodoBimestre, 'id' | 'createdAt' | 'updatedAt'>, token: string) =>
+    sendJson<PeriodoBimestre>(`/academico/periodos-bimestres/${id}`, "PUT", data, token),
+  eliminarPeriodoBimestre: (id: number, token: string) =>
+    deleteRequest(`/academico/periodos-bimestres/${id}`, token)
 };

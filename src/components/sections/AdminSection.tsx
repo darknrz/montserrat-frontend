@@ -409,6 +409,10 @@ export function AdminSection({
                 labelAcademico={labelAcademico}
                 cursosPrimariaActivos={cursosPrimariaActivos}
                 cursosSecundariaActivos={cursosSecundariaActivos}
+                token={token}
+                runAdminAction={runAdminAction}
+                setStatus={setStatus}
+                setErrorMessage={setErrorMessage}
               />
             )}
           </div>

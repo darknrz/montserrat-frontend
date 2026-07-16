@@ -28,7 +28,20 @@ export const ADMIN_TAB_STORAGE_KEY = "monserrat_admin_active_tab";
 export type Tab = "institucion" | "ingresantes" | "anuncios" | "videos" | "redes" | "academico" | "asignaciones" | "pensiones" | "configuracion";
 export type CatalogItem = { id: string; label: string; active: boolean };
 export type SalonItem = { nivel: string; grado: string; seccion: string; aula: string; active: boolean };
-export type ConfigView = "primaria-cursos" | "primaria-competencias" | "primaria-grados" | "primaria-secciones" | "primaria-salones" | "secundaria-cursos" | "secundaria-competencias" | "secundaria-grados" | "secundaria-secciones" | "secundaria-salones";
+export type ConfigView =
+  | "primaria-cursos"
+  | "primaria-competencias"
+  | "primaria-grados"
+  | "primaria-secciones"
+  | "primaria-salones"
+  | "secundaria-cursos"
+  | "secundaria-competencias"
+  | "secundaria-grados"
+  | "secundaria-secciones"
+  | "secundaria-salones"
+  | "ajustes-generales"
+  | "niveles-academicos"
+  | "periodos-bimestres";
 
 export type AcademicoConfig = {
   cursosPrimaria: CatalogItem[];

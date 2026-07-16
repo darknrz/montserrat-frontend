@@ -157,6 +157,16 @@ export type PensionMensual = {
   actualizadoEn?: string;
 };
 
+export type PeriodoBimestre = {
+  id?: number;
+  anio: number;
+  numeroBimestre: number; // 1, 2, 3, 4
+  fechaInicio: string; // ISO date format
+  fechaFin: string; // ISO date format
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export type ChatbotConversationResponse = {
   conversationId: number;
   status: string;
