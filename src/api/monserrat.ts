@@ -182,9 +182,9 @@ export const monserratApi = {
   createAsistencia: (data: { alumnoDni: string; fecha: string; estado: string; observacion?: string }, token: string) =>
     sendJson<AsistenciaAcademica>("/academico/docente/asistencias", "POST", data, token),
   notasDocente: (token: string) => getJsonAuth<NotaAcademica[]>("/academico/docente/notas", token),
-  createNota: (data: { alumnoDni: string; curso: string; periodo: string; tipoEvaluacion: string; valor: number; observacion?: string }, token: string) =>
+  createNota: (data: { alumnoDni: string; curso: string; periodo: string; tipoEvaluacion: string; valor: number; observacion?: string; competenciaId?: string }, token: string) =>
     sendJson<NotaAcademica>("/academico/docente/notas", "POST", data, token),
-  updateNota: (id: number, data: { alumnoDni: string; curso: string; periodo: string; tipoEvaluacion: string; valor: number; observacion?: string }, token: string) =>
+  updateNota: (id: number, data: { alumnoDni: string; curso: string; periodo: string; tipoEvaluacion: string; valor: number; observacion?: string; competenciaId?: string }, token: string) =>
     sendJson<NotaAcademica>(`/academico/docente/notas/${id}`, "PUT", data, token),
   notasAlumno: (token: string) => getJsonAuth<NotaAcademica[]>("/academico/alumno/notas", token),
   pensionAlumno: (token: string) => getJsonAuth<PensionEstado>("/academico/alumno/pension", token),

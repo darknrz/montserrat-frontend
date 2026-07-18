@@ -26,6 +26,7 @@ import {
   ESTADOS_MATRICULA,
   NIVELES,
   defaultGrado,
+  getGradosPorNivelAcademico,
   labelFromEnum,
   normalizeGrado,
   normalizeNivel,
