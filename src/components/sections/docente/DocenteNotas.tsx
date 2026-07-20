@@ -3,7 +3,7 @@ import { Check, ChevronRight, MessageSquarePlus, Plus, Save, Search, Sparkles, X
 import { SectionHeader } from "../../ui/SectionHeader";
 import { monserratApi } from "../../../api/monserrat";
 import type { AsignacionAcademica, UsuarioAcademico, NotaAcademica } from "../../../types";
-import type { AcademicoConfig, CatalogItem } from "../admin/adminShared";
+import { getGradosPorNivelAcademico, type AcademicoConfig, type CatalogItem } from "../admin/adminShared";
 
 const BIMESTRES = ["BIMESTRE_1", "BIMESTRE_2", "BIMESTRE_3", "BIMESTRE_4"] as const;
 const PERIODOS = [...BIMESTRES, "GENERAL"] as const;
@@ -104,8 +104,7 @@ export function DocenteNotas({ token }: { token: string }) {
   const [notas, setNotas] = useState<NotaAcademica[]>([]);
   const [academicoConfig, setAcademicoConfig] = useState<AcademicoConfig | null>(null);
   const [selectedCurso, setSelectedCurso] = useState("");
-  const [selectedGrado, setSelectedGrado] = useState("");
-  const [selectedSeccion, setSelectedSeccion] = useState("");
+  const [selectedNivelAcademico, setSelectedNivelAcademico] = useState("");
   const [selectedAlumnoDni, setSelectedAlumnoDni] = useState("");
   const [alumnoQuery, setAlumnoQuery] = useState("");
   const [activePeriodo, setActivePeriodo] = useState<Periodo>(BIMESTRES[0]);
@@ -146,35 +145,42 @@ export function DocenteNotas({ token }: { token: string }) {
 
   const cursosDisponibles = useMemo(() => Array.from(new Set(asignaciones.map((a) => a.curso))).filter(Boolean), [asignaciones]);
 
-  const salonesDeCurso = useMemo(() => {
-    if (!selectedCurso) return [] as { grado: string; seccion: string }[];
-    const map = new Map<string, { grado: string; seccion: string }>();
+  const nivelesDeCurso = useMemo(() => {
+    if (!selectedCurso) return [] as { id: string; label: string }[];
+    const activeLevels = (academicoConfig?.nivelesAcademicos ?? []).filter((nivel) => nivel.active);
+    const map = new Map<string, { id: string; label: string }>();
     asignaciones
-      .filter((a) => a.curso === selectedCurso && a.grado && a.seccion)
-      .forEach((a) => map.set(`${a.grado}||${a.seccion}`, { grado: a.grado!, seccion: a.seccion! }));
+      .filter((a) => a.curso === selectedCurso && a.grado)
+      .forEach((a) => {
+        const matchingLevel = activeLevels.find((nivel) =>
+          getGradosPorNivelAcademico(nivel.id).includes(a.grado ?? "")
+        );
+        if (matchingLevel && !map.has(matchingLevel.id)) {
+          map.set(matchingLevel.id, { id: matchingLevel.id, label: matchingLevel.label });
+        }
+      });
     return Array.from(map.values());
-  }, [selectedCurso, asignaciones]);
+  }, [academicoConfig?.nivelesAcademicos, selectedCurso, asignaciones]);
 
   useEffect(() => {
-    if (salonesDeCurso.length > 0) {
-      const stillValid = salonesDeCurso.some((s) => s.grado === selectedGrado && s.seccion === selectedSeccion);
+    if (nivelesDeCurso.length > 0) {
+      const stillValid = nivelesDeCurso.some((nivel) => nivel.id === selectedNivelAcademico);
       if (!stillValid) {
-        setSelectedGrado(salonesDeCurso[0].grado);
-        setSelectedSeccion(salonesDeCurso[0].seccion);
+        setSelectedNivelAcademico(nivelesDeCurso[0].id);
       }
     } else {
-      setSelectedGrado("");
-      setSelectedSeccion("");
+      setSelectedNivelAcademico("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [salonesDeCurso]);
+  }, [nivelesDeCurso]);
 
   const alumnosFiltrados = useMemo(() => {
-    if (!selectedCurso || !selectedGrado || !selectedSeccion) return [] as UsuarioAcademico[];
+    if (!selectedCurso || !selectedNivelAcademico) return [] as UsuarioAcademico[];
+    const gradosDelNivel = getGradosPorNivelAcademico(selectedNivelAcademico);
     return alumnos.filter((al) =>
-      asignaciones.some((a) => a.alumnoDni === al.dni && a.curso === selectedCurso && a.grado === selectedGrado && a.seccion === selectedSeccion)
+      asignaciones.some((a) => a.alumnoDni === al.dni && a.curso === selectedCurso && gradosDelNivel.includes(a.grado ?? ""))
     );
-  }, [selectedCurso, selectedGrado, selectedSeccion, alumnos, asignaciones]);
+  }, [selectedCurso, selectedNivelAcademico, alumnos, asignaciones]);
 
   const alumnosVisibles = useMemo(() => {
     const query = alumnoQuery.trim().toLowerCase();
@@ -195,8 +201,9 @@ export function DocenteNotas({ token }: { token: string }) {
   const alumnoSeleccionado = alumnos.find((al) => al.dni === selectedAlumnoDni);
 
   const competenciasDelCurso = useMemo(() => {
-    if (!selectedCurso || !selectedGrado || !academicoConfig) return [] as CatalogItem[];
-    const esSecundaria = selectedGrado.includes("SECUNDARIA");
+    if (!selectedCurso || !selectedNivelAcademico || !academicoConfig) return [] as CatalogItem[];
+    const gradosDelNivel = getGradosPorNivelAcademico(selectedNivelAcademico);
+    const esSecundaria = gradosDelNivel.some((grado) => grado.endsWith("_SECUNDARIA"));
     const competenciasPorCurso = esSecundaria
       ? academicoConfig.competenciasPorCursoSecundaria ?? {}
       : academicoConfig.competenciasPorCursoPrimaria ?? {};
@@ -205,7 +212,7 @@ export function DocenteNotas({ token }: { token: string }) {
       : academicoConfig.competenciasPrimaria ?? [];
     const ids = competenciasPorCurso[selectedCurso] ?? [];
     return competenciasDisponibles.filter((competencia) => ids.includes(competencia.id));
-  }, [academicoConfig, selectedCurso, selectedGrado]);
+  }, [academicoConfig, selectedCurso, selectedNivelAcademico]);
 
   const periodoActivo = activePeriodo;
 
@@ -436,25 +443,22 @@ export function DocenteNotas({ token }: { token: string }) {
 
           {selectedCurso && (
             <div className="grid gap-1.5">
-              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">2. Salón</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">2. Nivel académico</p>
               <div className="flex flex-wrap gap-2">
-                {salonesDeCurso.map((salon) => {
-                  const active = salon.grado === selectedGrado && salon.seccion === selectedSeccion;
+                {nivelesDeCurso.map((nivel) => {
+                  const active = nivel.id === selectedNivelAcademico;
                   return (
                     <button
-                      key={`${salon.grado}||${salon.seccion}`}
+                      key={nivel.id}
                       type="button"
-                      onClick={() => {
-                        setSelectedGrado(salon.grado);
-                        setSelectedSeccion(salon.seccion);
-                      }}
+                      onClick={() => setSelectedNivelAcademico(nivel.id)}
                       className={`rounded-full px-4 py-2 text-xs font-black transition-all ${
                         active
                           ? "bg-monserrat-ink text-white shadow-sm"
                           : "border border-monserrat-ink/12 bg-monserrat-cream/40 text-monserrat-ink/65 hover:bg-monserrat-cream/70"
                       }`}
                     >
-                      {labelFromEnum(salon.grado.replace(/_PRIMARIA|_SECUNDARIA/g, ""))} {salon.seccion}
+                      {nivel.label}
                     </button>
                   );
                 })}
@@ -463,7 +467,7 @@ export function DocenteNotas({ token }: { token: string }) {
           )}
 
           {/* Paso 3: alumno, con buscador y barra de progreso */}
-          {selectedGrado && (
+          {selectedNivelAcademico && (
             <div className="grid gap-1.5">
               <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">3. Alumno</p>
               <div className="relative">
@@ -773,8 +777,8 @@ export function DocenteNotas({ token }: { token: string }) {
           ) : (
             <>
               {!selectedCurso && cursosDisponibles.length > 0 && <EmptyHint text="Elige un curso para empezar." />}
-              {selectedCurso && !selectedGrado && <EmptyHint text="Elige un salón para ver a tus alumnos." />}
-              {selectedGrado && !selectedAlumnoDni && <EmptyHint text="Selecciona un alumno para registrar sus notas." />}
+              {selectedCurso && !selectedNivelAcademico && <EmptyHint text="Elige un nivel académico para ver a tus alumnos." />}
+              {selectedNivelAcademico && !selectedAlumnoDni && <EmptyHint text="Selecciona un alumno para registrar sus notas." />}
               {selectedAlumnoDni && competenciasDelCurso.length === 0 && (
                 <EmptyHint text="Este curso todavía no tiene competencias vinculadas por el área académica." />
               )}

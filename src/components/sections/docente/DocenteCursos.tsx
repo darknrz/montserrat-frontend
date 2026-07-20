@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { SectionHeader } from "../../ui/SectionHeader";
 import { monserratApi } from "../../../api/monserrat";
 import type { AsignacionAcademica, UsuarioAcademico } from "../../../types";
-import type { AcademicoConfig } from "../admin/adminShared";
+import { getGradosPorNivelAcademico, type AcademicoConfig } from "../admin/adminShared";
 
 function labelFromEnum(value: string) {
   return value
@@ -30,15 +30,14 @@ export function DocenteCursos({ token }: { token: string }) {
   }, [token]);
 
   const salones = useMemo(() => {
-    const grouped = new Map<string, { nivel: string; grado?: string; seccion?: string; alumnos: Set<string>; cursos: Set<string> }>();
+    const grouped = new Map<string, { nivel: string; grado?: string; alumnos: Set<string>; cursos: Set<string> }>();
 
     asignaciones.forEach((item) => {
-      const key = `${item.nivelEducativo ?? ""}-${item.grado ?? ""}-${item.seccion ?? ""}`;
+      const key = `${item.nivelEducativo ?? ""}-${item.grado ?? ""}`;
       if (!grouped.has(key)) {
         grouped.set(key, {
           nivel: item.nivelEducativo ?? "",
           grado: item.grado,
-          seccion: item.seccion,
           alumnos: new Set<string>(),
           cursos: new Set<string>()
         });
@@ -59,9 +58,13 @@ export function DocenteCursos({ token }: { token: string }) {
         return { curso, competencias };
       });
 
+      const nivelAcademico = (academicoConfig?.nivelesAcademicos ?? []).find((nivel) =>
+        item.grado ? getGradosPorNivelAcademico(nivel.id).includes(item.grado) : false
+      );
+
       return {
         ...item,
-        salon: [`${item.grado ? labelFromEnum(item.grado.replace(/_PRIMARIA|_SECUNDARIA/g, "")) : ""}`, item.seccion || ""].filter(Boolean).join(" "),
+        salon: nivelAcademico?.label || (item.grado ? labelFromEnum(item.grado.replace(/_PRIMARIA|_SECUNDARIA/g, "")) : "Sin nivel"),
         nivel: item.nivel ? labelFromEnum(item.nivel) : "Sin nivel",
         alumnoCount: item.alumnos.size,
         cursoCount: item.cursos.size,
@@ -85,9 +88,9 @@ export function DocenteCursos({ token }: { token: string }) {
           <p className="mt-2 text-sm text-monserrat-ink/60">Cursos diferentes que atiendes.</p>
         </div>
         <div className="rounded-[18px] border border-monserrat-ink/10 bg-white p-5 shadow-sm">
-          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">Salones</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">Niveles académicos</p>
           <p className="mt-4 text-3xl font-black text-monserrat-ink">{salones.length}</p>
-          <p className="mt-2 text-sm text-monserrat-ink/60">Grados y secciones asignados.</p>
+          <p className="mt-2 text-sm text-monserrat-ink/60">Grados y niveles asignados.</p>
         </div>
         <div className="rounded-[18px] border border-monserrat-ink/10 bg-white p-5 shadow-sm">
           <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">Alumnos totales</p>
@@ -98,7 +101,7 @@ export function DocenteCursos({ token }: { token: string }) {
 
       <div className="grid gap-4">
         {salones.length === 0 ? (
-          <div className="rounded-[18px] border border-monserrat-ink/10 bg-monserrat-cream/40 p-5 text-sm text-monserrat-ink/60">No hay salones asignados.</div>
+          <div className="rounded-[18px] border border-monserrat-ink/10 bg-monserrat-cream/40 p-5 text-sm text-monserrat-ink/60">No hay niveles académicos asignados.</div>
         ) : (
           salones.map((salon) => (
             <div key={`${salon.salon}-${salon.nivel}`} className="rounded-[18px] border border-monserrat-ink/10 bg-white p-5 shadow-sm">

@@ -19,6 +19,7 @@ import {
   labelFromEnum,
   type AcademicoConfig,
   getGradosPorNivelAcademico,
+  normalizeDocentesPorCompetencia,
 } from "./adminShared";
 
 type AsignacionesTabProps = {
@@ -312,37 +313,47 @@ export function AsignacionesTab({
     });
   }, [competenciasDelCursoSecundaria, cursoActualSecundaria, selectedCompetenciaPorCursoSecundaria, asignacionAcademicaForm.nivelEducativo]);
 
-  // Asignación docente por (grado, curso, competencia) -> dni, vive en academicoConfig
-  const docentesPorCompetencia = academicoConfig.docentesPorCompetencia ?? {};
+  // Asignación docente por (grado, curso, competencia) -> lista de dnis, vive en academicoConfig
+  const docentesPorCompetencia = useMemo(
+    () => normalizeDocentesPorCompetencia(academicoConfig.docentesPorCompetencia as Record<string, string | string[]> | undefined),
+    [academicoConfig.docentesPorCompetencia]
+  );
 
   const claveActual = useMemo(
     () => matrixKey(asignacionAcademicaForm.grado ?? "", asignacionAcademicaForm.curso ?? "", selectedCompetencia),
     [asignacionAcademicaForm.grado, asignacionAcademicaForm.curso, selectedCompetencia]
   );
 
-  const docenteAsignadoActual = docentesPorCompetencia[claveActual];
+  const docentesAsignadosActual = docentesPorCompetencia[claveActual] ?? [];
 
   const docentePrimariaVisible = useMemo(() => {
     if (!selectedCompetencia) return "Selecciona una competencia";
-    const docente = docentesPrimaria.find((d) => d.dni === docenteAsignadoActual);
-    return docente?.nombre ?? "Sin docente asignado";
-  }, [docenteAsignadoActual, docentesPrimaria, selectedCompetencia]);
+    const nombres = docentesAsignadosActual
+      .map((dni) => docentesPrimaria.find((d) => d.dni === dni)?.nombre)
+      .filter(Boolean) as string[];
+    return nombres.length > 0 ? nombres.join(", ") : "Sin docentes asignados";
+  }, [docentesAsignadosActual, docentesPrimaria, selectedCompetencia]);
 
   // SECUNDARIA - Mapeos de docentes por competencia
-  const docentesPorCompetenciaSecundaria = academicoConfig.docentesPorCompetenciaSecundaria ?? {};
+  const docentesPorCompetenciaSecundaria = useMemo(
+    () => normalizeDocentesPorCompetencia(academicoConfig.docentesPorCompetenciaSecundaria as Record<string, string | string[]> | undefined),
+    [academicoConfig.docentesPorCompetenciaSecundaria]
+  );
 
   const claveActualSecundaria = useMemo(
     () => matrixKey(asignacionAcademicaForm.grado ?? "", asignacionAcademicaForm.curso ?? "", selectedCompetenciaSecundaria),
     [asignacionAcademicaForm.grado, asignacionAcademicaForm.curso, selectedCompetenciaSecundaria]
   );
 
-  const docenteAsignadoActualSecundaria = docentesPorCompetenciaSecundaria[claveActualSecundaria];
+  const docentesAsignadosActualSecundaria = docentesPorCompetenciaSecundaria[claveActualSecundaria] ?? [];
 
   const docenteSecundariaVisible = useMemo(() => {
     if (!selectedCompetenciaSecundaria) return "Selecciona una competencia";
-    const docente = docentesSecundaria.find((d) => d.dni === docenteAsignadoActualSecundaria);
-    return docente?.nombre ?? "Sin docente asignado";
-  }, [docenteAsignadoActualSecundaria, docentesSecundaria, selectedCompetenciaSecundaria]);
+    const nombres = docentesAsignadosActualSecundaria
+      .map((dni) => docentesSecundaria.find((d) => d.dni === dni)?.nombre)
+      .filter(Boolean) as string[];
+    return nombres.length > 0 ? nombres.join(", ") : "Sin docentes asignados";
+  }, [docentesAsignadosActualSecundaria, docentesSecundaria, selectedCompetenciaSecundaria]);
 
   const autocompletarPorGradoYSeccion = (grado: string, seccion: string, nivel: string) => {
     const matchingSalon = academicoConfig.salones.find(
@@ -510,18 +521,6 @@ export function AsignacionesTab({
     saveAcademicoConfig({ ...academicoConfig, competenciasPorCursoPrimaria: map });
   };
 
-  const asignarDocenteCompetencia = (docenteDni: string) => {
-    if (!asignacionAcademicaForm.grado || !asignacionAcademicaForm.curso || !selectedCompetencia) return;
-    const key = matrixKey(asignacionAcademicaForm.grado, asignacionAcademicaForm.curso, selectedCompetencia);
-    const next = { ...(academicoConfig.docentesPorCompetencia ?? {}) };
-    if (docenteDni) {
-      next[key] = docenteDni;
-    } else {
-      delete next[key];
-    }
-    saveAcademicoConfig({ ...academicoConfig, docentesPorCompetencia: next });
-  };
-
   const labelDocenteAsignado = (dni: string) =>
     docentesPrimaria.find((d) => d.dni === dni)?.nombre ?? dni;
 
@@ -529,8 +528,21 @@ export function AsignacionesTab({
     if (!asignacionAcademicaForm.grado || !asignacionAcademicaForm.curso) return;
     const key = matrixKey(asignacionAcademicaForm.grado, asignacionAcademicaForm.curso, competenciaId);
     const next = { ...(academicoConfig.docentesPorCompetencia ?? {}) };
-    if (docenteDni) {
-      next[key] = docenteDni;
+    const current = normalizeDocentesPorCompetencia(next as Record<string, string | string[]> | undefined)[key] ?? [];
+
+    let nextDnis: string[];
+    if (!docenteDni) {
+      nextDnis = [];
+    } else if (current.includes(docenteDni)) {
+      nextDnis = current.filter((dni) => dni !== docenteDni);
+    } else if (current.length < 2) {
+      nextDnis = [...current, docenteDni];
+    } else {
+      nextDnis = current;
+    }
+
+    if (nextDnis.length > 0) {
+      next[key] = nextDnis;
     } else {
       delete next[key];
     }
@@ -569,8 +581,21 @@ export function AsignacionesTab({
     if (!asignacionAcademicaForm.grado || !asignacionAcademicaForm.curso) return;
     const key = matrixKey(asignacionAcademicaForm.grado, asignacionAcademicaForm.curso, competenciaId);
     const next = { ...(academicoConfig.docentesPorCompetenciaSecundaria ?? {}) };
-    if (docenteDni) {
-      next[key] = docenteDni;
+    const current = normalizeDocentesPorCompetencia(next as Record<string, string | string[]> | undefined)[key] ?? [];
+
+    let nextDnis: string[];
+    if (!docenteDni) {
+      nextDnis = [];
+    } else if (current.includes(docenteDni)) {
+      nextDnis = current.filter((dni) => dni !== docenteDni);
+    } else if (current.length < 2) {
+      nextDnis = [...current, docenteDni];
+    } else {
+      nextDnis = current;
+    }
+
+    if (nextDnis.length > 0) {
+      next[key] = nextDnis;
     } else {
       delete next[key];
     }
@@ -820,10 +845,9 @@ export function AsignacionesTab({
         <ElegirDocenteModal
           competenciaLabel={competenciasDelCurso.find((c) => c.id === elegirDocenteFor)?.label ?? ""}
           docentes={docentesDelCurso.map((d) => ({ dni: d.dni, nombre: d.nombre }))}
-          docenteActualDni={docentesPorCompetencia[matrixKey(asignacionAcademicaForm.grado ?? "", asignacionAcademicaForm.curso ?? "", elegirDocenteFor)]}
-          onSelect={(dni) => {
+          docentesAsignados={docentesPorCompetencia[matrixKey(asignacionAcademicaForm.grado ?? "", asignacionAcademicaForm.curso ?? "", elegirDocenteFor)] ?? []}
+          onToggle={(dni) => {
             asignarDocenteParaCompetencia(elegirDocenteFor, dni);
-            setElegirDocenteFor(null);
           }}
           onClose={() => setElegirDocenteFor(null)}
         />
@@ -844,10 +868,9 @@ export function AsignacionesTab({
         <ElegirDocenteModal
           competenciaLabel={competenciasDelCursoSecundaria.find((c) => c.id === elegirDocenteForSecundaria)?.label ?? ""}
           docentes={docentesDelCurso.map((d) => ({ dni: d.dni, nombre: d.nombre }))}
-          docenteActualDni={docentesPorCompetenciaSecundaria[matrixKey(asignacionAcademicaForm.grado ?? "", asignacionAcademicaForm.curso ?? "", elegirDocenteForSecundaria)]}
-          onSelect={(dni) => {
+          docentesAsignados={docentesPorCompetenciaSecundaria[matrixKey(asignacionAcademicaForm.grado ?? "", asignacionAcademicaForm.curso ?? "", elegirDocenteForSecundaria)] ?? []}
+          onToggle={(dni) => {
             asignarDocenteParaCompetenciaSecundaria(elegirDocenteForSecundaria, dni);
-            setElegirDocenteForSecundaria(null);
           }}
           onClose={() => setElegirDocenteForSecundaria(null)}
         />

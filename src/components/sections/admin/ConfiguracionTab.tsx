@@ -186,12 +186,6 @@ export function ConfiguracionTab({
               count: academicoConfig.gradosPrimaria.length,
             },
             {
-              id: "primaria-secciones" as const,
-              icon: <Users size={16} />,
-              title: "Secciones",
-              count: academicoConfig.seccionesPrimaria.length,
-            },
-            {
               id: "primaria-salones" as const,
               icon: <ShieldCheck size={16} />,
               title: "Salones",
@@ -242,12 +236,6 @@ export function ConfiguracionTab({
               icon: <GraduationCap size={16} />,
               title: "Grados",
               count: academicoConfig.gradosSecundaria.length,
-            },
-            {
-              id: "secundaria-secciones" as const,
-              icon: <Users size={16} />,
-              title: "Secciones",
-              count: academicoConfig.seccionesSecundaria.length,
             },
             {
               id: "secundaria-salones" as const,
@@ -354,15 +342,6 @@ export function ConfiguracionTab({
     onChange={(items) => saveAcademicoConfig({ ...academicoConfig, competenciasPrimaria: items })}
   />
 )}
-          {configView === "primaria-secciones" && (
-            <ConfigPanel
-              title="Secciones de primaria"
-              items={academicoConfig.seccionesPrimaria}
-              onChange={(items) =>
-                saveAcademicoConfig({ ...academicoConfig, seccionesPrimaria: items })
-              }
-            />
-          )}
           {configView === "primaria-grados" && (
             <ConfigPanel
               title="Grados de primaria"
@@ -383,15 +362,6 @@ export function ConfiguracionTab({
             <CompetenciasPanel
               items={academicoConfig.competenciasSecundaria}
               onChange={(items) => saveAcademicoConfig({ ...academicoConfig, competenciasSecundaria: items })}
-            />
-          )}
-          {configView === "secundaria-secciones" && (
-            <ConfigPanel
-              title="Secciones de secundaria"
-              items={academicoConfig.seccionesSecundaria}
-              onChange={(items) =>
-                saveAcademicoConfig({ ...academicoConfig, seccionesSecundaria: items })
-              }
             />
           )}
           {configView === "secundaria-grados" && (

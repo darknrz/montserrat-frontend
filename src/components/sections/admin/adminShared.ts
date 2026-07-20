@@ -3,7 +3,7 @@ export type TipoSeleccion = typeof TIPOS_SELECCION[number];
 
 export const YEARS = ["2025", "2024", "2023", "2022", "2021"];
 export const NIVELES = ["PRIMARIA", "SECUNDARIA"] as const;
-export const GRADOS_PRIMARIA = ["PRIMERO_PRIMARIA", "SEGUNDO_PRIMARIA", "TERCERO_PRIMARIA", "CUARTO_PRIMARIA", "QUINTO_PRIMARIA", "SEXTO_PRIMARIA"] as const;
+export const GRADOS_PRIMARIA = ["INICIAL", "PRIMERO_PRIMARIA", "SEGUNDO_PRIMARIA", "TERCERO_PRIMARIA", "CUARTO_PRIMARIA", "QUINTO_PRIMARIA", "SEXTO_PRIMARIA"] as const;
 export const GRADOS_SECUNDARIA = ["PRIMERO_SECUNDARIA", "SEGUNDO_SECUNDARIA", "TERCERO_SECUNDARIA", "CUARTO_SECUNDARIA", "QUINTO_SECUNDARIA"] as const;
 export const SECCIONES = ["A", "B", "C", "D"] as const;
 export const CURSOS = [
@@ -25,7 +25,7 @@ export const MESES_PENSION = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "
 
 export const ADMIN_TAB_STORAGE_KEY = "monserrat_admin_active_tab";
 
-export type Tab = "institucion" | "ingresantes" | "anuncios" | "videos" | "redes" | "academico" | "asignaciones" | "pensiones" | "configuracion";
+export type Tab = "institucion" | "ingresantes" | "anuncios" | "videos" | "redes" | "academico" | "asignaciones" | "pensiones" | "configuracion" | "reportes";
 export type CatalogItem = { id: string; label: string; active: boolean };
 export type SalonItem = { nivel: string; grado: string; seccion: string; aula: string; active: boolean };
 export type ConfigView =
@@ -48,16 +48,15 @@ export type AcademicoConfig = {
   competenciasPrimaria: CatalogItem[];
   // mapeo: cursoId -> lista de competenciasPrimaria ids
   competenciasPorCursoPrimaria?: Record<string, string[]>;
-  // mapeo: `${gradoId}||${cursoId}||${competenciaId}` -> docenteDni
-  // Permite que un mismo docente enseñe la misma competencia en varios grados,
-  // y que cada competencia de cada área curricular tenga su propio docente por grado.
-  docentesPorCompetencia?: Record<string, string>;
+  // mapeo: `${gradoId}||${cursoId}||${competenciaId}` -> lista de docentesDni
+  // Permite que una misma competencia tenga hasta dos docentes asignados por grado.
+  docentesPorCompetencia?: Record<string, string | string[]>;
   cursosSecundaria: CatalogItem[];
   competenciasSecundaria: CatalogItem[];
   // mapeo: cursoId -> lista de competenciasSecundaria ids
   competenciasPorCursoSecundaria?: Record<string, string[]>;
-  // mapeo: `${gradoId}||${cursoId}||${competenciaId}` -> docenteDni para secundaria
-  docentesPorCompetenciaSecundaria?: Record<string, string>;
+  // mapeo: `${gradoId}||${cursoId}||${competenciaId}` -> lista de docentesDni para secundaria
+  docentesPorCompetenciaSecundaria?: Record<string, string | string[]>;
   gradosPrimaria: CatalogItem[];
   gradosSecundaria: CatalogItem[];
   seccionesPrimaria: CatalogItem[];
@@ -522,6 +521,22 @@ export const defaultAcademicoConfig: AcademicoConfig = {
 export const INGRESANTES_MODELS = ["card-grid", "card-featured"] as const;
 
 
+export function normalizeDocentesPorCompetencia(value?: Record<string, string | string[]>) {
+  if (!value) return {} as Record<string, string[]>;
+  return Object.fromEntries(
+    Object.entries(value).flatMap(([key, docentes]) => {
+      if (Array.isArray(docentes)) {
+        const normalized = docentes.filter((docente): docente is string => Boolean(docente));
+        return normalized.length > 0 ? [[key, normalized]] : [];
+      }
+      if (typeof docentes === "string" && docentes) {
+        return [[key, [docentes]]];
+      }
+      return [];
+    })
+  );
+}
+
 export function mergeAcademicoConfig(config: Partial<AcademicoConfig>) {
   const legacy = config as Partial<AcademicoConfig> & { cursos?: CatalogItem[]; secciones?: CatalogItem[] };
   const hasSavedConfig = [
@@ -543,11 +558,11 @@ export function mergeAcademicoConfig(config: Partial<AcademicoConfig>) {
     cursosPrimaria: config.cursosPrimaria ?? legacy.cursos ?? defaultAcademicoConfig.cursosPrimaria,
     competenciasPrimaria: config.competenciasPrimaria ?? defaultAcademicoConfig.competenciasPrimaria,
     competenciasPorCursoPrimaria: config.competenciasPorCursoPrimaria ?? defaultAcademicoConfig.competenciasPorCursoPrimaria,
-    docentesPorCompetencia: config.docentesPorCompetencia ?? defaultAcademicoConfig.docentesPorCompetencia,
+    docentesPorCompetencia: normalizeDocentesPorCompetencia(config.docentesPorCompetencia as Record<string, string | string[]> | undefined) ?? defaultAcademicoConfig.docentesPorCompetencia,
     cursosSecundaria: config.cursosSecundaria ?? legacy.cursos ?? defaultAcademicoConfig.cursosSecundaria,
     competenciasSecundaria: config.competenciasSecundaria ?? defaultAcademicoConfig.competenciasSecundaria,
     competenciasPorCursoSecundaria: config.competenciasPorCursoSecundaria ?? defaultAcademicoConfig.competenciasPorCursoSecundaria,
-    docentesPorCompetenciaSecundaria: config.docentesPorCompetenciaSecundaria ?? defaultAcademicoConfig.docentesPorCompetenciaSecundaria,
+    docentesPorCompetenciaSecundaria: normalizeDocentesPorCompetencia(config.docentesPorCompetenciaSecundaria as Record<string, string | string[]> | undefined) ?? defaultAcademicoConfig.docentesPorCompetenciaSecundaria,
     gradosPrimaria: config.gradosPrimaria ?? defaultAcademicoConfig.gradosPrimaria,
     gradosSecundaria: config.gradosSecundaria ?? defaultAcademicoConfig.gradosSecundaria,
     seccionesPrimaria: config.seccionesPrimaria ?? legacy.secciones ?? defaultAcademicoConfig.seccionesPrimaria,
@@ -567,7 +582,8 @@ export function isAdminTab(value: string | null): value is Tab {
     || value === "academico"
     || value === "asignaciones"
     || value === "pensiones"
-    || value === "configuracion";
+    || value === "configuracion"
+    || value === "reportes";
 }
 
 export function createCatalogId(label: string, existing: CatalogItem[]) {
@@ -671,6 +687,9 @@ export function parseBooleanCell(value: unknown) {
 export function getGradosPorNivelAcademico(nivelAcademicoId: string): string[] {
   if (!nivelAcademicoId) return [];
   const cleanId = nivelAcademicoId.toUpperCase().replace(/[^A-Z0-9_]/g, "_");
+  if (cleanId === "PRIMARIA") return [...GRADOS_PRIMARIA];
+  if (cleanId === "SECUNDARIA") return [...GRADOS_SECUNDARIA];
+  if (cleanId.includes("INICIAL")) return ["INICIAL"];
   if (cleanId.includes("1RO_PRIM") || cleanId === "1_PRIM") return ["PRIMERO_PRIMARIA"];
   if (cleanId.includes("2DO_PRIM") || cleanId === "2_PRIM") return ["SEGUNDO_PRIMARIA"];
   if (cleanId.includes("3RO_PRIM") || cleanId === "3_PRIM") return ["TERCERO_PRIMARIA"];

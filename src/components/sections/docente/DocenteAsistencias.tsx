@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { SectionHeader } from "../../ui/SectionHeader";
 import { monserratApi } from "../../../api/monserrat";
 import type { UsuarioAcademico, AsistenciaAcademica, AsignacionAcademica } from "../../../types";
-import type { AcademicoConfig } from "../admin/adminShared";
+import { getGradosPorNivelAcademico, type AcademicoConfig } from "../admin/adminShared";
 
 const ESTADOS_ASISTENCIA = ["PRESENTE", "AUSENTE"] as const;
 
@@ -24,8 +24,7 @@ export function DocenteAsistencias({ token }: { token: string }) {
   const [periodos, setPeriodos] = useState<any[]>([]);
   const [selectedPeriodo, setSelectedPeriodo] = useState<any | null>(null);
   const [selectedCurso, setSelectedCurso] = useState("");
-  const [selectedGrado, setSelectedGrado] = useState("");
-  const [selectedSeccion, setSelectedSeccion] = useState("");
+  const [selectedNivelAcademico, setSelectedNivelAcademico] = useState("");
   const [asistenciaFecha, setAsistenciaFecha] = useState(new Date().toISOString().slice(0, 10));
   const [asistenciaBulk, setAsistenciaBulk] = useState<Record<string, EstadoAsistencia>>({});
   const [isBusy, setIsBusy] = useState(false);
@@ -112,31 +111,41 @@ export function DocenteAsistencias({ token }: { token: string }) {
 
   const cursosDisponibles = useMemo(() => Array.from(new Set(asignaciones.map((a) => a.curso))).filter(Boolean), [asignaciones]);
 
-  const salonesDeCurso = useMemo(() => {
-    if (!selectedCurso) return [] as { grado: string; seccion: string }[];
-    const map = new Map<string, { grado: string; seccion: string }>();
+  const nivelesDeCurso = useMemo(() => {
+    if (!selectedCurso) return [] as { id: string; label: string }[];
+    const activeLevels = (academicoConfig?.nivelesAcademicos ?? []).filter((nivel) => nivel.active);
+    const map = new Map<string, { id: string; label: string }>();
     asignaciones
-      .filter((a) => a.curso === selectedCurso && a.grado && a.seccion)
-      .forEach((a) => map.set(`${a.grado}||${a.seccion}`, { grado: a.grado!, seccion: a.seccion! }));
+      .filter((a) => a.curso === selectedCurso && a.grado)
+      .forEach((a) => {
+        const matchingLevel = activeLevels.find((nivel) =>
+          getGradosPorNivelAcademico(nivel.id).includes(a.grado ?? "")
+        );
+        if (matchingLevel && !map.has(matchingLevel.id)) {
+          map.set(matchingLevel.id, { id: matchingLevel.id, label: matchingLevel.label });
+        }
+      });
     return Array.from(map.values());
-  }, [selectedCurso, asignaciones]);
+  }, [academicoConfig?.nivelesAcademicos, selectedCurso, asignaciones]);
 
   useEffect(() => {
-    if (salonesDeCurso.length > 0) {
-      setSelectedGrado(salonesDeCurso[0].grado);
-      setSelectedSeccion(salonesDeCurso[0].seccion);
+    if (nivelesDeCurso.length > 0) {
+      const stillValid = nivelesDeCurso.some((nivel) => nivel.id === selectedNivelAcademico);
+      if (!stillValid) {
+        setSelectedNivelAcademico(nivelesDeCurso[0].id);
+      }
     } else {
-      setSelectedGrado("");
-      setSelectedSeccion("");
+      setSelectedNivelAcademico("");
     }
-  }, [salonesDeCurso]);
+  }, [nivelesDeCurso, selectedNivelAcademico]);
 
   const alumnosFiltrados = useMemo(() => {
-    if (!selectedCurso || !selectedGrado || !selectedSeccion) return alumnos;
+    if (!selectedCurso || !selectedNivelAcademico) return alumnos;
+    const gradosDelNivel = getGradosPorNivelAcademico(selectedNivelAcademico);
     return alumnos.filter((al) =>
-      asignaciones.some((a) => a.alumnoDni === al.dni && a.curso === selectedCurso && a.grado === selectedGrado && a.seccion === selectedSeccion)
+      asignaciones.some((a) => a.alumnoDni === al.dni && a.curso === selectedCurso && gradosDelNivel.includes(a.grado ?? ""))
     );
-  }, [selectedCurso, selectedGrado, selectedSeccion, alumnos, asignaciones]);
+  }, [selectedCurso, selectedNivelAcademico, alumnos, asignaciones]);
 
   const submitAsistenciaBulk = async () => {
     setIsBusy(true);
@@ -183,7 +192,7 @@ export function DocenteAsistencias({ token }: { token: string }) {
   const bimestreLabels = ["Primer bimestre", "Segundo bimestre", "Tercer bimestre", "Cuarto bimestre"];
   const periodoLabel = (p: any, idx: number) => p?.nombre || bimestreLabels[idx] || `Periodo ${idx + 1}`;
 
-  const salonSummary = useMemo(() => {
+  const nivelSummary = useMemo(() => {
     const summary = { total: alumnosFiltrados.length, below: 0 };
     alumnosFiltrados.forEach((a) => {
       const p = asistenciaPorAlumnoPeriodo(a.dni).porcentaje;
@@ -224,21 +233,11 @@ export function DocenteAsistencias({ token }: { token: string }) {
             </label>
 
             <label className="flex items-center gap-2">
-              <span className="text-sm text-monserrat-ink/70">Grado:</span>
-              <select value={selectedGrado} onChange={(e) => setSelectedGrado(e.target.value)} className="admin-input">
+              <span className="text-sm text-monserrat-ink/70">Nivel académico:</span>
+              <select value={selectedNivelAcademico} onChange={(e) => setSelectedNivelAcademico(e.target.value)} className="admin-input">
                 <option value="">--</option>
-                {salonesDeCurso.map((s) => (
-                  <option key={`${s.grado}-${s.seccion}`} value={s.grado}>{s.grado} / {s.seccion}</option>
-                ))}
-              </select>
-            </label>
-
-            <label className="flex items-center gap-2">
-              <span className="text-sm text-monserrat-ink/70">Sección:</span>
-              <select value={selectedSeccion} onChange={(e) => setSelectedSeccion(e.target.value)} className="admin-input">
-                <option value="">--</option>
-                {salonesDeCurso.map((s) => (
-                  <option key={`${s.grado}-${s.seccion}-sec`} value={s.seccion}>{s.seccion}</option>
+                {nivelesDeCurso.map((nivel) => (
+                  <option key={nivel.id} value={nivel.id}>{nivel.label}</option>
                 ))}
               </select>
             </label>
@@ -286,10 +285,10 @@ export function DocenteAsistencias({ token }: { token: string }) {
             ))}
           </div>
           <div className="mt-6 rounded-[14px] border border-monserrat-ink/8 bg-white p-4">
-            <p className="text-sm font-black">Resumen del salón</p>
-            <p className="mt-2 text-sm text-monserrat-ink/70">Alumnos en filtro: <span className="font-black">{salonSummary.total}</span></p>
-            <p className="mt-1 text-sm text-monserrat-red">Por debajo del mínimo ({minAsistencia}%): <span className="font-black">{salonSummary.below}</span></p>
-            {salonSummary.below > 0 && <p className="mt-2 text-xs text-monserrat-ink/60">Revisa los alumnos marcados en rojo en la lista para detalles.</p>}
+            <p className="text-sm font-black">Resumen del nivel académico</p>
+            <p className="mt-2 text-sm text-monserrat-ink/70">Alumnos en filtro: <span className="font-black">{nivelSummary.total}</span></p>
+            <p className="mt-1 text-sm text-monserrat-red">Por debajo del mínimo ({minAsistencia}%): <span className="font-black">{nivelSummary.below}</span></p>
+            {nivelSummary.below > 0 && <p className="mt-2 text-xs text-monserrat-ink/60">Revisa los alumnos marcados en rojo en la lista para detalles.</p>}
           </div>
           <div className="mt-6 rounded-[14px] border border-monserrat-ink/8 bg-monserrat-cream/40 p-4 text-sm text-monserrat-ink/70">
             Estos valores reflejan la cantidad de registros de asistencia ya guardados en el sistema para tu rol de docente.

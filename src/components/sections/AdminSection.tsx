@@ -32,6 +32,7 @@ import { AsignacionesTab } from "./admin/AsignacionesTab";
 import { AcademicoTab } from "./admin/AcademicoTab";
 import { PensionesTab } from "./admin/PensionesTab";
 import { ConfiguracionTab } from "./admin/ConfiguracionTab";
+import { ReportesTab } from "./admin/ReportesTab";
 
 type AdminSectionProps = {
   institution: Institution;
@@ -240,6 +241,7 @@ export function AdminSection({
     { id: "academico", label: "Academico" },
     { id: "pensiones", label: "Pensiones" },
     { id: "configuracion", label: "Configuracion academica" },
+    { id: "reportes", label: "Reportes" },
   ];
 
   if (!session) return null;
@@ -413,6 +415,16 @@ export function AdminSection({
                 runAdminAction={runAdminAction}
                 setStatus={setStatus}
                 setErrorMessage={setErrorMessage}
+              />
+            )}
+
+            {/* ── TAB REPORTES ── */}
+            {tab === "reportes" && (
+              <ReportesTab
+                usuariosAcademicos={usuariosAcademicos}
+                institution={institution}
+                token={token}
+                academicoConfig={academicoConfig}
               />
             )}
           </div>

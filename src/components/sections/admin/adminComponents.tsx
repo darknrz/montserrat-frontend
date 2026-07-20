@@ -686,7 +686,7 @@ export function CompetenciaDocenteBoard({
   onEditCompetencia,
 }: {
   competencias: CatalogItem[];
-  docentesPorCompetencia: Record<string, string>;
+  docentesPorCompetencia: Record<string, string[]>;
   grado: string;
   curso: string;
   labelDocenteAsignado: (dni: string) => string;
@@ -718,7 +718,7 @@ export function CompetenciaDocenteBoard({
         ) : (
           competencias.map((c, i) => {
             const key = matrixKey(grado, curso, c.id);
-            const dni = docentesPorCompetencia[key];
+            const dnis = docentesPorCompetencia[key] ?? [];
             return (
               <div
                 key={c.id}
@@ -733,13 +733,20 @@ export function CompetenciaDocenteBoard({
                   {c.label}
                 </div>
                 <div className="border-l border-monserrat-ink/6 h-full px-4 py-2 flex items-center min-w-0">
-                  {dni ? (
+                  {dnis.length > 0 ? (
                     <div
                       onClick={() => onEditRow(c.id)}
-                      className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-500/20 bg-emerald-500/6 text-emerald-800 text-[12.5px] font-black transition-all hover:bg-emerald-500/10 hover:border-emerald-500/35 truncate w-full"
+                      className="cursor-pointer w-full rounded-xl border border-emerald-500/20 bg-emerald-500/6 px-3 py-2 text-emerald-800 transition-all hover:bg-emerald-500/10 hover:border-emerald-500/35"
                     >
-                      <UserCheck size={13} className="shrink-0 text-emerald-600" />
-                      <span className="truncate">{labelDocenteAsignado(dni)}</span>
+                      <div className="flex items-center gap-1.5 text-[12.5px] font-black">
+                        <UserCheck size={13} className="shrink-0 text-emerald-600" />
+                        <span className="truncate">{dnis.map((dni) => labelDocenteAsignado(dni)).join(", ")}</span>
+                      </div>
+                      {dnis.length === 2 && (
+                        <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-700/80">
+                          Máx. 2 docentes
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <button
@@ -747,7 +754,7 @@ export function CompetenciaDocenteBoard({
                       onClick={() => onEditRow(c.id)}
                       className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-dashed border-monserrat-red/30 bg-monserrat-red/4 text-monserrat-red transition-all hover:bg-monserrat-red/8 hover:border-monserrat-red/50 text-[11px] font-black uppercase tracking-wider cursor-pointer"
                     >
-                      <UserPlus size={12} /> Asignar docente
+                      <UserPlus size={12} /> Asignar docentes
                     </button>
                   )}
                 </div>
@@ -763,14 +770,14 @@ export function CompetenciaDocenteBoard({
 export function ElegirDocenteModal({
   competenciaLabel,
   docentes,
-  docenteActualDni,
-  onSelect,
+  docentesAsignados,
+  onToggle,
   onClose,
 }: {
   competenciaLabel: string;
   docentes: { dni: string; nombre: string }[];
-  docenteActualDni?: string;
-  onSelect: (dni: string) => void;
+  docentesAsignados?: string[];
+  onToggle: (dni: string) => void;
   onClose: () => void;
 }) {
   const [busqueda, setBusqueda] = useState("");
@@ -813,13 +820,17 @@ export function ElegirDocenteModal({
         )}
 
         <div className="flex-1 overflow-y-auto p-6 grid gap-2.5">
-          {docenteActualDni && (
+          <div className="mb-1.5 flex items-center justify-between rounded-[12px] border border-monserrat-ink/8 bg-monserrat-cream/30 px-3 py-2 text-[11px] font-black uppercase tracking-[0.08em] text-monserrat-ink/60">
+            <span>Máximo 2 docentes</span>
+            <span>{(docentesAsignados ?? []).length}/2</span>
+          </div>
+          {(docentesAsignados ?? []).length > 0 && (
             <button
               type="button"
-              onClick={() => onSelect("")}
+              onClick={() => onToggle("")}
               className="flex items-center justify-center gap-1.5 rounded-[12px] border border-dashed border-red-500/30 bg-red-500/4 py-2.5 text-center text-[12.5px] font-black text-red-600 hover:bg-red-500/10 hover:border-red-500/50 transition-all cursor-pointer flex-none mb-1.5"
             >
-              <X size={13} /> Quitar docente asignado
+              <X size={13} /> Quitar todos
             </button>
           )}
           {docentes.length === 0 && (
@@ -833,17 +844,19 @@ export function ElegirDocenteModal({
             </p>
           )}
           {docentesFiltrados.map((d) => {
-            const selected = d.dni === docenteActualDni;
+            const selected = (docentesAsignados ?? []).includes(d.dni);
+            const canSelect = selected || (docentesAsignados ?? []).length < 2;
             return (
               <button
                 key={d.dni}
                 type="button"
-                onClick={() => onSelect(d.dni)}
+                onClick={() => onToggle(d.dni)}
+                disabled={!canSelect}
                 className={`flex items-center justify-between rounded-[12px] border p-2.5 text-left text-[12.5px] font-semibold transition-all cursor-pointer ${
                   selected
                     ? "border-monserrat-red/40 bg-monserrat-red/8 text-monserrat-red shadow-sm shadow-monserrat-red/5 scale-[1.01]"
                     : "border-monserrat-ink/8 text-monserrat-ink/75 bg-white hover:border-monserrat-red/25 hover:bg-monserrat-cream/5"
-                }`}
+                } ${!canSelect ? "cursor-not-allowed opacity-60" : ""}`}
               >
                 <div className="flex items-center min-w-0">
                   <div className={`h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-black mr-2.5 shrink-0 ${selected ? 'bg-monserrat-red text-white' : 'bg-monserrat-cream text-monserrat-ink/70'}`}>
