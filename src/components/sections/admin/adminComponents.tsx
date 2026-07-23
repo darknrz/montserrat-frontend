@@ -583,85 +583,137 @@ export function CompetenciaPickerModal({
 
   const filtro = normalizarTexto(busqueda.trim());
 
-  const catalogoOrdenado = useMemo(() => {
-    // Las ya vinculadas aquí primero, luego libres, luego las de otras áreas
-    return [...catalogo].sort((a, b) => {
-      const rank = (id: string) => (yaVinculadas.includes(id) ? 0 : areaActualDeCompetencia[id] ? 2 : 1);
-      return rank(a.id) - rank(b.id);
-    });
-  }, [catalogo, yaVinculadas, areaActualDeCompetencia]);
-
   const catalogoFiltrado = useMemo(() => {
-    if (!filtro) return catalogoOrdenado;
-    return catalogoOrdenado.filter(
+    if (!filtro) return catalogo;
+    return catalogo.filter(
       (c) => normalizarTexto(c.label).includes(filtro) || normalizarTexto(c.id).includes(filtro)
     );
-  }, [catalogoOrdenado, filtro]);
+  }, [catalogo, filtro]);
+
+  // Tres grupos fijos para escanear rapido sin leer badge por badge:
+  // vinculadas a este curso, libres, y ocupadas por otra area.
+  const grupos = useMemo(() => {
+    const vinculadas: CatalogItem[] = [];
+    const libres: CatalogItem[] = [];
+    const enOtraArea: CatalogItem[] = [];
+    catalogoFiltrado.forEach((c) => {
+      if (yaVinculadas.includes(c.id)) vinculadas.push(c);
+      else if (areaActualDeCompetencia[c.id]) enOtraArea.push(c);
+      else libres.push(c);
+    });
+    return { vinculadas, libres, enOtraArea };
+  }, [catalogoFiltrado, yaVinculadas, areaActualDeCompetencia]);
+
+  const renderFila = (c: CatalogItem, variant: "linked" | "free" | "other") => {
+    const otraArea = areaActualDeCompetencia[c.id];
+    return (
+      <button
+        key={c.id}
+        type="button"
+        onClick={() => onToggle(c.id)}
+        title={otraArea ? `Mover desde ${labelAcademico(otraArea)}` : undefined}
+        className={`group flex w-full items-center gap-2.5 rounded-[9px] border px-2.5 py-1.5 text-left transition ${
+          variant === "linked"
+            ? "border-monserrat-red/25 bg-monserrat-red/6 hover:bg-monserrat-red/10"
+            : variant === "other"
+            ? "border-amber-400/35 bg-amber-50/70 hover:bg-amber-50"
+            : "border-monserrat-ink/8 bg-white hover:border-monserrat-red/20 hover:bg-monserrat-cream/10"
+        }`}
+      >
+        <span
+          className={`line-clamp-2 flex-1 text-[12px] font-semibold leading-snug ${
+            variant === "linked" ? "text-monserrat-red" : "text-monserrat-ink/75"
+          }`}
+        >
+          {c.label}
+        </span>
+        <span
+          className={`flex-shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.06em] ${
+            variant === "linked"
+              ? "bg-monserrat-red text-white"
+              : variant === "other"
+              ? "bg-amber-500 text-white"
+              : "bg-monserrat-ink/8 text-monserrat-ink/50 group-hover:bg-monserrat-red/15 group-hover:text-monserrat-red"
+          }`}
+        >
+          {variant === "linked" ? "Quitar" : variant === "other" ? "Mover" : "Vincular"}
+        </span>
+      </button>
+    );
+  };
+
+  const totalMostrado = grupos.vinculadas.length + grupos.libres.length + grupos.enOtraArea.length;
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-[460px] overflow-hidden rounded-[18px] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
-        <div className="border-b border-monserrat-ink/8 bg-monserrat-cream px-5 py-4">
-          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-red">Vincular competencias</p>
-          <h3 className="mt-1 font-serif text-xl font-black text-monserrat-ink">{labelAcademico(curso)}</h3>
-          <p className="mt-1 text-[11px] font-semibold text-monserrat-ink/45">
-            {yaVinculadas.length} de {catalogo.length} vinculada{yaVinculadas.length === 1 ? "" : "s"}
-          </p>
+      <div className="flex w-full max-w-[420px] max-h-[85vh] flex-col overflow-hidden rounded-[16px] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+        {/* Header compacto: todo en una franja, sin bloques apilados grandes */}
+        <div className="flex flex-none items-center justify-between gap-3 border-b border-monserrat-ink/8 bg-monserrat-cream px-4 py-3">
+          <div className="min-w-0">
+            <h3 className="truncate font-serif text-[15px] font-black leading-tight text-monserrat-ink">{labelAcademico(curso)}</h3>
+            <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-monserrat-ink/40">
+              {yaVinculadas.length}/{catalogo.length} vinculadas
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-white text-monserrat-ink/40 hover:bg-monserrat-red/10 hover:text-monserrat-red"
+          >
+            <X size={14} />
+          </button>
         </div>
 
-        <div className="border-b border-monserrat-ink/8 bg-white px-5 py-3">
+        <div className="flex-none border-b border-monserrat-ink/8 px-4 py-2">
           <div className="relative">
-            <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-monserrat-ink/35" />
+            <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-monserrat-ink/35" />
             <input
               autoFocus
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               placeholder="Buscar competencia..."
-              className="w-full rounded-[10px] border border-monserrat-ink/10 bg-white py-2 pl-9 pr-3 text-[12.5px] font-semibold text-monserrat-ink outline-none focus:border-monserrat-red"
+              className="w-full rounded-[8px] border border-monserrat-ink/10 bg-white py-1.5 pl-8 pr-3 text-[12px] font-semibold text-monserrat-ink outline-none focus:border-monserrat-red"
             />
           </div>
         </div>
 
-        <div className="grid max-h-[360px] gap-2 overflow-y-auto p-4">
-          {catalogoFiltrado.length === 0 && (
-            <p className="py-6 text-center text-sm font-semibold text-monserrat-ink/40">
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+          {totalMostrado === 0 && (
+            <p className="py-6 text-center text-[12.5px] font-semibold text-monserrat-ink/40">
               Ninguna competencia coincide con "{busqueda}"
             </p>
           )}
-          {catalogoFiltrado.map((c) => {
-            const linked = yaVinculadas.includes(c.id);
-            const otraArea = areaActualDeCompetencia[c.id];
-            return (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => onToggle(c.id)}
-                title={otraArea ? `Mover desde ${labelAcademico(otraArea)}` : undefined}
-                className={`flex items-start justify-between gap-3 rounded-[10px] border px-3 py-2 text-left text-[12.5px] font-semibold transition ${
-                  linked
-                    ? "border-monserrat-red/30 bg-monserrat-red/8 text-monserrat-red"
-                    : otraArea
-                    ? "border-amber-400/40 bg-amber-50 text-monserrat-ink/60"
-                    : "border-monserrat-ink/10 text-monserrat-ink/70 hover:border-monserrat-ink/25"
-                }`}
-              >
-                <span className="min-w-0">
-                  <span className="block">{c.label}</span>
-                  {otraArea && (
-                    <span className="mt-0.5 block text-[10px] font-black uppercase text-amber-600">
-                      En {labelAcademico(otraArea)} · clic para mover aquí
-                    </span>
-                  )}
-                </span>
-                <span className="flex-shrink-0 text-[10px] font-black uppercase">
-                  {linked ? "Vinculada" : otraArea ? "Mover" : "Vincular"}
-                </span>
-              </button>
-            );
-          })}
+
+          {grupos.vinculadas.length > 0 && (
+            <div className="mb-3">
+              <p className="mb-1 text-[9px] font-black uppercase tracking-[0.1em] text-monserrat-red/70">
+                Vinculadas a esta área ({grupos.vinculadas.length})
+              </p>
+              <div className="grid gap-1">{grupos.vinculadas.map((c) => renderFila(c, "linked"))}</div>
+            </div>
+          )}
+
+          {grupos.libres.length > 0 && (
+            <div className="mb-3">
+              <p className="mb-1 text-[9px] font-black uppercase tracking-[0.1em] text-monserrat-ink/35">
+                Disponibles ({grupos.libres.length})
+              </p>
+              <div className="grid gap-1">{grupos.libres.map((c) => renderFila(c, "free"))}</div>
+            </div>
+          )}
+
+          {grupos.enOtraArea.length > 0 && (
+            <div>
+              <p className="mb-1 text-[9px] font-black uppercase tracking-[0.1em] text-amber-600/80">
+                En otra área ({grupos.enOtraArea.length})
+              </p>
+              <div className="grid gap-1">{grupos.enOtraArea.map((c) => renderFila(c, "other"))}</div>
+            </div>
+          )}
         </div>
-        <div className="flex justify-end gap-2 border-t border-monserrat-ink/8 px-5 py-3">
-          <button type="button" onClick={onClose} className="rounded-[10px] bg-monserrat-red px-4 py-2 text-[12px] font-black text-white hover:bg-monserrat-red/85">
+
+        <div className="flex flex-none justify-end border-t border-monserrat-ink/8 px-4 py-2.5">
+          <button type="button" onClick={onClose} className="rounded-[9px] bg-monserrat-red px-4 py-1.5 text-[11.5px] font-black text-white hover:bg-monserrat-red/85">
             Listo
           </button>
         </div>
@@ -767,6 +819,17 @@ export function CompetenciaDocenteBoard({
   );
 }
 
+// Paleta rotativa para los avatares de iniciales: le da variedad visual a la
+// grilla de docentes en vez de que todos los circulos sean del mismo color.
+const AVATAR_PALETTE = [
+  "bg-rose-100 text-rose-700",
+  "bg-sky-100 text-sky-700",
+  "bg-amber-100 text-amber-700",
+  "bg-emerald-100 text-emerald-700",
+  "bg-violet-100 text-violet-700",
+  "bg-teal-100 text-teal-700",
+];
+
 export function ElegirDocenteModal({
   competenciaLabel,
   docentes,
@@ -785,97 +848,121 @@ export function ElegirDocenteModal({
 
   const getInitials = (name: string) => {
     const parts = name.split(" ");
-    return parts.map(p => p[0]).slice(0, 2).join("").toUpperCase();
+    return parts.map((p) => p[0]).slice(0, 2).join("").toUpperCase();
   };
 
-  const mostrarBuscador = docentes.length > 5;
+  const mostrarBuscador = docentes.length > 6;
   const filtro = normalizarTexto(busqueda.trim());
   const docentesFiltrados = !filtro
     ? docentes
     : docentes.filter((d) => normalizarTexto(d.nombre).includes(filtro));
 
+  const seleccionCount = (docentesAsignados ?? []).length;
+
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-[440px] overflow-hidden rounded-[20px] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.28)] flex flex-col max-h-[90vh]">
-        <div className="border-b border-monserrat-ink/8 bg-monserrat-cream px-6 py-4 flex-none">
-          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-red">
-            Asignar docente
-          </p>
-          <h3 className="mt-1 font-serif text-lg font-black text-monserrat-ink leading-snug">{competenciaLabel}</h3>
+      <div className="flex w-full max-w-[420px] max-h-[80vh] flex-col overflow-hidden rounded-[16px] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+        {/* Header en una sola franja: titulo + contador + cerrar, sin bloques apilados */}
+        <div className="flex flex-none items-center justify-between gap-3 border-b border-monserrat-ink/8 bg-monserrat-cream px-4 py-3">
+          <div className="min-w-0">
+            <p className="text-[9px] font-black uppercase tracking-[0.12em] text-monserrat-red/80">Asignar docente</p>
+            <h3 className="truncate font-serif text-[14px] font-black leading-tight text-monserrat-ink">{competenciaLabel}</h3>
+          </div>
+          <div className="flex flex-shrink-0 items-center gap-2">
+            <span
+              className={`rounded-full px-2 py-1 text-[10px] font-black ${
+                seleccionCount === 2 ? "bg-emerald-500/15 text-emerald-700" : "bg-monserrat-ink/8 text-monserrat-ink/50"
+              }`}
+            >
+              {seleccionCount}/2
+            </span>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-monserrat-ink/40 hover:bg-monserrat-red/10 hover:text-monserrat-red"
+            >
+              <X size={14} />
+            </button>
+          </div>
         </div>
 
         {mostrarBuscador && (
-          <div className="border-b border-monserrat-ink/8 bg-white px-6 py-3 flex-none">
+          <div className="flex-none border-b border-monserrat-ink/8 px-4 py-2">
             <div className="relative">
-              <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-monserrat-ink/35" />
+              <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-monserrat-ink/35" />
               <input
                 autoFocus
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
-                placeholder="Buscar docente por nombre..."
-                className="w-full rounded-[10px] border border-monserrat-ink/10 bg-white py-2 pl-9 pr-3 text-[12.5px] font-semibold text-monserrat-ink outline-none focus:border-monserrat-red focus:ring-1 focus:ring-monserrat-red/20"
+                placeholder="Buscar docente..."
+                className="w-full rounded-[8px] border border-monserrat-ink/10 bg-white py-1.5 pl-8 pr-3 text-[12px] font-semibold text-monserrat-ink outline-none focus:border-monserrat-red"
               />
             </div>
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto p-6 grid gap-2.5">
-          <div className="mb-1.5 flex items-center justify-between rounded-[12px] border border-monserrat-ink/8 bg-monserrat-cream/30 px-3 py-2 text-[11px] font-black uppercase tracking-[0.08em] text-monserrat-ink/60">
-            <span>Máximo 2 docentes</span>
-            <span>{(docentesAsignados ?? []).length}/2</span>
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          {docentes.length === 0 && (
+            <p className="py-8 text-center text-[12.5px] font-semibold text-monserrat-ink/40">No hay docentes disponibles</p>
+          )}
+          {docentes.length > 0 && docentesFiltrados.length === 0 && (
+            <p className="py-8 text-center text-[12.5px] font-semibold text-monserrat-ink/40">Ningún docente coincide con la búsqueda</p>
+          )}
+
+          {/* Grilla de "contactos": 3 columnas en vez de filas apiladas.
+              El mismo listado ocupa mucha menos altura porque crece a lo ancho. */}
+          <div className="grid grid-cols-3 gap-2">
+            {docentesFiltrados.map((d, i) => {
+              const selected = (docentesAsignados ?? []).includes(d.dni);
+              const canSelect = selected || seleccionCount < 2;
+              return (
+                <button
+                  key={d.dni}
+                  type="button"
+                  onClick={() => onToggle(d.dni)}
+                  disabled={!canSelect}
+                  title={d.nombre}
+                  className={`relative flex flex-col items-center gap-1.5 rounded-[12px] border p-2.5 text-center transition-all ${
+                    selected
+                      ? "border-monserrat-red/40 bg-monserrat-red/6"
+                      : "border-monserrat-ink/8 bg-white hover:border-monserrat-red/25 hover:bg-monserrat-cream/10"
+                  } ${!canSelect ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+                >
+                  <div
+                    className={`flex h-9 w-9 items-center justify-center rounded-full text-[11px] font-black ${
+                      selected ? "bg-monserrat-red text-white" : AVATAR_PALETTE[i % AVATAR_PALETTE.length]
+                    }`}
+                  >
+                    {getInitials(d.nombre)}
+                  </div>
+                  <span className={`line-clamp-2 text-[10.5px] font-bold leading-tight ${selected ? "text-monserrat-red" : "text-monserrat-ink/70"}`}>
+                    {d.nombre}
+                  </span>
+                  {selected && (
+                    <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-monserrat-red text-white shadow-sm">
+                      <Check size={9} />
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
-          {(docentesAsignados ?? []).length > 0 && (
+        </div>
+
+        <div className="flex flex-none items-center justify-between gap-2 border-t border-monserrat-ink/8 px-4 py-2.5">
+          {seleccionCount > 0 ? (
             <button
               type="button"
               onClick={() => onToggle("")}
-              className="flex items-center justify-center gap-1.5 rounded-[12px] border border-dashed border-red-500/30 bg-red-500/4 py-2.5 text-center text-[12.5px] font-black text-red-600 hover:bg-red-500/10 hover:border-red-500/50 transition-all cursor-pointer flex-none mb-1.5"
+              className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-[0.04em] text-red-600 hover:text-red-700"
             >
-              <X size={13} /> Quitar todos
+              <X size={12} /> Quitar todos
             </button>
+          ) : (
+            <span />
           )}
-          {docentes.length === 0 && (
-            <p className="py-8 text-center text-sm font-semibold text-monserrat-ink/40">
-              No hay docentes disponibles
-            </p>
-          )}
-          {docentes.length > 0 && docentesFiltrados.length === 0 && (
-            <p className="py-8 text-center text-sm font-semibold text-monserrat-ink/40">
-              Ningún docente coincide con la búsqueda
-            </p>
-          )}
-          {docentesFiltrados.map((d) => {
-            const selected = (docentesAsignados ?? []).includes(d.dni);
-            const canSelect = selected || (docentesAsignados ?? []).length < 2;
-            return (
-              <button
-                key={d.dni}
-                type="button"
-                onClick={() => onToggle(d.dni)}
-                disabled={!canSelect}
-                className={`flex items-center justify-between rounded-[12px] border p-2.5 text-left text-[12.5px] font-semibold transition-all cursor-pointer ${
-                  selected
-                    ? "border-monserrat-red/40 bg-monserrat-red/8 text-monserrat-red shadow-sm shadow-monserrat-red/5 scale-[1.01]"
-                    : "border-monserrat-ink/8 text-monserrat-ink/75 bg-white hover:border-monserrat-red/25 hover:bg-monserrat-cream/5"
-                } ${!canSelect ? "cursor-not-allowed opacity-60" : ""}`}
-              >
-                <div className="flex items-center min-w-0">
-                  <div className={`h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-black mr-2.5 shrink-0 ${selected ? 'bg-monserrat-red text-white' : 'bg-monserrat-cream text-monserrat-ink/70'}`}>
-                    {getInitials(d.nombre)}
-                  </div>
-                  <span className="truncate">{d.nombre}</span>
-                </div>
-                {selected && <Check size={13} className="shrink-0 text-monserrat-red ml-2" />}
-              </button>
-            );
-          })}
-        </div>
-        <div className="flex justify-end gap-2 border-t border-monserrat-ink/8 px-6 py-4 bg-monserrat-cream/20 flex-none">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-[12px] border border-monserrat-ink/15 bg-white px-5 py-2.5 text-[12px] font-black text-monserrat-ink hover:bg-monserrat-cream/10 transition-all cursor-pointer"
-          >
-            Cancelar
+          <button type="button" onClick={onClose} className="rounded-[9px] bg-monserrat-red px-4 py-1.5 text-[11.5px] font-black text-white hover:bg-monserrat-red/85">
+            Listo
           </button>
         </div>
       </div>

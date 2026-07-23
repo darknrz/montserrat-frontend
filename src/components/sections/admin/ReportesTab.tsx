@@ -134,21 +134,27 @@ export function ReportesTab({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchWrapRef = useRef<HTMLDivElement>(null);
 
+  const cargarNotasParaReporte = async () => {
+    if (!token) return {} as Notas;
+
+    try {
+      const notasData = await monserratApi.notasDocente(token);
+      const groupedByAlumno = notasData.reduce((acc, nota) => {
+        if (!acc[nota.alumnoDni]) acc[nota.alumnoDni] = [];
+        acc[nota.alumnoDni].push(nota);
+        return acc;
+      }, {} as Notas);
+
+      setNotas(groupedByAlumno);
+      return groupedByAlumno;
+    } catch (error) {
+      console.error("Error cargando notas:", error);
+      return {} as Notas;
+    }
+  };
+
   useEffect(() => {
-    if (!token) return;
-    monserratApi
-      .notasDocente(token)
-      .then((notasData) => {
-        const groupedByAlumno = notasData.reduce((acc, nota) => {
-          if (!acc[nota.alumnoDni]) acc[nota.alumnoDni] = [];
-          acc[nota.alumnoDni].push(nota);
-          return acc;
-        }, {} as Notas);
-        setNotas(groupedByAlumno);
-      })
-      .catch((error) => {
-        console.error("Error cargando notas:", error);
-      });
+    void cargarNotasParaReporte();
   }, [token]);
 
   useEffect(() => {
@@ -216,6 +222,7 @@ export function ReportesTab({
         return;
       }
 
+      const notasActualizadas = await cargarNotasParaReporte();
       const { jsPDF } = await import("jspdf");
       const autoTableModule: any = await import("jspdf-autotable");
       const autoTable = autoTableModule.default ?? autoTableModule.autoTable;
@@ -230,7 +237,7 @@ export function ReportesTab({
 
       for (let i = 0; i < alumnosFiltrados.length; i++) {
         const alumno = alumnosFiltrados[i];
-        const alumnoNotas = notas[alumno.dni] || [];
+        const alumnoNotas = notasActualizadas[alumno.dni] || notas[alumno.dni] || [];
 
         if (i > 0) pdf.addPage();
 
@@ -753,14 +760,34 @@ function dibujarReporte(
   const esSecundaria = (alumno.nivelEducativo ?? "").toUpperCase() === "SECUNDARIA"
     || (alumno.grado ?? "").endsWith("_SECUNDARIA");
 
-  const cursos = (esSecundaria ? academicoConfig.cursosSecundaria : academicoConfig.cursosPrimaria)
-    .filter((c) => c.active);
-  const competenciasPorCurso = esSecundaria
-    ? academicoConfig.competenciasPorCursoSecundaria ?? {}
-    : academicoConfig.competenciasPorCursoPrimaria ?? {};
-  const catalogoCompetencias = esSecundaria
-    ? academicoConfig.competenciasSecundaria ?? []
-    : academicoConfig.competenciasPrimaria ?? [];
+  const cursosPrimaria = (academicoConfig.cursosPrimaria ?? []).filter((c) => c.active);
+  const cursosSecundaria = (academicoConfig.cursosSecundaria ?? []).filter((c) => c.active);
+  const cursosMap = new Map<string, (typeof cursosPrimaria)[number]>();
+  cursosPrimaria.forEach((curso) => cursosMap.set(curso.id, curso));
+  cursosSecundaria.forEach((curso) => {
+    if (!cursosMap.has(curso.id)) {
+      cursosMap.set(curso.id, curso);
+    }
+  });
+  const cursos = Array.from(cursosMap.values());
+
+  const competenciasPorCursoPrimaria = academicoConfig.competenciasPorCursoPrimaria ?? {};
+  const competenciasPorCursoSecundaria = academicoConfig.competenciasPorCursoSecundaria ?? {};
+  const compatCompetenciasPorCurso = Object.fromEntries(
+    Array.from(new Set([...Object.keys(competenciasPorCursoPrimaria), ...Object.keys(competenciasPorCursoSecundaria)])).map((cursoId) => {
+      const ids = Array.from(new Set([
+        ...(competenciasPorCursoPrimaria[cursoId] ?? []),
+        ...(competenciasPorCursoSecundaria[cursoId] ?? [])
+      ]));
+      return [cursoId, ids];
+    })
+  );
+  const catalogoCompetencias = Array.from(
+    new Map([
+      ...((academicoConfig.competenciasPrimaria ?? []).map((item) => [item.id, item] as const)),
+      ...((academicoConfig.competenciasSecundaria ?? []).map((item) => [item.id, item] as const)),
+    ]).values()
+  );
 
   const buscarNota = (cursoId: string, competenciaId: string, periodo: string) =>
     notasAlumno.find(
@@ -852,7 +879,7 @@ function dibujarReporte(
 
   const filasCompetencias: { curso: (typeof cursos)[number]; competencia: any }[] = [];
   cursos.forEach((curso) => {
-    const idsCompetencias = competenciasPorCurso[curso.id] ?? [];
+    const idsCompetencias = compatCompetenciasPorCurso[curso.id] ?? [];
     const competencias = catalogoCompetencias.filter((c) => idsCompetencias.includes(c.id));
     competencias.forEach((competencia) => filasCompetencias.push({ curso, competencia }));
   });
