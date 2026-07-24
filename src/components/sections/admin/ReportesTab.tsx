@@ -1,4 +1,4 @@
-import { Download, X, User, Users, GraduationCap, Building2, FileText, CheckCircle2, Search, School } from "lucide-react";
+import { Download, X, User, Users, GraduationCap, Building2, FileText, CheckCircle2, Search, ArrowRight } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { NotaAcademica, UsuarioAcademico } from "../../../types";
 import { monserratApi } from "../../../api/monserrat";
@@ -23,7 +23,6 @@ const PARCIALES_PREFIX = "@parciales:";
 const ESCUDO_URL = "https://res.cloudinary.com/dca1gayi8/image/upload/v1784494270/escudo_qketon.png";
 const LOGO_URL = "https://res.cloudinary.com/dca1gayi8/image/upload/v1784494456/montserrat_yv2dhp.png";
 
-// --- Traducción número <-> letra de nivel de logro ---------------------
 function nivelDesdeValor(valor?: number | null): string {
   if (valor === 4) return "AD";
   if (valor === 3) return "A";
@@ -50,7 +49,6 @@ function gradoOrdinal(grado?: string) {
   return grado.replace(/_PRIMARIA$|_SECUNDARIA$/, "");
 }
 
-// --- Iniciales para el avatar del buscador ------------------------------
 function iniciales(nombre?: string): string {
   if (!nombre) return "?";
   const partes = nombre.trim().split(/\s+/).filter(Boolean);
@@ -59,8 +57,6 @@ function iniciales(nombre?: string): string {
   return (partes[0][0] + partes[1][0]).toUpperCase();
 }
 
-// --- Carga de imágenes (logos) como dataURL para jsPDF -----------------
-// Se cargan una sola vez. Si falla (CORS / red), se continúa sin logo.
 type ImagenCargada = { data: string; format: string; w: number; h: number } | null;
 
 async function cargarImagen(url: string): Promise<ImagenCargada> {
@@ -87,7 +83,6 @@ async function cargarImagen(url: string): Promise<ImagenCargada> {
   }
 }
 
-// Ajusta una imagen dentro de una caja (maxW x maxH) manteniendo proporción.
 function ajustarImagen(w: number, h: number, maxW: number, maxH: number) {
   let rw = maxW;
   let rh = (maxW * h) / w;
@@ -105,9 +100,9 @@ const REPORT_OPTIONS: {
   icon: typeof User;
 }[] = [
   { value: "individual", label: "Individual", description: "Reporte de un solo alumno", icon: User },
-  { value: "porGrado", label: "Por Grado", description: "Todos los alumnos de un grado", icon: Users },
-  { value: "porNivelEducativo", label: "Por Nivel Educativo", description: "Primaria o Secundaria", icon: GraduationCap },
-  { value: "porNivelAcademico", label: "Por Nivel Académico", description: "1ro prim, 2do prim, 3ro prim, etc.", icon: GraduationCap },
+  { value: "porGrado", label: "Por grado", description: "Todos los alumnos de un grado", icon: Users },
+  { value: "porNivelEducativo", label: "Nivel educativo", description: "Primaria o secundaria", icon: GraduationCap },
+  { value: "porNivelAcademico", label: "Nivel académico", description: "1ro prim, 2do prim, 3ro prim, etc.", icon: GraduationCap },
   { value: "general", label: "General", description: "Toda la institución", icon: Building2 },
 ];
 
@@ -129,7 +124,6 @@ export function ReportesTab({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [pendingFileName, setPendingFileName] = useState<string>("");
 
-  // --- Estado nuevo, solo de interfaz: buscador de alumno ---------------
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchWrapRef = useRef<HTMLDivElement>(null);
@@ -163,7 +157,6 @@ export function ReportesTab({
     };
   }, [previewUrl]);
 
-  // Cierra el desplegable del buscador al hacer clic afuera.
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (searchWrapRef.current && !searchWrapRef.current.contains(e.target as Node)) {
@@ -227,7 +220,6 @@ export function ReportesTab({
       const autoTableModule: any = await import("jspdf-autotable");
       const autoTable = autoTableModule.default ?? autoTableModule.autoTable;
 
-      // Logos cargados una sola vez (fuera del loop de alumnos).
       const [escudoImg, logoImg] = await Promise.all([
         cargarImagen(ESCUDO_URL),
         cargarImagen(LOGO_URL),
@@ -297,7 +289,6 @@ export function ReportesTab({
     (reportType === "porNivelEducativo" && !selectedNivelEducativo) ||
     (reportType === "porNivelAcademico" && !selectedNivelAcademico);
 
-  // --- Datos derivados solo para la interfaz -----------------------------
   const alumnoSeleccionado = useMemo(
     () => alumnosActivos.find((a) => a.dni === selectedAlumno) ?? null,
     [alumnosActivos, selectedAlumno]
@@ -359,109 +350,97 @@ export function ReportesTab({
   })();
 
   const opcionActual = REPORT_OPTIONS.find((o) => o.value === reportType)!;
-  const IconoActual = opcionActual.icon;
+
+  const resetSelecciones = () => {
+    setSelectedAlumno("");
+    setSelectedGrado("");
+    setSelectedNivelEducativo("");
+    setSelectedNivelAcademico("");
+    setSearchQuery("");
+    setIsSearchOpen(false);
+  };
+
+  // Clase reutilizable: cualquier fila/celda seleccionable debe transmitir
+  // con claridad que es clicable, tanto en reposo como en foco de teclado.
+  const filaInteractiva =
+    "cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monserrat-red/40 focus-visible:ring-offset-1";
 
   return (
-    <div className="space-y-6">
-      {/* NOTA: sin overflow-hidden en el contenedor raíz a propósito — así el
-          desplegable del buscador (position: absolute) puede salir del
-          recuadro sin que la barra de scroll se vea cortada. Las esquinas se
-          redondean a mano en el header y en los paneles inferiores. */}
+    <div className="space-y-5">
       <div className="rounded-xl border border-monserrat-ink/10 bg-white shadow-sm">
         {/* Encabezado */}
-        <div className="flex items-center gap-3 rounded-t-xl border-b border-monserrat-ink/10 bg-gradient-to-r from-monserrat-red/5 to-transparent px-6 py-5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-monserrat-red/10">
-            <FileText size={20} className="text-monserrat-red" />
+        <div className="flex items-center gap-3 border-b border-monserrat-ink/10 px-6 py-5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-monserrat-red/10">
+            <FileText size={17} className="text-monserrat-red" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-monserrat-ink">Generar Reportes de Competencias</h2>
-            <p className="text-xs text-monserrat-ink/60">Elige el alcance del reporte y descarga el PDF</p>
+            <h2 className="text-[15px] font-bold text-monserrat-ink">Reportes de competencias</h2>
+            <p className="text-xs text-monserrat-ink/50">Elige el alcance y descarga el PDF</p>
           </div>
         </div>
 
-        {/* Cuerpo en dos columnas: configuración (izq) + resumen fijo (der) */}
-        <div className="lg:grid lg:grid-cols-[1fr_300px] lg:divide-x lg:divide-monserrat-ink/10">
-          {/* --- Columna izquierda: pasos 1 y 2 --- */}
+        {/* Selector de tipo: control segmentado */}
+        <div className="border-b border-monserrat-ink/10 px-6 py-4">
+          <div className="inline-flex flex-wrap gap-1 rounded-lg bg-monserrat-ink/[0.04] p-1">
+            {REPORT_OPTIONS.map((option) => {
+              const Icon = option.icon;
+              const isSelected = reportType === option.value;
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => {
+                    setReportType(option.value);
+                    resetSelecciones();
+                  }}
+                  className={`${filaInteractiva} flex items-center gap-1.5 rounded-md px-3.5 py-2 text-[13px] font-semibold ${
+                    isSelected
+                      ? "bg-white text-monserrat-red shadow-sm"
+                      : "text-monserrat-ink/50 hover:bg-white/60 hover:text-monserrat-ink"
+                  }`}
+                >
+                  <Icon size={14} />
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Cuerpo: selección (izq) + resumen y acción (der) */}
+        <div className="grid lg:grid-cols-[1fr_300px] lg:divide-x lg:divide-monserrat-ink/10">
           <div className="p-6">
-            {/* Paso 1: tipo de reporte */}
-            <div className="mb-7">
-              <div className="mb-3 flex items-center gap-2">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-monserrat-red text-[10px] font-bold text-white">
-                  1
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-monserrat-ink">
+                {reportType === "individual" && "Busca al alumno"}
+                {reportType === "porGrado" && "Selecciona el grado"}
+                {reportType === "porNivelEducativo" && "Selecciona el nivel educativo"}
+                {reportType === "porNivelAcademico" && "Selecciona el nivel académico"}
+                {reportType === "general" && "Alcance del reporte"}
+              </h3>
+              {necesitaSeleccion && (
+                <span className="rounded-full bg-monserrat-red/10 px-2.5 py-1 text-[11px] font-bold text-monserrat-red">
+                  Falta elegir
                 </span>
-                <label className="text-sm font-semibold text-monserrat-ink">Tipo de Reporte</label>
-              </div>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {REPORT_OPTIONS.map((option) => {
-                  const Icon = option.icon;
-                  const isSelected = reportType === option.value;
-                  return (
-                    <button
-                      key={option.value}
-                      onClick={() => {
-                        setReportType(option.value);
-                        setSelectedAlumno("");
-                        setSelectedGrado("");
-                        setSelectedNivelEducativo("");
-                        setSelectedNivelAcademico("");
-                        setSearchQuery("");
-                        setIsSearchOpen(false);
-                      }}
-                      className={`group relative flex flex-col items-start gap-2.5 rounded-xl border-2 p-4 text-left transition-all ${
-                        isSelected
-                          ? "border-monserrat-red bg-monserrat-red/[0.06] shadow-sm ring-1 ring-monserrat-red/10"
-                          : "border-monserrat-ink/10 bg-white hover:border-monserrat-red/30 hover:bg-monserrat-red/[0.02]"
-                      }`}
-                    >
-                      {isSelected && (
-                        <CheckCircle2 size={16} className="absolute right-2 top-2 text-monserrat-red" />
-                      )}
-                      <div
-                        className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${
-                          isSelected ? "bg-monserrat-red text-white" : "bg-monserrat-ink/5 text-monserrat-ink/50 group-hover:text-monserrat-red"
-                        }`}
-                      >
-                        <Icon size={18} />
-                      </div>
-                      <div>
-                        <div className={`text-sm font-bold ${isSelected ? "text-monserrat-red" : "text-monserrat-ink"}`}>
-                          {option.label}
-                        </div>
-                        <div className="text-[11px] leading-tight text-monserrat-ink/50">{option.description}</div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+              )}
             </div>
 
-            {/* Paso 2: selección según el tipo elegido */}
-            <div>
-              <div className="mb-3 flex items-center gap-2">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-monserrat-red text-[10px] font-bold text-white">
-                  2
-                </span>
-                <label className="text-sm font-semibold text-monserrat-ink">
-                  {reportType === "individual" && "Busca al alumno"}
-                  {reportType === "porGrado" && "Selecciona el grado"}
-                  {reportType === "porNivelEducativo" && "Selecciona el nivel educativo"}
-                  {reportType === "porNivelAcademico" && "Selecciona un nivel académico"}
-                  {reportType === "general" && "Alcance del reporte"}
-                </label>
-              </div>
-
-              {/* --- Individual: buscador con desplegable --- */}
+            {/* Contenedor con resalte cuando falta completar la selección */}
+            <div
+              className={`rounded-lg transition-shadow ${
+                necesitaSeleccion ? "ring-1 ring-monserrat-red/25" : ""
+              }`}
+            >
               {reportType === "individual" && (
-                <div>
+                <div className="p-1">
                   {alumnoSeleccionado ? (
-                    <div className="flex items-center justify-between gap-3 rounded-xl border-2 border-monserrat-red/30 bg-monserrat-red/[0.04] px-4 py-3">
+                    <div className="flex items-center justify-between gap-3 rounded-lg border border-monserrat-red/30 bg-monserrat-red/[0.04] px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-monserrat-red text-xs font-bold text-white">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-monserrat-red text-[11px] font-bold text-white">
                           {iniciales(alumnoSeleccionado.nombre)}
                         </div>
                         <div>
                           <div className="text-sm font-bold text-monserrat-ink">{alumnoSeleccionado.nombre}</div>
-                          <div className="text-xs text-monserrat-ink/60">
+                          <div className="text-xs text-monserrat-ink/50">
                             DNI {alumnoSeleccionado.dni} · {alumnoSeleccionado.grado}
                           </div>
                         </div>
@@ -471,31 +450,28 @@ export function ReportesTab({
                           setSelectedAlumno("");
                           setSearchQuery("");
                         }}
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-monserrat-ink/40 transition hover:bg-monserrat-ink/5 hover:text-monserrat-ink"
+                        className={`${filaInteractiva} flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-monserrat-ink/40 hover:bg-monserrat-ink/10 hover:text-monserrat-ink`}
                         aria-label="Quitar alumno seleccionado"
                       >
-                        <X size={16} />
+                        <X size={15} />
                       </button>
                     </div>
                   ) : (
                     <div className="relative" ref={searchWrapRef}>
-                      <div className="relative">
-                        <Search
-                          size={16}
-                          className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-monserrat-ink/35"
-                        />
+                      <div className="relative flex items-center rounded-lg border border-monserrat-ink/15 bg-white transition focus-within:border-monserrat-red focus-within:ring-2 focus-within:ring-monserrat-red/15">
+                        <Search size={15} className="ml-3 shrink-0 text-monserrat-ink/35" />
                         <input
                           type="text"
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
                           onFocus={() => setIsSearchOpen(true)}
-                          placeholder="Busca por nombre, DNI o grado..."
-                          className="w-full rounded-lg border border-monserrat-ink/20 py-2.5 pl-10 pr-3 text-sm text-monserrat-ink transition focus:border-monserrat-red focus:outline-none focus:ring-2 focus:ring-monserrat-red/10"
+                          placeholder="Busca por nombre, DNI o grado…"
+                          className="w-full bg-transparent px-2.5 py-2.5 text-sm text-monserrat-ink placeholder:text-monserrat-ink/35 focus:outline-none"
                         />
                       </div>
 
                       {isSearchOpen && (
-                        <div className="absolute z-30 mt-1.5 max-h-72 w-full overflow-y-auto rounded-lg border border-monserrat-ink/15 bg-white shadow-xl">
+                        <div className="absolute z-30 mt-1.5 max-h-72 w-full overflow-y-auto rounded-lg border border-monserrat-ink/10 bg-white shadow-lg">
                           {resultadosBusqueda.length === 0 ? (
                             <div className="px-4 py-6 text-center text-xs text-monserrat-ink/50">
                               Ningún alumno coincide con "{searchQuery}"
@@ -509,25 +485,20 @@ export function ReportesTab({
                                   setSearchQuery("");
                                   setIsSearchOpen(false);
                                 }}
-                                className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition hover:bg-monserrat-red/[0.04]"
+                                className={`${filaInteractiva} flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-monserrat-red/[0.05]`}
                               >
                                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-monserrat-ink/8 text-[10px] font-bold text-monserrat-ink/60">
                                   {iniciales(alumno.nombre)}
                                 </div>
                                 <div className="min-w-0 flex-1">
                                   <div className="truncate text-sm font-semibold text-monserrat-ink">{alumno.nombre}</div>
-                                  <div className="text-xs text-monserrat-ink/50">DNI {alumno.dni}</div>
+                                  <div className="text-xs text-monserrat-ink/45">DNI {alumno.dni}</div>
                                 </div>
-                                <span className="shrink-0 rounded-full bg-monserrat-ink/10 px-2 py-0.5 text-[10px] font-bold text-monserrat-ink/70">
+                                <span className="shrink-0 rounded-full bg-monserrat-ink/8 px-2 py-0.5 text-[10px] font-bold text-monserrat-ink/60">
                                   {alumno.grado}
                                 </span>
                               </button>
                             ))
-                          )}
-                          {!searchQuery && alumnosActivos.length > resultadosBusqueda.length && (
-                            <div className="border-t border-monserrat-ink/10 px-4 py-2 text-center text-[11px] text-monserrat-ink/40">
-                              Escribe para ver más resultados
-                            </div>
                           )}
                         </div>
                       )}
@@ -536,115 +507,102 @@ export function ReportesTab({
                 </div>
               )}
 
-              {/* --- Por Grado: chips seleccionables --- */}
               {reportType === "porGrado" && (
-                <div className="flex flex-wrap gap-2">
+                <div className="grid gap-1.5 p-1 sm:grid-cols-2">
                   {gradosConConteo.map(({ grado, count }) => {
                     const isSelected = selectedGrado === grado;
                     return (
                       <button
                         key={grado}
                         onClick={() => setSelectedGrado(grado)}
-                        className={`flex items-center gap-2 rounded-full border-2 px-4 py-2 text-sm font-semibold transition ${
+                        className={`${filaInteractiva} flex items-center justify-between rounded-lg border px-4 py-3 text-left ${
                           isSelected
-                            ? "border-monserrat-red bg-monserrat-red text-white shadow-sm"
-                            : "border-monserrat-ink/15 bg-white text-monserrat-ink hover:border-monserrat-red/40"
+                            ? "border-monserrat-red/30 bg-monserrat-red/[0.05]"
+                            : "border-monserrat-ink/10 hover:border-monserrat-ink/20 hover:bg-monserrat-ink/[0.02]"
                         }`}
                       >
-                        {grado}
-                        <span
-                          className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                            isSelected ? "bg-white/20" : "bg-monserrat-ink/10 text-monserrat-ink/60"
-                          }`}
-                        >
-                          {count}
+                        <span className={`text-sm font-semibold ${isSelected ? "text-monserrat-red" : "text-monserrat-ink"}`}>
+                          {grado}
+                        </span>
+                        <span className="flex items-center gap-2">
+                          <span className="text-xs text-monserrat-ink/45">{count} alum.</span>
+                          {isSelected && <CheckCircle2 size={15} className="text-monserrat-red" />}
                         </span>
                       </button>
                     );
                   })}
                   {gradosConConteo.length === 0 && (
-                    <p className="text-xs text-monserrat-ink/50">No hay grados con alumnos activos.</p>
+                    <p className="p-3 text-xs text-monserrat-ink/50">No hay grados con alumnos activos.</p>
                   )}
                 </div>
               )}
 
-              {/* --- Por Nivel Educativo: dos tarjetas grandes --- */}
               {reportType === "porNivelEducativo" && (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-1.5 p-1 sm:grid-cols-2">
                   {nivelesEducativosConConteo.map((nivel) => {
                     const isSelected = selectedNivelEducativo === nivel.id;
                     return (
                       <button
                         key={nivel.id}
                         onClick={() => setSelectedNivelEducativo(nivel.id)}
-                        className={`flex items-center gap-4 rounded-xl border-2 p-4 text-left transition-all ${
+                        className={`${filaInteractiva} flex items-center justify-between rounded-lg border px-4 py-3.5 text-left ${
                           isSelected
-                            ? "border-monserrat-red bg-monserrat-red/[0.06] shadow-sm"
-                            : "border-monserrat-ink/10 bg-white hover:border-monserrat-red/30"
+                            ? "border-monserrat-red/30 bg-monserrat-red/[0.05]"
+                            : "border-monserrat-ink/10 hover:border-monserrat-ink/20 hover:bg-monserrat-ink/[0.02]"
                         }`}
                       >
-                        <div
-                          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${
-                            isSelected ? "bg-monserrat-red text-white" : "bg-monserrat-ink/5 text-monserrat-ink/50"
-                          }`}
-                        >
-                          <School size={20} />
-                        </div>
-                        <div className="flex-1">
+                        <div>
                           <div className={`text-sm font-bold ${isSelected ? "text-monserrat-red" : "text-monserrat-ink"}`}>
                             {nivel.label}
                           </div>
-                          <div className="text-xs text-monserrat-ink/50">{nivel.count} alumno(s) activo(s)</div>
+                          <div className="text-xs text-monserrat-ink/45">{nivel.count} alumno(s) activo(s)</div>
                         </div>
-                        {isSelected && <CheckCircle2 size={18} className="shrink-0 text-monserrat-red" />}
+                        {isSelected && <CheckCircle2 size={16} className="shrink-0 text-monserrat-red" />}
                       </button>
                     );
                   })}
                 </div>
               )}
 
-              {/* --- Por Nivel Académico: chips seleccionables --- */}
               {reportType === "porNivelAcademico" && (
-                <div className="flex flex-wrap gap-2">
+                <div className="grid gap-1.5 p-1 sm:grid-cols-2">
                   {nivelesAcademicosConConteo.map((nivel) => {
                     const isSelected = selectedNivelAcademico === nivel.id;
                     return (
                       <button
                         key={nivel.id}
                         onClick={() => setSelectedNivelAcademico(nivel.id)}
-                        className={`flex items-center gap-2 rounded-full border-2 px-4 py-2 text-sm font-semibold transition ${
+                        className={`${filaInteractiva} flex items-center justify-between rounded-lg border px-4 py-3 text-left ${
                           isSelected
-                            ? "border-monserrat-red bg-monserrat-red text-white shadow-sm"
-                            : "border-monserrat-ink/15 bg-white text-monserrat-ink hover:border-monserrat-red/40"
+                            ? "border-monserrat-red/30 bg-monserrat-red/[0.05]"
+                            : "border-monserrat-ink/10 hover:border-monserrat-ink/20 hover:bg-monserrat-ink/[0.02]"
                         }`}
                       >
-                        {nivel.label}
-                        <span
-                          className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                            isSelected ? "bg-white/20" : "bg-monserrat-ink/10 text-monserrat-ink/60"
-                          }`}
-                        >
-                          {nivel.count}
+                        <span className={`text-sm font-semibold ${isSelected ? "text-monserrat-red" : "text-monserrat-ink"}`}>
+                          {nivel.label}
+                        </span>
+                        <span className="flex items-center gap-2">
+                          <span className="text-xs text-monserrat-ink/45">{nivel.count} alum.</span>
+                          {isSelected && <CheckCircle2 size={15} className="text-monserrat-red" />}
                         </span>
                       </button>
                     );
                   })}
                   {nivelesAcademicosConConteo.length === 0 && (
-                    <p className="text-xs text-monserrat-ink/50">No hay niveles académicos configurados.</p>
+                    <p className="p-3 text-xs text-monserrat-ink/50">No hay niveles académicos configurados.</p>
                   )}
                 </div>
               )}
 
-              {/* --- General: solo informativo --- */}
               {reportType === "general" && (
-                <div className="flex items-center gap-4 rounded-xl border-2 border-monserrat-red/20 bg-monserrat-red/[0.04] p-4">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-monserrat-red text-white">
-                    <Building2 size={20} />
+                <div className="flex items-center gap-4 rounded-lg border border-monserrat-red/20 bg-monserrat-red/[0.04] p-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-monserrat-red text-white">
+                    <Building2 size={18} />
                   </div>
                   <div>
                     <div className="text-sm font-bold text-monserrat-red">Toda la institución</div>
                     <div className="text-xs text-monserrat-ink/50">
-                      Se incluirán todos los alumnos activos, sin filtrar por grado o nivel.
+                      Se incluyen los {alumnosActivos.length} alumnos activos, sin filtrar.
                     </div>
                   </div>
                 </div>
@@ -652,45 +610,40 @@ export function ReportesTab({
             </div>
           </div>
 
-          {/* --- Columna derecha: resumen en vivo + acción --- */}
-          <div className="rounded-b-xl border-t border-monserrat-ink/10 bg-monserrat-cream/40 p-6 lg:rounded-bl-none lg:rounded-br-xl lg:border-t-0 lg:sticky lg:top-4 lg:self-start">
-            <div className="mb-4 flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-monserrat-red/10 text-monserrat-red">
-                <IconoActual size={16} />
-              </div>
-              <span className="text-sm font-bold text-monserrat-ink">{opcionActual.label}</span>
+          {/* Resumen y acción */}
+          <div className="rounded-b-xl bg-monserrat-ink/[0.02] p-6 lg:rounded-bl-none lg:rounded-br-xl lg:sticky lg:top-4 lg:self-start">
+            <div className="mb-4 flex items-center gap-2 text-monserrat-ink/50">
+              <opcionActual.icon size={14} />
+              <span className="text-[11px] font-bold uppercase tracking-wide">{opcionActual.label}</span>
             </div>
 
-            {resumenAlcance && !necesitaSeleccion ? (
-              <div className="mb-5 rounded-lg bg-white px-4 py-3">
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-monserrat-ink/40">Alcance</div>
-                <div className="mt-0.5 truncate text-sm font-bold text-monserrat-ink">{resumenAlcance}</div>
+            <div className="mb-5 rounded-lg border border-monserrat-ink/10 bg-white px-4 py-3">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-monserrat-ink/40">Alcance</div>
+              <div className="mt-0.5 truncate text-sm font-bold text-monserrat-ink">
+                {resumenAlcance && !necesitaSeleccion ? resumenAlcance : "Pendiente de elegir"}
               </div>
-            ) : (
-              <div className="mb-5 rounded-lg border border-dashed border-monserrat-ink/20 px-4 py-3 text-xs text-monserrat-ink/50">
-                Completa la selección de la izquierda para continuar
-              </div>
-            )}
+            </div>
 
             <div className="mb-5">
-              <div className="text-4xl font-black leading-none text-monserrat-red">{cantidadAlumnos}</div>
+              <div className="text-4xl font-black leading-none text-monserrat-ink">{cantidadAlumnos}</div>
               <div className="mt-1 text-xs font-medium text-monserrat-ink/50">alumno(s) incluidos en el PDF</div>
             </div>
 
             <button
               onClick={generarPDF}
               disabled={isGenerating || necesitaSeleccion || cantidadAlumnos === 0}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-monserrat-red px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-monserrat-red/90 hover:shadow disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+              className={`${filaInteractiva} inline-flex w-full items-center justify-center gap-2 rounded-lg bg-monserrat-red px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-monserrat-red/90 hover:shadow disabled:cursor-not-allowed disabled:bg-monserrat-ink/10 disabled:text-monserrat-ink/35 disabled:shadow-none`}
             >
               {isGenerating ? (
                 <>
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                  Generando...
+                  Generando…
                 </>
               ) : (
                 <>
                   <Download size={16} />
                   Generar PDF
+                  <ArrowRight size={14} className="opacity-70" />
                 </>
               )}
             </button>
@@ -702,12 +655,15 @@ export function ReportesTab({
 
       {previewUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="flex h-[90vh] w-full max-w-4xl flex-col rounded-lg bg-white shadow-xl">
+          <div className="flex h-[90vh] w-full max-w-4xl flex-col rounded-xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-monserrat-ink/10 p-4">
-              <h3 className="text-sm font-bold text-monserrat-ink">Vista previa del reporte</h3>
+              <div className="flex items-center gap-2">
+                <FileText size={15} className="text-monserrat-red" />
+                <h3 className="text-sm font-bold text-monserrat-ink">Vista previa del reporte</h3>
+              </div>
               <button
                 onClick={cerrarPreview}
-                className="rounded p-1 text-monserrat-ink/60 transition hover:bg-monserrat-ink/5"
+                className={`${filaInteractiva} rounded-lg p-1.5 text-monserrat-ink/50 hover:bg-monserrat-ink/5 hover:text-monserrat-ink`}
                 aria-label="Cerrar vista previa"
               >
                 <X size={18} />
@@ -719,13 +675,13 @@ export function ReportesTab({
             <div className="flex justify-end gap-2 border-t border-monserrat-ink/10 p-4">
               <button
                 onClick={cerrarPreview}
-                className="rounded-lg border border-monserrat-ink/20 px-4 py-2 text-sm font-semibold text-monserrat-ink transition hover:bg-monserrat-ink/5"
+                className={`${filaInteractiva} rounded-lg border border-monserrat-ink/20 px-4 py-2 text-sm font-semibold text-monserrat-ink hover:bg-monserrat-ink/5`}
               >
                 Cancelar
               </button>
               <button
                 onClick={confirmarDescarga}
-                className="inline-flex items-center gap-2 rounded-lg bg-monserrat-red px-4 py-2 text-sm font-bold text-white transition hover:bg-monserrat-red/90"
+                className={`${filaInteractiva} inline-flex items-center gap-2 rounded-lg bg-monserrat-red px-4 py-2 text-sm font-bold text-white hover:bg-monserrat-red/90`}
               >
                 <Download size={16} />
                 Descargar PDF
@@ -737,7 +693,6 @@ export function ReportesTab({
     </div>
   );
 }
-
 // =====================================================================
 // Dibujo del reporte con jsPDF + jspdf-autotable (vectorial)
 // SIN CAMBIOS respecto al original.
