@@ -93,6 +93,7 @@ export type UsuarioAcademico = {
 
 export type PerfilAcademico = UsuarioAcademico & {
   activo?: boolean;
+  codigoChatbot?: string;
 };
 
 export type AsignacionAcademica = {
@@ -211,4 +212,3 @@ export type Anuncio = {
   orden?: number;
   expiresAt?: string;
 };
-

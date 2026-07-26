@@ -171,6 +171,8 @@ export const monserratApi = {
   perfilAcademico: (token: string) => getJsonAuth<PerfilAcademico>("/academico/me", token),
   updatePerfilAcademico: (data: Partial<PerfilAcademico>, token: string) =>
     sendJson<PerfilAcademico>("/academico/me", "PUT", data, token),
+  regenerarCodigoChatbot: (token: string) =>
+    sendJson<PerfilAcademico>("/academico/me/chatbot-code/regenerate", "POST", {}, token),
   cambiarPasswordAcademico: (currentPassword: string, newPassword: string, token: string) =>
     sendJson<void>("/academico/me/password", "POST", { currentPassword, newPassword }, token),
   alumnosAcademicos: (token: string) => getJsonAuth<UsuarioAcademico[]>("/academico/alumnos", token),

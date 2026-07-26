@@ -32,6 +32,7 @@ function RichMessage({ text, isUser }: { text: string; isUser: boolean }) {
   const lines = text.split(/\r?\n/);
   const blocks: ReactNode[] = [];
   let listItems: string[] = [];
+  let tableRows: string[][] = [];
 
   const flushList = () => {
     if (listItems.length === 0) return;
@@ -49,21 +50,67 @@ function RichMessage({ text, isUser }: { text: string; isUser: boolean }) {
     listItems = [];
   };
 
+  const flushTable = () => {
+    if (tableRows.length === 0) return;
+
+    const [header, ...rows] = tableRows;
+    blocks.push(
+      <div key={`table-${blocks.length}`} className="my-2 max-w-full overflow-x-auto rounded-lg border border-monserrat-ink/10">
+        <table className="min-w-full border-collapse text-left text-xs">
+          <thead className="bg-monserrat-cream/60 text-monserrat-ink">
+            <tr>
+              {header.map((cell, index) => (
+                <th key={`${cell}-${index}`} className="border-b border-monserrat-ink/10 px-3 py-2 font-black">
+                  {renderInline(cell)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, rowIndex) => (
+              <tr key={`row-${rowIndex}`} className="border-t border-monserrat-ink/6">
+                {row.map((cell, cellIndex) => (
+                  <td key={`${cell}-${cellIndex}`} className="px-3 py-2 align-top">
+                    {renderInline(cell)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+    tableRows = [];
+  };
+
   lines.forEach((line, index) => {
     const trimmed = line.trim();
 
     if (!trimmed) {
       flushList();
+      flushTable();
       blocks.push(<div key={`space-${index}`} className="h-2" />);
       return;
     }
 
+    if (isMarkdownTableSeparator(trimmed)) {
+      return;
+    }
+
+    if (isMarkdownTableRow(trimmed)) {
+      flushList();
+      tableRows.push(parseMarkdownTableRow(trimmed));
+      return;
+    }
+
     if (trimmed.startsWith("- ")) {
+      flushTable();
       listItems.push(trimmed.slice(2));
       return;
     }
 
     flushList();
+    flushTable();
 
     const isHeading = trimmed.endsWith(":") && trimmed.length <= 80;
     blocks.push(
@@ -74,8 +121,24 @@ function RichMessage({ text, isUser }: { text: string; isUser: boolean }) {
   });
 
   flushList();
+  flushTable();
 
   return <div className="break-words">{blocks}</div>;
+}
+
+function isMarkdownTableRow(line: string) {
+  return line.startsWith("|") && line.endsWith("|") && line.slice(1, -1).includes("|");
+}
+
+function isMarkdownTableSeparator(line: string) {
+  return /^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?$/.test(line);
+}
+
+function parseMarkdownTableRow(line: string) {
+  return line
+    .slice(1, -1)
+    .split("|")
+    .map((cell) => cell.trim());
 }
 
 function renderInline(text: string): ReactNode[] {

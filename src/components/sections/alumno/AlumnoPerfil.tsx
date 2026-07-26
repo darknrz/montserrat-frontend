@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Camera, CheckCircle2, GraduationCap, IdCard, Layers, Lightbulb, Mail, Phone, Users2 } from "lucide-react";
+import { AlertTriangle, Camera, CheckCircle2, GraduationCap, IdCard, KeyRound, Layers, Lightbulb, Mail, Phone, RefreshCw, Users2 } from "lucide-react";
 import { SectionHeader } from "../../ui/SectionHeader";
 import { monserratApi } from "../../../api/monserrat";
 import type { PerfilAcademico, PensionEstado } from "../../../types";
@@ -46,6 +46,7 @@ export function AlumnoPerfil({ token }: { token: string }) {
   const [pension, setPension] = useState<PensionEstado | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isRegeneratingCode, setIsRegeneratingCode] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -74,6 +75,21 @@ export function AlumnoPerfil({ token }: { token: string }) {
     } finally {
       setIsUploading(false);
       if (event.target) event.target.value = "";
+    }
+  };
+
+  const handleRegenerateChatbotCode = async () => {
+    if (!token) return;
+    setIsRegeneratingCode(true);
+    setStatus(null);
+    try {
+      const updated = await monserratApi.regenerarCodigoChatbot(token);
+      setPerfil(updated);
+      setStatus("Codigo de seguridad del chatbot actualizado.");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsRegeneratingCode(false);
     }
   };
 
@@ -151,7 +167,30 @@ export function AlumnoPerfil({ token }: { token: string }) {
         </div>
 
         <div className="rounded-[18px] border border-monserrat-ink/10 bg-monserrat-cream/40 p-5 shadow-sm">
-          <h4 className="text-lg font-black text-monserrat-ink">Resumen financiero</h4>
+          <div className="rounded-[16px] bg-white p-4">
+            <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-monserrat-ink/40">
+              <KeyRound size={12} /> Codigo chatbot
+            </p>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+              <code className="rounded-[10px] bg-monserrat-ink px-3 py-2 text-lg font-black tracking-[0.18em] text-white">
+                {perfil.codigoChatbot || "PENDIENTE"}
+              </code>
+              <button
+                type="button"
+                onClick={handleRegenerateChatbotCode}
+                disabled={isRegeneratingCode}
+                className="inline-flex items-center gap-1.5 rounded-[10px] bg-monserrat-red px-3 py-2 text-[12px] font-black text-white transition hover:bg-monserrat-red/85 disabled:opacity-60"
+              >
+                <RefreshCw size={14} />
+                {isRegeneratingCode ? "Generando..." : "Regenerar"}
+              </button>
+            </div>
+            <p className="mt-3 text-xs font-semibold leading-5 text-monserrat-ink/55">
+              El chatbot pedira tu nombre completo, DNI o codigo institucional junto con este codigo para responder sobre tus notas, asistencia o pension.
+            </p>
+          </div>
+
+          <h4 className="mt-5 text-lg font-black text-monserrat-ink">Resumen financiero</h4>
           <div className="mt-5 space-y-4">
             <div className="rounded-[16px] bg-white p-4">
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-monserrat-ink/40">Pensión actual</p>

@@ -248,7 +248,7 @@ export function AdminSection({
 
   return (
     <section id="admin" className="bg-monserrat-cream px-4 sm:px-0 lg:px-0 h-full flex flex-col min-h-0 rounded-2xl">
-      <div className="mx-auto max-w-7xl w-full flex-1 flex flex-col min-h-0 pb-4">
+      <div className="mx-auto max-w-8xl w-full flex-1 flex flex-col min-h-0 pb-4">
         <FeedbackModal
           isOpen={Boolean(errorMessage)}
           title="No se pudo completar la accion"
