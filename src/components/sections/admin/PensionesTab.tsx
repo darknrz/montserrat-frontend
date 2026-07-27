@@ -222,7 +222,7 @@ export function PensionesTab({
   const gradosDelNivel = pensionNivelFiltro ? gradosActivosPorNivel(pensionNivelFiltro) : [];
 
   return (
-    <div className="flex h-full flex-col gap-3">
+    <div className="flex min-w-0 flex-col gap-3">
       {/* Panel superior: anillo de cumplimiento + tendencia mensual */}
       <div className="grid gap-3 sm:grid-cols-[auto_1fr]">
         <div className="flex items-center gap-4 rounded-[14px] border border-monserrat-ink/8 bg-white px-5 py-4 shadow-sm">
@@ -420,7 +420,7 @@ export function PensionesTab({
           </button>
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[14px] border border-monserrat-ink/8 bg-white shadow-sm">
+        <div className="flex min-w-0 flex-col overflow-hidden rounded-[14px] border border-monserrat-ink/8 bg-white shadow-sm">
           <div className="flex flex-wrap items-center gap-4 border-b border-monserrat-ink/6 px-4 py-2">
             <span className="flex items-center gap-1.5 text-[10px] font-bold text-monserrat-ink/40">
               <span className="h-2.5 w-2.5 rounded-[3px] bg-emerald-500" /> Pagado
@@ -439,7 +439,7 @@ export function PensionesTab({
             </span>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-auto">
+          <div className="max-h-[70vh] overflow-auto">
             <table className="w-full min-w-[720px] border-collapse text-[12px]">
               <thead>
                 <tr className="sticky top-0 z-10 bg-white">

@@ -247,8 +247,8 @@ export function AdminSection({
   if (!session) return null;
 
   return (
-    <section id="admin" className="bg-monserrat-cream px-4 sm:px-0 lg:px-0 h-full flex flex-col min-h-0 rounded-2xl">
-      <div className="mx-auto max-w-8xl w-full flex-1 flex flex-col min-h-0 pb-4">
+    <section id="admin" className="bg-monserrat-cream px-4 sm:px-0 lg:px-0 rounded-2xl">
+      <div className="mx-auto max-w-8xl w-full pb-4">
         <FeedbackModal
           isOpen={Boolean(errorMessage)}
           title="No se pudo completar la accion"
@@ -256,7 +256,7 @@ export function AdminSection({
           onClose={() => setErrorMessage(null)}
         />
 
-        <div className="overflow-hidden rounded-[24px] border border-monserrat-ink/8 bg-white shadow-[0_4px_24px_rgba(28,20,16,0.07)] flex-1 flex flex-col min-h-0">
+        <div className="overflow-visible rounded-[24px] border border-monserrat-ink/8 bg-white shadow-[0_4px_24px_rgba(28,20,16,0.07)]">
           {/* topbar */}
           <div className="flex-none flex items-center justify-between border-b border-monserrat-ink/7 px-6 pt-2">
             <div>
@@ -288,7 +288,7 @@ export function AdminSection({
             ))}
           </div>
 
-          <div className="flex-1 min-h-0 p-6 overflow-y-auto bg-monserrat-cream/10 flex flex-col">
+          <div className="bg-monserrat-cream/10 p-4 sm:p-6">
             {status && (
               <div className="mb-5 rounded-[12px] border border-monserrat-red/15 bg-monserrat-red/6 px-4 py-2.5 text-[12px] font-bold text-monserrat-red">
                 {status}

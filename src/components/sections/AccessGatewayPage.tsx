@@ -218,6 +218,16 @@ export function AccessGatewayPage({ onNavigate }: AccessGatewayPageProps) {
             </button>
           </div>
 
+          <div className="text-right">
+            <button
+              type="button"
+              onClick={() => onNavigate("/restablecer-password")}
+              className="text-sm font-black text-monserrat-red/75 transition hover:text-monserrat-red"
+            >
+              Olvide mi contrasena
+            </button>
+          </div>
+
           <button
             disabled={isBusy}
             className="mt-6 inline-flex h-[54px] w-full items-center justify-center gap-2 rounded-2xl bg-monserrat-red text-base font-black text-white shadow-[0_10px_24px_rgba(159,23,27,0.2)] transition hover:bg-monserrat-redDark disabled:cursor-not-allowed disabled:opacity-60"

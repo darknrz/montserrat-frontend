@@ -192,7 +192,7 @@ export function AnunciosTab({ token, isBusy, runAdminAction }: AnunciosTabProps)
   );
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[320px_1fr] flex-1 min-h-0">
+    <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
       <form onSubmit={submitAnuncio} className="grid content-start gap-3 rounded-[18px] border border-monserrat-ink/8 bg-monserrat-cream/40 p-5">
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -334,8 +334,8 @@ export function AnunciosTab({ token, isBusy, runAdminAction }: AnunciosTabProps)
           onEdit: () => handleEdit(anuncio),
           onDelete: () => handleDelete(anuncio),
         }))}
-        className="bg-white shadow-sm flex-1 flex flex-col min-h-0"
-        bodyClassName="overflow-auto flex-1 min-h-0 admin-table-scroll"
+        className="bg-white shadow-sm"
+        bodyClassName="max-h-[70vh]"
       />
     </div>
   );

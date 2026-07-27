@@ -60,7 +60,7 @@ export function RedesSocialesTab({
   };
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[300px_1fr] flex-1 min-h-0">
+    <div className="grid gap-5 xl:grid-cols-[300px_minmax(0,1fr)]">
       <form
         onSubmit={submitRed}
         className="grid content-start gap-3 rounded-[18px] border border-monserrat-ink/8 bg-monserrat-cream/40 p-5"
@@ -136,8 +136,8 @@ export function RedesSocialesTab({
           onEdit: () => handleEditClick(r),
           onDelete: () => handleDelete(r.id),
         }))}
-        className="bg-white shadow-sm flex-1 flex flex-col min-h-0"
-        bodyClassName="overflow-auto flex-1 min-h-0 admin-table-scroll"
+        className="bg-white shadow-sm"
+        bodyClassName="max-h-[70vh]"
       />
     </div>
   );

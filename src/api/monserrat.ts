@@ -115,6 +115,10 @@ async function uploadFile(file: File, folder: string, token: string): Promise<Me
 export const monserratApi = {
   login: (username: string, password: string) =>
     sendJson<LoginResponse>("/auth/login", "POST", { username, password }),
+  forgotPassword: (email: string) =>
+    sendJson<void>("/auth/forgot-password", "POST", { email }),
+  resetPassword: (token: string, newPassword: string) =>
+    sendJson<void>("/auth/reset-password", "POST", { token, newPassword }),
   institution: () => getJson<Institution>("/institution"),
   ingresantes: () => getJson<Ingresante[]>("/ingresantes"),
   videos: () => getJson<Video[]>("/videos"),

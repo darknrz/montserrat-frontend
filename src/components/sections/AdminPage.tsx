@@ -14,8 +14,8 @@ export function AdminPage({ institution, ingresantes, videos, redes, onRefresh }
     // Fondo crema sólido en toda la página; la franja oscura ya no es un
     // porcentaje de la pantalla, es simplemente el color de fondo de la
     // topbar (bg-[#1c1112] más abajo), así su alto = alto real del contenido.
-    <div className="h-screen flex flex-col overflow-hidden bg-monserrat-cream px-4 pb-4 pt-6 sm:px-6 lg:px-8">
-      <div className="flex-none mx-auto w-full max-w-[1600px]">
+    <div className="min-h-screen bg-monserrat-cream px-4 pb-6 pt-6 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-[1600px]">
         <div className="flex items-center justify-between gap-3 rounded-full border border-white/15 bg-[#1c1112] px-4 py-2 text-white shadow-[0_8px_24px_rgba(28,17,18,0.25)]">
           <div className="flex items-center gap-3">
             {institution.logoUrl ? (
@@ -45,7 +45,7 @@ export function AdminPage({ institution, ingresantes, videos, redes, onRefresh }
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 mt-6 w-full mx-auto max-w-[1600px] flex flex-col">
+      <div className="mt-6 w-full mx-auto max-w-[1600px]">
         <AdminSection
           institution={institution}
           ingresantes={ingresantes}

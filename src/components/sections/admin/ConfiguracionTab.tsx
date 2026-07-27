@@ -137,7 +137,7 @@ export function ConfiguracionTab({
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 gap-5">
+    <div className="flex flex-col gap-5">
       <div className="grid gap-3 md:grid-cols-4">
         <AdminMetric
           icon={<BookOpen size={18} />}
@@ -161,8 +161,8 @@ export function ConfiguracionTab({
         />
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[280px_1fr] flex-1 min-h-0">
-        <div className="grid content-start gap-2 rounded-[16px] border border-monserrat-ink/8 bg-white p-3 shadow-sm">
+      <div className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
+        <div className="grid content-start gap-2 rounded-[16px] border border-monserrat-ink/8 bg-white p-3 shadow-sm xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto">
           <p className="px-2 pt-1 text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">
             Primaria
           </p>
@@ -328,7 +328,7 @@ export function ConfiguracionTab({
           </button>
         </div>
 
-        <div className="min-w-0 flex-1 flex flex-col overflow-y-auto pr-1">
+        <div className="min-w-0">
           {configView === "primaria-cursos" && (
             <ConfigPanel
               title="Áreas curriculares"

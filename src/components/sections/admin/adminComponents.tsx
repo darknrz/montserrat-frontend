@@ -498,8 +498,8 @@ export function AdminTable({
 }) {
   return (
     <div className={`overflow-hidden rounded-[16px] border border-monserrat-ink/8 ${className}`}>
-      <div className={`admin-table-scroll ${bodyClassName}`}>
-        <table className="w-full table-fixed border-collapse text-left text-[12.5px]">
+      <div className={`admin-table-scroll max-h-[70vh] overflow-auto ${bodyClassName}`}>
+        <table className="w-full min-w-[760px] table-fixed border-collapse text-left text-[12.5px]">
           <thead className="bg-monserrat-ink sticky top-0 z-10">
             <tr>
               {headers.map((h, i) => (
@@ -746,7 +746,7 @@ export function CompetenciaDocenteBoard({
   onEditCompetencia?: () => void;
 }) {
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[16px] border border-monserrat-ink/8 bg-white shadow-sm">
+    <div className="flex flex-col overflow-hidden rounded-[16px] border border-monserrat-ink/8 bg-white shadow-sm">
       <div className="grid grid-cols-[1.4fr_1fr] border-b border-monserrat-ink/8 bg-monserrat-ink">
         <p className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-cream/70 flex items-center gap-1.5">
           <BookOpen size={11} /> Competencias vinculadas
@@ -755,7 +755,7 @@ export function CompetenciaDocenteBoard({
           <User size={11} /> Docente Asignado
         </p>
       </div>
-      <div className="flex-1 overflow-y-auto">
+      <div className="max-h-[62vh] overflow-y-auto">
         {competencias.length === 0 ? (
           <button
             type="button"

@@ -676,7 +676,7 @@ export function AsignacionesTab({
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-0">
+    <div className="flex flex-col">
       {/* Selector de Nivel */}
       <div className="flex gap-3 pb-4 border-b border-monserrat-ink/10 mb-4 flex-none">
         <button
@@ -701,11 +701,11 @@ export function AsignacionesTab({
         </button>
       </div>
 
-      <div className="grid gap-5 flex-1 min-h-0 pt-4">
-        <div className="grid grid-rows-[auto_1fr] gap-4 h-full min-h-0">
+      <div className="grid gap-5 pt-4">
+        <div className="grid gap-4">
 
           {esSecundaria ? (
-            <div className="grid min-h-0 gap-4 lg:grid-cols-[1fr_1fr_1fr_2fr] h-full">
+            <div className="grid gap-4 lg:grid-cols-[1fr_1fr_1fr_2fr]">
               <RosterPanel
                 title="Nivel Académico"
                 empty="No hay niveles académicos activos"
@@ -717,8 +717,7 @@ export function AsignacionesTab({
                 }))}
                 selectedId={selectedNivelAcademico}
                 onSelect={(id) => handleNivelAcademicoSelect(id)}
-                className="h-full min-h-0"
-                bodyClassName="max-h-none"
+                bodyClassName="max-h-[62vh]"
               />
               <RosterPanel
                 title="Grados"
@@ -733,8 +732,7 @@ export function AsignacionesTab({
                   }))}
                 selectedId={asignacionAcademicaForm.grado}
                 onSelect={(grado) => handleGradoSelectSecundaria(grado)}
-                className="h-full min-h-0"
-                bodyClassName="max-h-none"
+                bodyClassName="max-h-[62vh]"
               />
               <RosterPanel
                 title="Áreas curriculares"
@@ -750,8 +748,7 @@ export function AsignacionesTab({
                 })}
                 selectedId={asignacionAcademicaForm.curso}
                 onSelect={(curso) => handleAreaSelect(curso)}
-                className="h-full min-h-0"
-                bodyClassName="max-h-none"
+                bodyClassName="max-h-[62vh]"
               />
               <CompetenciaDocenteBoard
                 competencias={competenciasDelCursoSecundaria}
@@ -766,7 +763,7 @@ export function AsignacionesTab({
               />
             </div>
           ) : (
-            <div className="grid min-h-0 gap-4 lg:grid-cols-[1fr_1fr_1fr_2fr] h-full">
+            <div className="grid gap-4 lg:grid-cols-[1fr_1fr_1fr_2fr]">
               <RosterPanel
                 title="Nivel Académico"
                 empty="No hay niveles académicos activos"
@@ -778,8 +775,7 @@ export function AsignacionesTab({
                 }))}
                 selectedId={selectedNivelAcademico}
                 onSelect={(id) => handleNivelAcademicoSelect(id)}
-                className="h-full min-h-0"
-                bodyClassName="max-h-none"
+                bodyClassName="max-h-[62vh]"
               />
               <RosterPanel
                 title="Grados"
@@ -794,8 +790,7 @@ export function AsignacionesTab({
                   }))}
                 selectedId={asignacionAcademicaForm.grado}
                 onSelect={(grado) => handleGradoSelect(grado)}
-                className="h-full min-h-0"
-                bodyClassName="max-h-none"
+                bodyClassName="max-h-[62vh]"
               />
               <RosterPanel
                 title="Áreas curriculares"
@@ -811,8 +806,7 @@ export function AsignacionesTab({
                 })}
                 selectedId={asignacionAcademicaForm.curso}
                 onSelect={(curso) => handleAreaSelect(curso)}
-                className="h-full min-h-0"
-                bodyClassName="max-h-none"
+                bodyClassName="max-h-[62vh]"
               />
               <CompetenciaDocenteBoard
                 competencias={competenciasDelCurso}

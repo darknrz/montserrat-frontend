@@ -111,7 +111,7 @@ export function IngresantesTab({
   const model = academicoConfig?.ingresantesModelo ?? "card-grid";
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[300px_1fr] flex-1 min-h-0">
+    <div className="grid gap-5 xl:grid-cols-[300px_minmax(0,1fr)]">
       {/* form */}
       <form
         onSubmit={submitIngresante}
@@ -268,7 +268,7 @@ export function IngresantesTab({
       </form>
 
       {/* tabla */}
-      <div className="flex flex-col min-h-0">
+      <div className="flex min-w-0 flex-col">
         {/* filtros */}
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div className="flex gap-2 flex-wrap">
@@ -328,7 +328,7 @@ export function IngresantesTab({
           </p>
         </div>
 
-        <div className="overflow-hidden rounded-[16px] border border-monserrat-ink/8 flex-1 min-h-0 flex flex-col bg-white shadow-sm p-4">
+        <div className="overflow-hidden rounded-[16px] border border-monserrat-ink/8 bg-white p-4 shadow-sm">
           {model === "card-featured" ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
               {filteredIngresantes.length === 0 ? (
@@ -377,7 +377,7 @@ export function IngresantesTab({
               )}
             </div>
           ) : (
-            <div className="overflow-auto">
+            <div className="max-h-[70vh] overflow-auto">
               <table className="w-full min-w-[600px] border-collapse text-left text-[12.5px]">
                 <thead className="bg-monserrat-ink text-monserrat-cream sticky top-0 z-10">
                   <tr>

@@ -10,6 +10,7 @@ import { Carrusel } from "./components/sections/Carrusel";
 import { DatosGenerales } from "./components/sections/DatosGenerales";
 import { Hero } from "./components/sections/Hero";
 import { Ingresantes } from "./components/sections/Ingresantes";
+import { PasswordResetPage } from "./components/sections/PasswordResetPage";
 import { PortalAcademicoPage } from "./components/sections/PortalAcademicoPage";
 import { Ubicacion } from "./components/sections/Ubicacion";
 import { useChatbot } from "./hooks/useChatbot";
@@ -126,6 +127,10 @@ function App() {
     }
 
     return <AccessGatewayPage onNavigate={navigateTo} />;
+  }
+
+  if (pathname === "/restablecer-password") {
+    return <PasswordResetPage onNavigate={navigateTo} />;
   }
 
   return (
