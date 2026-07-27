@@ -1,4 +1,19 @@
-import { LogOut } from "lucide-react";
+import {
+  BarChart3,
+  BookOpen,
+  Building2,
+  Clapperboard,
+  GraduationCap,
+  LayoutDashboard,
+  Link2,
+  LogOut,
+  Megaphone,
+  Receipt,
+  Settings,
+  Share2,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { monserratApi } from "../../api/monserrat";
 import type {
@@ -244,11 +259,26 @@ export function AdminSection({
     { id: "reportes", label: "Reportes" },
   ];
 
+  const SIDEBAR_TABS: { id: Tab; label: string; icon: LucideIcon }[] = [
+    { id: "institucion", label: "Institucion", icon: Building2 },
+    { id: "ingresantes", label: "Ingresantes", icon: GraduationCap },
+    { id: "anuncios", label: "Anuncios", icon: Megaphone },
+    { id: "videos", label: "Carrusel", icon: Clapperboard },
+    { id: "redes", label: "Redes sociales", icon: Share2 },
+    { id: "asignaciones", label: "Asignaciones", icon: Link2 },
+    { id: "academico", label: "Academico", icon: Users },
+    { id: "pensiones", label: "Pensiones", icon: Receipt },
+    { id: "configuracion", label: "Configuracion", icon: Settings },
+    { id: "reportes", label: "Reportes", icon: BarChart3 },
+  ];
+
+  const activeTab = SIDEBAR_TABS.find((item) => item.id === tab) ?? SIDEBAR_TABS[0];
+
   if (!session) return null;
 
   return (
-    <section id="admin" className="bg-monserrat-cream px-4 sm:px-0 lg:px-0 rounded-2xl">
-      <div className="mx-auto max-w-8xl w-full pb-4">
+    <section id="admin" className="min-h-screen bg-[#fafafa] text-monserrat-ink">
+      <div className="grid min-h-screen lg:grid-cols-[248px_minmax(0,1fr)]">
         <FeedbackModal
           isOpen={Boolean(errorMessage)}
           title="No se pudo completar la accion"
@@ -256,24 +286,91 @@ export function AdminSection({
           onClose={() => setErrorMessage(null)}
         />
 
-        <div className="overflow-visible rounded-[24px] border border-monserrat-ink/8 bg-white shadow-[0_4px_24px_rgba(28,20,16,0.07)]">
+        <aside className="border-b border-black/10 bg-[#f7f7f6] px-3 py-3 lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r lg:px-4">
+          <div className="flex h-full flex-col">
+            <div className="mb-5 flex items-center justify-between gap-3 px-2 py-1">
+              <div className="flex min-w-0 items-center gap-2.5">
+                {institution.logoUrl ? (
+                  <img src={institution.logoUrl} alt="" className="h-8 w-8 rounded-lg object-cover" />
+                ) : (
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-monserrat-red text-sm font-black text-white">
+                    M
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="truncate text-[13px] font-black">Monserrat</p>
+                  <p className="truncate text-[11px] font-semibold text-monserrat-ink/45">Portal admin</p>
+                </div>
+              </div>
+              <LayoutDashboard size={15} className="hidden text-monserrat-ink/35 sm:block" />
+            </div>
+
+            <nav className="flex gap-1 overflow-x-auto pb-2 lg:grid lg:overflow-visible lg:pb-0">
+              {SIDEBAR_TABS.map((item) => {
+                const Icon = item.icon;
+                const active = tab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setTab(item.id)}
+                    className={`flex shrink-0 items-center gap-2 rounded-[10px] px-3 py-2 text-left text-[13px] font-bold transition lg:w-full ${
+                      active
+                        ? "bg-black/8 text-monserrat-ink"
+                        : "text-monserrat-ink/58 hover:bg-black/5 hover:text-monserrat-ink"
+                    }`}
+                  >
+                    <Icon size={15} className={active ? "text-monserrat-ink" : "text-monserrat-ink/45"} />
+                    <span className="whitespace-nowrap">{item.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+
+            <div className="mt-auto hidden border-t border-black/8 pt-3 lg:block">
+              <a
+                href="/"
+                className="mb-2 flex items-center gap-2 rounded-[10px] px-3 py-2 text-[12px] font-bold text-monserrat-ink/55 hover:bg-black/5 hover:text-monserrat-ink"
+              >
+                <BookOpen size={14} />
+                Sitio publico
+              </a>
+              <div className="flex items-center justify-between gap-2 rounded-[10px] px-3 py-2">
+                <div className="min-w-0">
+                  <p className="truncate text-[12px] font-black">{session.nombre}</p>
+                  <p className="truncate text-[11px] font-semibold text-monserrat-ink/40">{session.username}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] text-monserrat-ink/45 hover:bg-black/6 hover:text-monserrat-ink"
+                  aria-label="Cerrar sesion"
+                >
+                  <LogOut size={15} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <div className="min-w-0">
           {/* topbar */}
-          <div className="flex-none flex items-center justify-between border-b border-monserrat-ink/7 px-6 pt-2">
+          <div className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-black/10 bg-[#fafafa]/95 px-4 backdrop-blur sm:px-6 lg:px-8">
             <div>
-              <h3 className="font-serif text-[20px] font-black text-monserrat-ink">
-                {session.nombre}
+              <h3 className="text-[22px] font-black text-monserrat-ink">
+                {activeTab.label}
               </h3>
             </div>
             <button
               onClick={logout}
-              className="inline-flex items-center gap-2 rounded-full border border-monserrat-ink/12 px-4 py-2 text-[12px] font-bold text-monserrat-ink/60 transition hover:border-monserrat-ink/30 hover:text-monserrat-ink"
+              className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3 py-1.5 text-[12px] font-bold text-monserrat-ink/60 transition hover:border-black/20 hover:text-monserrat-ink"
             >
               <LogOut size={14} /> Cerrar sesión
             </button>
           </div>
 
           {/* tabs */}
-          <div className="flex-none flex gap-1 overflow-x-auto border-b border-monserrat-ink/7 bg-monserrat-cream/40 px-6 py-2">
+          <div className="hidden">
             {TABS.map((t) => (
               <button
                 key={t.id}
@@ -288,7 +385,7 @@ export function AdminSection({
             ))}
           </div>
 
-          <div className="bg-monserrat-cream/10 p-4 sm:p-6">
+          <div className="mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8">
             {status && (
               <div className="mb-5 rounded-[12px] border border-monserrat-red/15 bg-monserrat-red/6 px-4 py-2.5 text-[12px] font-bold text-monserrat-red">
                 {status}
