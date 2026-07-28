@@ -82,17 +82,17 @@ export function DocenteCursos({ token }: { token: string }) {
       {status && <div className="rounded-[16px] border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{status}</div>}
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-[18px] border border-monserrat-ink/10 bg-white p-5 shadow-sm">
+        <div className="rounded-[18px] border border-monserrat-ink/10 bg-white p-5 ">
           <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">Cursos activos</p>
           <p className="mt-4 text-3xl font-black text-monserrat-ink">{cursosTotales.length}</p>
           <p className="mt-2 text-sm text-monserrat-ink/60">Cursos diferentes que atiendes.</p>
         </div>
-        <div className="rounded-[18px] border border-monserrat-ink/10 bg-white p-5 shadow-sm">
+        <div className="rounded-[18px] border border-monserrat-ink/10 bg-white p-5 ">
           <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">Niveles académicos</p>
           <p className="mt-4 text-3xl font-black text-monserrat-ink">{salones.length}</p>
           <p className="mt-2 text-sm text-monserrat-ink/60">Grados y niveles asignados.</p>
         </div>
-        <div className="rounded-[18px] border border-monserrat-ink/10 bg-white p-5 shadow-sm">
+        <div className="rounded-[18px] border border-monserrat-ink/10 bg-white p-5 ">
           <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">Alumnos totales</p>
           <p className="mt-4 text-3xl font-black text-monserrat-ink">{alumnos.length}</p>
           <p className="mt-2 text-sm text-monserrat-ink/60">Estudiantes bajo tu responsabilidad.</p>
@@ -101,10 +101,10 @@ export function DocenteCursos({ token }: { token: string }) {
 
       <div className="grid gap-4">
         {salones.length === 0 ? (
-          <div className="rounded-[18px] border border-monserrat-ink/10 bg-monserrat-cream/40 p-5 text-sm text-monserrat-ink/60">No hay niveles académicos asignados.</div>
+          <div className="rounded-[18px] border border-monserrat-ink/10 bg-[#f2f2f1] p-5 text-sm text-monserrat-ink/60">No hay niveles académicos asignados.</div>
         ) : (
           salones.map((salon) => (
-            <div key={`${salon.salon}-${salon.nivel}`} className="rounded-[18px] border border-monserrat-ink/10 bg-white p-5 shadow-sm">
+            <div key={`${salon.salon}-${salon.nivel}`} className="rounded-[18px] border border-monserrat-ink/10 bg-white p-5 ">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <p className="text-sm font-black uppercase tracking-[0.14em] text-monserrat-ink/40">{salon.salon || "Salón"}</p>
@@ -117,7 +117,7 @@ export function DocenteCursos({ token }: { token: string }) {
               </div>
               <div className="mt-4 grid gap-2">
                 {salon.cursos.map((c: any) => (
-                  <div key={c.curso} className="flex flex-col gap-2 rounded-[10px] border border-monserrat-ink/8 bg-monserrat-cream/40 p-3">
+                  <div key={c.curso} className="flex flex-col gap-2 rounded-[10px] border border-monserrat-ink/8 bg-[#f2f2f1] p-3">
                     <div className="flex items-center justify-between">
                       <div className="font-black text-monserrat-ink">{labelFromEnum(c.curso)}</div>
                       <div className="text-sm text-monserrat-ink/60">{(c.competencias || []).length} competencias</div>

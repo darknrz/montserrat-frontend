@@ -163,15 +163,15 @@ export function DocentePerfil({ token }: { token: string }) {
   return (
     <div className="grid gap-4">
       <SectionHeader title="Perfil docente" description="Consulta y actualiza tus datos personales, contacto y formación académica." align="left" />
-      <div className="grid gap-4 rounded-[20px] border border-monserrat-ink/10 bg-white p-5 shadow-sm xl:grid-cols-[1.05fr_0.95fr]">
+      <div className="grid gap-4 rounded-[20px] border border-monserrat-ink/10 bg-white p-5  xl:grid-cols-[1.05fr_0.95fr]">
         <div className="space-y-4">
-          <div className="rounded-[18px] bg-monserrat-cream/60 p-4">
+          <div className="rounded-[18px] bg-[#f2f2f1]/60 p-4">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div className="flex items-center gap-4">
                 {perfil.fotoUrl ? (
-                  <img src={perfil.fotoUrl} alt={perfil.nombre} className="h-24 w-24 rounded-[18px] object-cover shadow-sm" />
+                  <img src={perfil.fotoUrl} alt={perfil.nombre} className="h-24 w-24 rounded-[18px] object-cover " />
                 ) : (
-                  <div className="flex h-24 w-24 items-center justify-center rounded-[18px] bg-monserrat-red text-white shadow-sm">
+                  <div className="flex h-24 w-24 items-center justify-center rounded-[18px] bg-[#e3e3e1] text-monserrat-ink ">
                     <span className="text-2xl font-black">{perfil.nombre?.charAt(0) ?? "D"}</span>
                   </div>
                 )}
@@ -184,14 +184,14 @@ export function DocentePerfil({ token }: { token: string }) {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <label className="flex cursor-pointer items-center justify-center rounded-[999px] border border-monserrat-ink/10 bg-white px-4 py-2 text-sm font-semibold text-monserrat-ink transition hover:bg-monserrat-cream">
+                <label className="flex cursor-pointer items-center justify-center rounded-[999px] border border-monserrat-ink/10 bg-white px-4 py-2 text-sm font-semibold text-monserrat-ink transition hover:bg-[#f2f2f1]">
                   <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={isUploading} />
                   {isUploading ? "Subiendo..." : "Cambiar foto"}
                 </label>
                 <button
                   type="button"
                   onClick={() => setIsEditing((value) => !value)}
-                  className="rounded-[999px] bg-monserrat-red px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+                  className="rounded-[999px] bg-[#e3e3e1] px-4 py-2 text-sm font-semibold text-monserrat-ink transition hover:opacity-90"
                 >
                   {isEditing ? "Cancelar" : "Editar perfil"}
                 </button>
@@ -200,7 +200,7 @@ export function DocentePerfil({ token }: { token: string }) {
           </div>
 
           {isEditing ? (
-            <form onSubmit={handleSaveProfile} className="rounded-[18px] border border-monserrat-ink/10 bg-monserrat-cream/40 p-4">
+            <form onSubmit={handleSaveProfile} className="rounded-[18px] border border-monserrat-ink/10 bg-[#f2f2f1] p-4">
               <div className="grid gap-3 md:grid-cols-2">
                 <label className="grid gap-1 text-sm font-semibold text-monserrat-ink">
                   Nombre
@@ -254,7 +254,7 @@ export function DocentePerfil({ token }: { token: string }) {
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
-                <button type="submit" disabled={isSaving} className="rounded-[999px] bg-monserrat-red px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-70">
+                <button type="submit" disabled={isSaving} className="rounded-[999px] bg-[#e3e3e1] px-4 py-2 text-sm font-semibold text-monserrat-ink disabled:cursor-not-allowed disabled:opacity-70">
                   {isSaving ? "Guardando..." : "Guardar cambios"}
                 </button>
               </div>
@@ -262,7 +262,7 @@ export function DocentePerfil({ token }: { token: string }) {
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               {profileDetails.map((item) => (
-                <div key={item.label} className="rounded-2xl border border-monserrat-ink/8 bg-monserrat-cream/50 p-4">
+                <div key={item.label} className="rounded-2xl border border-monserrat-ink/8 bg-[#f6f6f5]0 p-4">
                   <p className="text-[10px] font-black uppercase tracking-[0.16em] text-monserrat-ink/40">{item.label}</p>
                   <p className="mt-2 text-sm font-semibold text-monserrat-ink">{item.value}</p>
                 </div>
@@ -271,7 +271,7 @@ export function DocentePerfil({ token }: { token: string }) {
           )}
         </div>
 
-        <div className="rounded-[18px] border border-monserrat-ink/8 bg-monserrat-cream/40 p-4">
+        <div className="rounded-[18px] border border-monserrat-ink/8 bg-[#f2f2f1] p-4">
           <h4 className="text-lg font-black text-monserrat-ink">Datos relevantes</h4>
           <p className="mt-3 text-sm leading-6 text-monserrat-ink/70">
             Aquí puedes ver la información más útil para el seguimiento académico y la organización del docente. El sistema toma estos datos directamente del backend para evitar información manual o simulada.
@@ -279,15 +279,15 @@ export function DocentePerfil({ token }: { token: string }) {
 
           <div className="mt-6 space-y-3">
             {keyFacts.map((item) => (
-              <div key={item.label} className="rounded-2xl bg-white p-4 shadow-sm">
+              <div key={item.label} className="rounded-2xl bg-white p-4 ">
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-monserrat-ink/40">{item.label}</p>
                 <p className="mt-2 text-sm font-semibold text-monserrat-ink">{item.value}</p>
               </div>
             ))}
           </div>
 
-          <div className="mt-6 rounded-[14px] border border-monserrat-red/10 bg-white p-4 shadow-sm">
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-monserrat-red">Sugerencia</p>
+          <div className="mt-6 rounded-[14px] border border-black/10 bg-white p-4 ">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-monserrat-ink">Sugerencia</p>
             <p className="mt-2 text-sm leading-6 text-monserrat-ink/70">
               Mantén actualizada tu foto y tus datos de contacto para que la información refleje mejor tu identidad institucional.
             </p>

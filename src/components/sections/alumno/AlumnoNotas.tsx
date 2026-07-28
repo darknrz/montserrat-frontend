@@ -162,8 +162,8 @@ export function AlumnoNotas({ token }: { token: string }) {
       {/* Resumen general: de un vistazo, cuántos cursos, el promedio global
           (con su nivel de color) y cuántos registros hay en total. */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="flex items-center gap-3 rounded-[18px] border border-monserrat-ink/10 bg-white p-5 shadow-sm">
-          <span className="flex h-11 w-11 flex-none items-center justify-center rounded-[12px] bg-monserrat-red/10 text-monserrat-red">
+        <div className="flex items-center gap-3 rounded-[18px] border border-monserrat-ink/10 bg-white p-5 ">
+          <span className="flex h-11 w-11 flex-none items-center justify-center rounded-[12px] bg-[#e9e9e8] text-monserrat-ink">
             <BookOpen size={20} />
           </span>
           <div>
@@ -171,7 +171,7 @@ export function AlumnoNotas({ token }: { token: string }) {
             <p className="text-2xl font-black text-monserrat-ink">{cursosAlumno.length}</p>
           </div>
         </div>
-        <div className="flex items-center gap-3 rounded-[18px] border border-monserrat-ink/10 bg-white p-5 shadow-sm">
+        <div className="flex items-center gap-3 rounded-[18px] border border-monserrat-ink/10 bg-white p-5 ">
           <span className="flex h-11 w-11 flex-none items-center justify-center rounded-[12px] bg-monserrat-gold/15 text-monserrat-goldDark">
             <Award size={20} />
           </span>
@@ -183,8 +183,8 @@ export function AlumnoNotas({ token }: { token: string }) {
             {promedioGeneral && <NivelDot nivel={promedioGeneral.nivel} size="sm" />}
           </div>
         </div>
-        <div className="flex items-center gap-3 rounded-[18px] border border-monserrat-ink/10 bg-white p-5 shadow-sm">
-          <span className="flex h-11 w-11 flex-none items-center justify-center rounded-[12px] bg-monserrat-ink/8 text-monserrat-ink/60">
+        <div className="flex items-center gap-3 rounded-[18px] border border-monserrat-ink/10 bg-white p-5 ">
+          <span className="flex h-11 w-11 flex-none items-center justify-center rounded-[12px] bg-[#e3e3e1]/8 text-monserrat-ink/60">
             <ClipboardList size={20} />
           </span>
           <div>
@@ -201,7 +201,7 @@ export function AlumnoNotas({ token }: { token: string }) {
       ) : (
         <div className="grid gap-4 lg:grid-cols-[260px_1fr] lg:items-start">
           {/* Selector de curso: chips con el nivel promedio como referencia rápida */}
-          <div className="grid gap-2 rounded-[18px] border border-monserrat-ink/10 bg-white p-4 shadow-sm lg:sticky lg:top-4">
+          <div className="grid gap-2 rounded-[18px] border border-monserrat-ink/10 bg-white p-4  lg:sticky lg:top-4">
             <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">Mis cursos</p>
             <div className="grid gap-1.5">
               {promedioPorCurso.map((c) => {
@@ -212,7 +212,7 @@ export function AlumnoNotas({ token }: { token: string }) {
                     type="button"
                     onClick={() => setSelectedCurso(c.curso)}
                     className={`flex items-center gap-2.5 rounded-[12px] border px-3 py-2.5 text-left transition-all ${
-                      active ? "border-monserrat-red/40 bg-monserrat-red/6" : "border-monserrat-ink/8 bg-white hover:bg-monserrat-cream/30"
+                      active ? "border-black/25/40 bg-[#e9e9e8]" : "border-monserrat-ink/8 bg-white hover:bg-[#f2f2f1]"
                     }`}
                   >
                     <NivelDot nivel={c.nivel} size="sm" />
@@ -229,7 +229,7 @@ export function AlumnoNotas({ token }: { token: string }) {
           {/* Detalle del curso seleccionado */}
           <div className="grid gap-3">
             {cursoActualDatos && (
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-monserrat-ink/10 bg-white p-5 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-monserrat-ink/10 bg-white p-5 ">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.14em] text-monserrat-ink/40">{labelFromEnum(cursoActualDatos.curso)}</p>
                   <p className="mt-1 text-2xl font-black text-monserrat-ink">
@@ -238,7 +238,7 @@ export function AlumnoNotas({ token }: { token: string }) {
                 </div>
                 <div className="flex items-center gap-3">
                   <NivelDot nivel={cursoActualDatos.nivel} size="lg" />
-                  <div className="rounded-full bg-monserrat-cream/60 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-monserrat-ink">
+                  <div className="rounded-full bg-[#f2f2f1]/60 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-monserrat-ink">
                     {cursoActualDatos.conteo} notas
                   </div>
                 </div>
@@ -246,7 +246,7 @@ export function AlumnoNotas({ token }: { token: string }) {
             )}
 
             {/* Leyenda de niveles, para que quede claro qué significa cada letra/color */}
-            <div className="flex flex-wrap items-center gap-3 rounded-[14px] border border-monserrat-ink/8 bg-monserrat-cream/30 px-4 py-2.5">
+            <div className="flex flex-wrap items-center gap-3 rounded-[14px] border border-monserrat-ink/8 bg-[#f2f2f1] px-4 py-2.5">
               {NIVELES.map((nivel) => (
                 <span key={nivel.value} className="flex items-center gap-1.5 text-[11px] font-bold text-monserrat-ink/60">
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: nivel.color }} />
@@ -269,7 +269,7 @@ export function AlumnoNotas({ token }: { token: string }) {
                 return (
                   <div
                     key={compId}
-                    className="rounded-[16px] border border-monserrat-ink/10 bg-white p-4 shadow-sm"
+                    className="rounded-[16px] border border-monserrat-ink/10 bg-white p-4 "
                     style={{ borderLeft: `4px solid ${infoFinal ? infoFinal.color : "rgb(31 27 24 / 0.12)"}` }}
                   >
                     <p className="text-sm font-black text-monserrat-ink">{nombreCompetencia(compId)}</p>
@@ -292,7 +292,7 @@ export function AlumnoNotas({ token }: { token: string }) {
                             >
                               <NivelDot nivel={nivel} size="md" />
                               {hasDetail && (
-                                <span className="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-monserrat-ink text-white">
+                                <span className="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#e3e3e1] text-monserrat-ink">
                                   <MessageSquare size={8} />
                                 </span>
                               )}
@@ -300,7 +300,7 @@ export function AlumnoNotas({ token }: { token: string }) {
                                 {labelFromEnum(periodo).replace("Bimestre ", "B")}
                               </span>
                             </button>
-                            <span className="mb-4 h-0.5 flex-1 bg-monserrat-ink/10" />
+                            <span className="mb-4 h-0.5 flex-1 bg-[#e3e3e1]/10" />
                           </React.Fragment>
                         );
                       })}
@@ -324,7 +324,7 @@ export function AlumnoNotas({ token }: { token: string }) {
                       const key = `${selectedCurso}||${compId}||${periodo}`;
                       if (!expanded[key] || (decoded.parciales.length === 0 && !decoded.comentario)) return null;
                       return (
-                        <div key={periodo} className="mt-3 rounded-[12px] bg-monserrat-cream/30 p-3">
+                        <div key={periodo} className="mt-3 rounded-[12px] bg-[#f2f2f1] p-3">
                           <p className="text-[11px] font-black uppercase tracking-wide text-monserrat-ink/45">{labelFromEnum(periodo)}</p>
                           {decoded.parciales.length > 0 && (
                             <div className="mt-2 grid gap-1.5">

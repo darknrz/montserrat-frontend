@@ -416,7 +416,7 @@ export function DocenteNotas({ token }: { token: string }) {
           el resto del ancho a la derecha — en vez de apilar todo hacia abajo. */}
       <div className="grid gap-4 lg:grid-cols-[300px_1fr] lg:items-start">
         {/* Paso 1, 2 y 3: curso, salón y alumno */}
-        <div className="grid gap-4 rounded-[18px] border border-monserrat-ink/10 bg-white p-5 shadow-sm lg:sticky lg:top-4">
+        <div className="grid gap-4 rounded-[18px] border border-monserrat-ink/10 bg-white p-5  lg:sticky lg:top-4">
           <div className="grid gap-1.5">
             <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">1. Curso</p>
             {cursosDisponibles.length === 0 ? (
@@ -430,8 +430,8 @@ export function DocenteNotas({ token }: { token: string }) {
                     onClick={() => setSelectedCurso(curso)}
                     className={`rounded-full px-4 py-2 text-xs font-black transition-all ${
                       selectedCurso === curso
-                        ? "bg-monserrat-red text-white shadow-sm shadow-monserrat-red/20"
-                        : "border border-monserrat-ink/12 bg-monserrat-cream/40 text-monserrat-ink/65 hover:bg-monserrat-cream/70"
+                        ? "bg-[#e3e3e1] text-monserrat-ink  shadow-monserrat-red/20"
+                        : "border border-monserrat-ink/12 bg-[#f2f2f1] text-monserrat-ink/65 hover:bg-[#f2f2f1]/70"
                     }`}
                   >
                     {labelFromEnum(curso)}
@@ -454,8 +454,8 @@ export function DocenteNotas({ token }: { token: string }) {
                       onClick={() => setSelectedNivelAcademico(nivel.id)}
                       className={`rounded-full px-4 py-2 text-xs font-black transition-all ${
                         active
-                          ? "bg-monserrat-ink text-white shadow-sm"
-                          : "border border-monserrat-ink/12 bg-monserrat-cream/40 text-monserrat-ink/65 hover:bg-monserrat-cream/70"
+                          ? "bg-[#e3e3e1] text-monserrat-ink "
+                          : "border border-monserrat-ink/12 bg-[#f2f2f1] text-monserrat-ink/65 hover:bg-[#f2f2f1]/70"
                       }`}
                     >
                       {nivel.label}
@@ -493,12 +493,12 @@ export function DocenteNotas({ token }: { token: string }) {
                       type="button"
                       onClick={() => setSelectedAlumnoDni(alumno.dni)}
                       className={`flex items-center gap-3 rounded-[14px] border px-3 py-2 text-left transition-all ${
-                        active ? "border-monserrat-red/40 bg-monserrat-red/6" : "border-monserrat-ink/8 bg-white hover:bg-monserrat-cream/30"
+                        active ? "border-black/25 bg-[#e9e9e8]" : "border-monserrat-ink/8 bg-white hover:bg-[#f2f2f1]"
                       }`}
                     >
                       <span
                         className={`flex h-8 w-8 flex-none items-center justify-center rounded-full text-[11px] font-black ${
-                          active ? "bg-monserrat-red text-white" : "bg-monserrat-cream/70 text-monserrat-ink/60"
+                          active ? "bg-[#e3e3e1] text-monserrat-ink" : "bg-[#f2f2f1]/70 text-monserrat-ink/60"
                         }`}
                       >
                         {initials(alumno.nombre)}
@@ -510,7 +510,7 @@ export function DocenteNotas({ token }: { token: string }) {
                       {progreso.total > 0 && (
                         <span
                           className={`flex flex-none items-center gap-1 rounded-full px-2 py-1 text-[10px] font-black ${
-                            completo ? "bg-[#3f7d54]/12 text-[#3f7d54]" : "bg-monserrat-ink/6 text-monserrat-ink/50"
+                            completo ? "bg-[#3f7d54]/12 text-[#3f7d54]" : "bg-[#e3e3e1]/6 text-monserrat-ink/50"
                           }`}
                         >
                           {completo && <Check size={11} />}
@@ -528,10 +528,10 @@ export function DocenteNotas({ token }: { token: string }) {
         {/* Panel de calificación */}
         <div className="grid gap-4">
           {puedeCalificar ? (
-            <div className="grid gap-4 rounded-[18px] border border-monserrat-ink/10 bg-white p-5 shadow-sm">
+            <div className="grid gap-4 rounded-[18px] border border-monserrat-ink/10 bg-white p-5 ">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <span className="flex h-11 w-11 items-center justify-center rounded-[12px] bg-monserrat-red text-sm font-black text-white">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-[12px] bg-[#e3e3e1] text-sm font-black text-monserrat-ink">
                     {initials(alumnoSeleccionado?.nombre)}
                   </span>
                   <div>
@@ -545,7 +545,7 @@ export function DocenteNotas({ token }: { token: string }) {
                   type="button"
                   disabled={isBusy}
                   onClick={() => void saveTodas()}
-                  className="inline-flex items-center gap-1.5 rounded-[12px] border border-monserrat-red/25 px-3 py-1.5 text-xs font-black text-monserrat-red disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-[12px] border border-black/15 px-3 py-1.5 text-xs font-black text-monserrat-ink disabled:opacity-50"
                 >
                   <Save size={13} />
                   {isSavingAll ? "Guardando todo…" : "Guardar todo"}
@@ -554,26 +554,26 @@ export function DocenteNotas({ token }: { token: string }) {
 
               {/* Los 4 bimestres en orden, y al final la nota de cierre del período lectivo,
                   separada visualmente porque resume a las anteriores. */}
-              <div className="flex items-stretch gap-2 overflow-x-auto rounded-[14px] bg-monserrat-cream/30 p-1.5">
+              <div className="flex items-stretch gap-2 overflow-x-auto rounded-[14px] bg-[#f2f2f1] p-1.5">
                 {BIMESTRES.map((periodo) => (
                   <button
                     key={periodo}
                     type="button"
                     onClick={() => setActivePeriodo(periodo)}
                     className={`flex-1 whitespace-nowrap rounded-[10px] px-3 py-2 text-xs font-black transition-all ${
-                      activePeriodo === periodo ? "bg-white text-monserrat-red shadow-sm" : "text-monserrat-ink/50 hover:text-monserrat-ink/80"
+                      activePeriodo === periodo ? "bg-white text-monserrat-ink " : "text-monserrat-ink/50 hover:text-monserrat-ink/80"
                     }`}
                   >
                     {labelFromEnum(periodo)}
                   </button>
                 ))}
-                <div className="w-px flex-none self-stretch bg-monserrat-ink/12" />
+                <div className="w-px flex-none self-stretch bg-[#e3e3e1]/12" />
                 <button
                   type="button"
                   onClick={() => setActivePeriodo("GENERAL")}
                   className={`flex-1 whitespace-nowrap rounded-[10px] px-3 py-2 text-xs font-black transition-all ${
                     activePeriodo === "GENERAL"
-                      ? "bg-monserrat-gold text-white shadow-sm"
+                      ? "bg-monserrat-gold text-monserrat-ink "
                       : "text-monserrat-goldDark/70 hover:text-monserrat-goldDark"
                   }`}
                 >
@@ -600,7 +600,7 @@ export function DocenteNotas({ token }: { token: string }) {
                   return (
                     <div
                       key={competencia.id}
-                      className="rounded-[16px] border border-monserrat-ink/10 bg-monserrat-cream/25 p-4"
+                      className="rounded-[16px] border border-monserrat-ink/10 bg-[#f2f2f1] p-4"
                       style={{ borderLeft: `4px solid ${info ? info.color : "rgb(31 27 24 / 0.12)"}` }}
                     >
                       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -609,7 +609,7 @@ export function DocenteNotas({ token }: { token: string }) {
                           type="button"
                           disabled={isBusy || !resolved.nivel}
                           onClick={() => void saveCompetencia(competencia.id)}
-                          className="inline-flex items-center gap-1.5 rounded-[12px] bg-monserrat-red px-3 py-1.5 text-xs font-black text-white disabled:opacity-40"
+                          className="inline-flex items-center gap-1.5 rounded-[12px] bg-[#e3e3e1] px-3 py-1.5 text-xs font-black text-monserrat-ink disabled:opacity-40"
                         >
                           <Save size={13} />
                           {savingCompetencia === competencia.id ? "Guardando…" : "Guardar"}
@@ -630,7 +630,7 @@ export function DocenteNotas({ token }: { token: string }) {
                                 <button
                                   type="button"
                                   onClick={() => addParcial(periodoActivo, competencia.id)}
-                                  className="inline-flex items-center gap-1 text-[11px] font-black text-monserrat-red"
+                                  className="inline-flex items-center gap-1 text-[11px] font-black text-monserrat-ink"
                                 >
                                   <Plus size={12} /> Agregar
                                 </button>
@@ -643,7 +643,7 @@ export function DocenteNotas({ token }: { token: string }) {
                               )}
 
                               {resolved.parciales.map((parcial) => (
-                                <div key={parcial.id} className="grid gap-1.5 rounded-[10px] bg-monserrat-cream/40 p-2">
+                                <div key={parcial.id} className="grid gap-1.5 rounded-[10px] bg-[#f2f2f1] p-2">
                                   <div className="flex items-center gap-2">
                                     <input
                                       value={parcial.label}
@@ -654,7 +654,7 @@ export function DocenteNotas({ token }: { token: string }) {
                                     <button
                                       type="button"
                                       onClick={() => removeParcial(periodoActivo, competencia.id, parcial.id)}
-                                      className="flex-none text-monserrat-ink/30 hover:text-monserrat-red"
+                                      className="flex-none text-monserrat-ink/30 hover:text-monserrat-ink"
                                       aria-label="Quitar nota parcial"
                                     >
                                       <X size={14} />
@@ -699,7 +699,7 @@ export function DocenteNotas({ token }: { token: string }) {
                                     <div
                                       key={periodo}
                                       title={bimResolved.descripcion || undefined}
-                                      className="flex items-center justify-between gap-2 rounded-[10px] border border-monserrat-ink/10 bg-monserrat-cream/40 px-2.5 py-1.5"
+                                      className="flex items-center justify-between gap-2 rounded-[10px] border border-monserrat-ink/10 bg-[#f2f2f1] px-2.5 py-1.5"
                                     >
                                       <span className="text-[10px] font-black uppercase tracking-wide text-monserrat-ink/40">
                                         {labelFromEnum(periodo).replace("Bimestre ", "B")}
@@ -789,8 +789,8 @@ export function DocenteNotas({ token }: { token: string }) {
 
       {toast && (
         <div
-          className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-[14px] px-4 py-3 text-sm font-black text-white shadow-lg ${
-            toast.kind === "ok" ? "bg-monserrat-ink" : "bg-monserrat-red"
+          className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-[12px] border border-black/12 px-4 py-3 text-sm font-black text-monserrat-ink ${
+            toast.kind === "ok" ? "bg-[#e3e3e1]" : "bg-[#e9e9e8]"
           }`}
         >
           {toast.kind === "ok" ? <Sparkles size={15} /> : <ChevronRight size={15} />}

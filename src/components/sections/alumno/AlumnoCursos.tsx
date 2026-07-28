@@ -33,8 +33,8 @@ function initials(name?: string) {
 
 function InfoChip({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-[16px] border border-monserrat-ink/10 bg-white p-5 shadow-sm">
-      <span className="flex h-11 w-11 flex-none items-center justify-center rounded-[12px] bg-monserrat-red/10 text-monserrat-red">
+    <div className="flex items-center gap-3 rounded-[16px] border border-monserrat-ink/10 bg-white p-5 ">
+      <span className="flex h-11 w-11 flex-none items-center justify-center rounded-[12px] bg-[#e9e9e8] text-monserrat-ink">
         {icon}
       </span>
       <div className="min-w-0">
@@ -112,7 +112,7 @@ export function AlumnoCursos({ token }: { token: string }) {
             return (
               <div
                 key={asignacion.curso}
-                className="rounded-[18px] border border-monserrat-ink/10 bg-white p-5 shadow-sm"
+                className="rounded-[18px] border border-monserrat-ink/10 bg-white p-5 "
                 style={{ borderLeft: `4px solid ${color}` }}
               >
                 <div className="flex items-start gap-3">
@@ -128,8 +128,8 @@ export function AlumnoCursos({ token }: { token: string }) {
                   </div>
                 </div>
 
-                <div className="mt-4 flex items-center gap-2.5 rounded-[12px] bg-monserrat-cream/40 p-2.5">
-                  <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-monserrat-ink/8 text-[11px] font-black text-monserrat-ink/60">
+                <div className="mt-4 flex items-center gap-2.5 rounded-[12px] bg-[#f2f2f1] p-2.5">
+                  <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[#e3e3e1]/8 text-[11px] font-black text-monserrat-ink/60">
                     {asignacion.docenteNombre ? initials(asignacion.docenteNombre) : <UserRound size={14} />}
                   </span>
                   <div className="min-w-0">

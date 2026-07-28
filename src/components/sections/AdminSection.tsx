@@ -277,7 +277,7 @@ export function AdminSection({
   if (!session) return null;
 
   return (
-    <section id="admin" className="min-h-screen bg-[#fafafa] text-monserrat-ink">
+    <section id="admin" className="min-h-screen bg-[#f6f6f5] text-monserrat-ink">
       <div className="grid min-h-screen lg:grid-cols-[248px_minmax(0,1fr)]">
         <FeedbackModal
           isOpen={Boolean(errorMessage)}
@@ -286,14 +286,14 @@ export function AdminSection({
           onClose={() => setErrorMessage(null)}
         />
 
-        <aside className="border-b border-black/10 bg-[#f7f7f6] px-3 py-3 lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r lg:px-4">
+        <aside className="border-b border-black/12 bg-[#f2f2f1] px-3 py-3 lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r lg:px-4">
           <div className="flex h-full flex-col">
             <div className="mb-5 flex items-center justify-between gap-3 px-2 py-1">
               <div className="flex min-w-0 items-center gap-2.5">
                 {institution.logoUrl ? (
                   <img src={institution.logoUrl} alt="" className="h-8 w-8 rounded-lg object-cover" />
                 ) : (
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-monserrat-red text-sm font-black text-white">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-monserrat-ink text-sm font-black text-white">
                     M
                   </div>
                 )}
@@ -314,10 +314,10 @@ export function AdminSection({
                     key={item.id}
                     type="button"
                     onClick={() => setTab(item.id)}
-                    className={`flex shrink-0 items-center gap-2 rounded-[10px] px-3 py-2 text-left text-[13px] font-bold transition lg:w-full ${
+                    className={`flex shrink-0 cursor-pointer items-center gap-2 rounded-[10px] px-3 py-2 text-left text-[13px] font-bold transition lg:w-full ${
                       active
-                        ? "bg-black/8 text-monserrat-ink"
-                        : "text-monserrat-ink/58 hover:bg-black/5 hover:text-monserrat-ink"
+                        ? "bg-[#e3e3e1] text-monserrat-ink"
+                        : "text-monserrat-ink/58 hover:bg-[#e8e8e6] hover:text-monserrat-ink"
                     }`}
                   >
                     <Icon size={15} className={active ? "text-monserrat-ink" : "text-monserrat-ink/45"} />
@@ -330,7 +330,7 @@ export function AdminSection({
             <div className="mt-auto hidden border-t border-black/8 pt-3 lg:block">
               <a
                 href="/"
-                className="mb-2 flex items-center gap-2 rounded-[10px] px-3 py-2 text-[12px] font-bold text-monserrat-ink/55 hover:bg-black/5 hover:text-monserrat-ink"
+                className="mb-2 flex cursor-pointer items-center gap-2 rounded-[10px] px-3 py-2 text-[12px] font-bold text-monserrat-ink/55 hover:bg-[#e8e8e6] hover:text-monserrat-ink"
               >
                 <BookOpen size={14} />
                 Sitio publico
@@ -343,7 +343,7 @@ export function AdminSection({
                 <button
                   type="button"
                   onClick={logout}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] text-monserrat-ink/45 hover:bg-black/6 hover:text-monserrat-ink"
+                  className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-[8px] text-monserrat-ink/45 hover:bg-[#e8e8e6] hover:text-monserrat-ink"
                   aria-label="Cerrar sesion"
                 >
                   <LogOut size={15} />
@@ -355,7 +355,7 @@ export function AdminSection({
 
         <div className="min-w-0">
           {/* topbar */}
-          <div className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-black/10 bg-[#fafafa]/95 px-4 backdrop-blur sm:px-6 lg:px-8">
+          <div className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-black/12 bg-[#f6f6f5]/95 px-4 backdrop-blur sm:px-6 lg:px-8">
             <div>
               <h3 className="text-[22px] font-black text-monserrat-ink">
                 {activeTab.label}
@@ -363,7 +363,7 @@ export function AdminSection({
             </div>
             <button
               onClick={logout}
-              className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3 py-1.5 text-[12px] font-bold text-monserrat-ink/60 transition hover:border-black/20 hover:text-monserrat-ink"
+              className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-black/12 bg-[#e9e9e8] px-3 py-1.5 text-[12px] font-bold text-monserrat-ink/65 transition hover:border-black/20 hover:bg-[#dededc] hover:text-monserrat-ink"
             >
               <LogOut size={14} /> Cerrar sesión
             </button>
@@ -387,7 +387,7 @@ export function AdminSection({
 
           <div className="mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8">
             {status && (
-              <div className="mb-5 rounded-[12px] border border-monserrat-red/15 bg-monserrat-red/6 px-4 py-2.5 text-[12px] font-bold text-monserrat-red">
+              <div className="mb-5 rounded-[10px] border border-black/10 bg-white px-4 py-2.5 text-[12px] font-bold text-monserrat-ink/70">
                 {status}
               </div>
             )}

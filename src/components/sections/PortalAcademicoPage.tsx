@@ -163,12 +163,13 @@ export function PortalAcademicoPage() {
   };
 
   const tabs = [
-    { id: "perfil" as const, label: "Perfil", visible: true },
-    { id: "cursos" as const, label: "Cursos", visible: isDocente || isAlumno },
-    { id: "asistencia" as const, label: "Asistencia", visible: isDocente || isAlumno },
-    { id: "notas" as const, label: "Notas", visible: true },
-    { id: "pension" as const, label: "Pension", visible: isAlumno }
+    { id: "perfil" as const, label: "Perfil", icon: UserRound, visible: true },
+    { id: "cursos" as const, label: "Cursos", icon: BookOpen, visible: isDocente || isAlumno },
+    { id: "asistencia" as const, label: "Asistencia", icon: ClipboardCheck, visible: isDocente || isAlumno },
+    { id: "notas" as const, label: "Notas", icon: GraduationCap, visible: true },
+    { id: "pension" as const, label: "Pension", icon: WalletCards, visible: isAlumno }
   ].filter((item) => item.visible);
+  const activeTab = tabs.find((item) => item.id === tab) ?? tabs[0];
 
   if (!session) {
     return null;
@@ -177,12 +178,12 @@ export function PortalAcademicoPage() {
   if (session.debeCambiarContrasena) {
     return (
       <PortalShell>
-        <form onSubmit={submitPassword} className="mx-auto grid max-w-[460px] gap-4 rounded-[20px] border border-monserrat-ink/10 bg-white p-7 shadow-sm">
+        <form onSubmit={submitPassword} className="mx-auto grid max-w-[460px] gap-4 rounded-[12px] border border-black/12 bg-white p-7">
           <h2 className="font-serif text-xl font-black text-monserrat-ink">Cambio obligatorio de contrasena</h2>
           <p className="text-sm font-semibold text-monserrat-ink/60">Por seguridad, cambia la contrasena inicial antes de continuar.</p>
           <Field label="Contrasena actual"><input type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} className="admin-input" required /></Field>
           <Field label="Nueva contrasena"><input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} className="admin-input" required /></Field>
-          <button disabled={isBusy} className="inline-flex items-center justify-center gap-2 rounded-[12px] bg-monserrat-red py-3 text-sm font-black text-white disabled:opacity-60"><Save size={16} /> Guardar</button>
+          <button disabled={isBusy} className="inline-flex items-center justify-center gap-2 rounded-[10px] bg-monserrat-ink py-3 text-sm font-black text-white hover:bg-monserrat-ink/85 disabled:opacity-60"><Save size={16} /> Guardar</button>
           {status && <Alert>{status}</Alert>}
           <button type="button" onClick={logout} className="text-xs font-black text-monserrat-ink/50">Cerrar sesion</button>
         </form>
@@ -192,46 +193,86 @@ export function PortalAcademicoPage() {
 
   return (
     <PortalShell>
-      <div className="overflow-hidden rounded-[22px] border border-monserrat-ink/10 bg-white shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-monserrat-ink/8 px-5 py-4">
+      <div className="overflow-hidden rounded-[12px] border border-black/12 bg-white">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-black/12 bg-[#f6f6f5] px-5 py-4">
           <div className="flex items-center gap-3">
-            {perfil.fotoUrl ? <img src={perfil.fotoUrl} alt={perfil.nombre} className="h-12 w-12 rounded-[12px] object-cover" /> : <div className="flex h-12 w-12 items-center justify-center rounded-[12px] bg-monserrat-red text-white"><UserRound size={22} /></div>}
+            {perfil.fotoUrl ? <img src={perfil.fotoUrl} alt={perfil.nombre} className="h-12 w-12 rounded-[10px] object-cover" /> : <div className="flex h-12 w-12 items-center justify-center rounded-[10px] bg-monserrat-ink text-white"><UserRound size={22} /></div>}
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-red">{session.rol}</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/45">{session.rol}</p>
               <h2 className="font-serif text-xl font-black text-monserrat-ink">{perfil.nombre || session.nombre}</h2>
             </div>
           </div>
-          <button onClick={logout} className="inline-flex items-center gap-2 rounded-full border border-monserrat-ink/12 px-4 py-2 text-xs font-bold text-monserrat-ink/60"><LogOut size={14} /> Cerrar sesion</button>
+          <button onClick={logout} className="inline-flex items-center gap-2 rounded-full border border-black/12 bg-[#e9e9e8] px-4 py-2 text-xs font-bold text-monserrat-ink/65 hover:bg-[#dededc]"><LogOut size={14} /> Cerrar sesion</button>
         </div>
 
-        <div className="flex gap-2 overflow-x-auto border-b border-monserrat-ink/8 bg-monserrat-cream/40 px-5 py-3">
-          {tabs.map((item) => (
-            <button key={item.id} onClick={() => setTab(item.id)} className={`rounded-full px-4 py-2 text-xs font-black ${tab === item.id ? "bg-monserrat-red text-white" : "text-monserrat-ink/60 hover:bg-white"}`}>
-              {item.label}
-            </button>
-          ))}
-        </div>
+        <div className="grid min-h-[70vh] lg:grid-cols-[236px_minmax(0,1fr)]">
+          <aside className="border-b border-black/12 bg-[#f2f2f1] p-3 lg:border-b-0 lg:border-r">
+            <div className="grid gap-1.5">
+              <p className="px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">
+                Secciones
+              </p>
+              <nav className="admin-table-scroll flex gap-1 overflow-x-auto pb-1 lg:grid lg:overflow-visible lg:pb-0">
+                {tabs.map((item) => {
+                  const Icon = item.icon;
+                  const active = item.id === tab;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setTab(item.id)}
+                      className={`flex shrink-0 items-center gap-2 rounded-[10px] px-3 py-2.5 text-left text-[13px] font-bold transition lg:w-full ${
+                        active
+                          ? "bg-[#e3e3e1] text-monserrat-ink"
+                          : "text-monserrat-ink/58 hover:bg-[#e8e8e6] hover:text-monserrat-ink"
+                      }`}
+                    >
+                      <Icon size={15} className={active ? "text-monserrat-ink" : "text-monserrat-ink/45"} />
+                      <span className="whitespace-nowrap">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
 
-        <div className="p-5">
-          {status && <Alert>{status}</Alert>}
+            <div className="mt-4 hidden rounded-[10px] border border-black/10 bg-white p-3 lg:block">
+              <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">Vista actual</p>
+              <p className="mt-1 text-sm font-black text-monserrat-ink">{activeTab.label}</p>
+              <p className="mt-1 text-[11px] font-semibold text-monserrat-ink/45">
+                {isDocente ? "Portal docente" : "Portal alumno"}
+              </p>
+            </div>
+          </aside>
 
-          {tab === "perfil" && (
-            isDocente ? <DocentePerfil token={token} /> : <AlumnoPerfil token={token} />
-          )}
+          <div className="min-w-0 p-5">
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">
+                  {isDocente ? "Docente" : "Alumno"}
+                </p>
+                <h3 className="text-[22px] font-black text-monserrat-ink">{activeTab.label}</h3>
+              </div>
+            </div>
 
-          {tab === "cursos" && (
-            isDocente ? <DocenteCursos token={token} /> : <AlumnoCursos token={token} />
-          )}
+            {status && <Alert>{status}</Alert>}
 
-          {tab === "asistencia" && (
-            isDocente ? <DocenteAsistencias token={token} /> : <AlumnoAsistencias token={token} />
-          )}
+            {tab === "perfil" && (
+              isDocente ? <DocentePerfil token={token} /> : <AlumnoPerfil token={token} />
+            )}
 
-          {tab === "notas" && (
-            isDocente ? <DocenteNotas token={token} /> : <AlumnoNotas token={token} />
-          )}
+            {tab === "cursos" && (
+              isDocente ? <DocenteCursos token={token} /> : <AlumnoCursos token={token} />
+            )}
 
-          {tab === "pension" && isAlumno && <AlumnoPensionDetalle token={token} />}
+            {tab === "asistencia" && (
+              isDocente ? <DocenteAsistencias token={token} /> : <AlumnoAsistencias token={token} />
+            )}
+
+            {tab === "notas" && (
+              isDocente ? <DocenteNotas token={token} /> : <AlumnoNotas token={token} />
+            )}
+
+            {tab === "pension" && isAlumno && <AlumnoPensionDetalle token={token} />}
+          </div>
         </div>
       </div>
     </PortalShell>
@@ -240,9 +281,9 @@ export function PortalAcademicoPage() {
 
 function PortalShell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="min-h-screen bg-monserrat-cream px-4 py-10 sm:px-6 lg:px-10">
+    <main className="min-h-screen bg-[#f6f6f5] px-4 py-10 text-monserrat-ink sm:px-6 lg:px-10">
       <div className="mx-auto max-w-[1600px]">
-        <a href="/" className="inline-flex rounded-full border border-monserrat-ink/12 bg-white px-4 py-2 text-xs font-black text-monserrat-ink/65">Volver al sitio publico</a>
+        <a href="/" className="mb-5 inline-flex rounded-full border border-black/12 bg-[#e9e9e8] px-4 py-2 text-xs font-black text-monserrat-ink/65 hover:bg-[#dededc]">Volver al sitio publico</a>
 
         {children}
       </div>
@@ -255,7 +296,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function Alert({ children }: { children: React.ReactNode }) {
-  return <p className="mb-4 rounded-[12px] border border-monserrat-red/15 bg-monserrat-red/6 px-4 py-2.5 text-xs font-bold text-monserrat-red">{children}</p>;
+  return <p className="mb-4 rounded-[10px] border border-black/12 bg-[#e9e9e8] px-4 py-2.5 text-xs font-bold text-monserrat-ink/70">{children}</p>;
 }
 
 function gradoCorto(grado: string) {

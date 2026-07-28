@@ -29,8 +29,8 @@ function colorEstadoMatricula(estado?: string) {
 
 function DetailChip({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-[16px] border border-monserrat-ink/8 bg-monserrat-cream/50 p-4">
-      <span className="flex h-9 w-9 flex-none items-center justify-center rounded-[10px] bg-white text-monserrat-ink/50 shadow-sm">
+    <div className="flex items-center gap-3 rounded-[16px] border border-monserrat-ink/8 bg-[#f6f6f5]0 p-4">
+      <span className="flex h-9 w-9 flex-none items-center justify-center rounded-[10px] bg-white text-monserrat-ink/50 ">
         {icon}
       </span>
       <div className="min-w-0">
@@ -117,20 +117,20 @@ export function AlumnoPerfil({ token }: { token: string }) {
       {status && <div className="rounded-[16px] border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{status}</div>}
 
       <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-[18px] border border-monserrat-ink/10 bg-white p-5 shadow-sm">
+        <div className="rounded-[18px] border border-monserrat-ink/10 bg-white p-5 ">
           <div className="flex items-center gap-4 md:items-start">
             {/* La foto lleva su propio botón de cámara superpuesto en vez de un
                 botón "Cambiar foto" aparte, como en la mayoría de apps con perfil. */}
             <div className="relative flex-none">
               {perfil.fotoUrl ? (
-                <img src={perfil.fotoUrl} alt={perfil.nombre} className="h-24 w-24 rounded-[18px] object-cover shadow-sm" />
+                <img src={perfil.fotoUrl} alt={perfil.nombre} className="h-24 w-24 rounded-[18px] object-cover " />
               ) : (
-                <div className="flex h-24 w-24 items-center justify-center rounded-[18px] bg-monserrat-red text-white">
+                <div className="flex h-24 w-24 items-center justify-center rounded-[18px] bg-[#e3e3e1] text-monserrat-ink">
                   <span className="text-3xl font-black">{perfil.nombre?.charAt(0) ?? "A"}</span>
                 </div>
               )}
               <label
-                className={`absolute -bottom-2 -right-2 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-2 border-white bg-monserrat-ink text-white shadow-sm transition hover:bg-monserrat-red ${
+                className={`absolute -bottom-2 -right-2 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-2 border-white bg-[#e3e3e1] text-monserrat-ink  transition hover:bg-[#e3e3e1] ${
                   isUploading ? "pointer-events-none opacity-60" : ""
                 }`}
                 title="Cambiar foto"
@@ -166,20 +166,20 @@ export function AlumnoPerfil({ token }: { token: string }) {
           </div>
         </div>
 
-        <div className="rounded-[18px] border border-monserrat-ink/10 bg-monserrat-cream/40 p-5 shadow-sm">
+        <div className="rounded-[18px] border border-monserrat-ink/10 bg-[#f2f2f1] p-5 ">
           <div className="rounded-[16px] bg-white p-4">
             <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-monserrat-ink/40">
               <KeyRound size={12} /> Codigo chatbot
             </p>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-              <code className="rounded-[10px] bg-monserrat-ink px-3 py-2 text-lg font-black tracking-[0.18em] text-white">
+              <code className="rounded-[10px] bg-[#e3e3e1] px-3 py-2 text-lg font-black tracking-[0.18em] text-monserrat-ink">
                 {perfil.codigoChatbot || "PENDIENTE"}
               </code>
               <button
                 type="button"
                 onClick={handleRegenerateChatbotCode}
                 disabled={isRegeneratingCode}
-                className="inline-flex items-center gap-1.5 rounded-[10px] bg-monserrat-red px-3 py-2 text-[12px] font-black text-white transition hover:bg-monserrat-red/85 disabled:opacity-60"
+                className="inline-flex items-center gap-1.5 rounded-[10px] bg-[#e3e3e1] px-3 py-2 text-[12px] font-black text-monserrat-ink transition hover:bg-[#e3e3e1]/85 disabled:opacity-60"
               >
                 <RefreshCw size={14} />
                 {isRegeneratingCode ? "Generando..." : "Regenerar"}
@@ -198,7 +198,7 @@ export function AlumnoPerfil({ token }: { token: string }) {
                 {pensionAlDia === null ? null : pensionAlDia ? (
                   <CheckCircle2 size={22} className="text-[#3f7d54]" />
                 ) : (
-                  <AlertTriangle size={22} className="text-monserrat-red" />
+                  <AlertTriangle size={22} className="text-monserrat-ink" />
                 )}
                 <p
                   className="text-3xl font-black"

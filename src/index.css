@@ -39,7 +39,7 @@ body {
   background: transparent;
   font-family: var(--font-sans);
   line-height: 1.6;
-  letter-spacing: 0.01em;
+  letter-spacing: 0;
 }
 
 ::selection {
@@ -59,7 +59,13 @@ select {
 button,
 a,
 [role="button"] {
+  cursor: pointer;
   transition: transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
 }
 
 button:hover,
@@ -88,19 +94,19 @@ h3 {
   font-family: var(--font-sans);
   font-weight: 700;
   line-height: 1.15;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 @layer components {
   .admin-input {
     width: 100%;
-    border: 1px solid rgb(31 27 24 / 0.14);
-    border-radius: 12px;
-    background: rgb(255 255 255 / 0.96);
+    border: 1px solid rgb(0 0 0 / 0.16);
+    border-radius: 10px;
+    background: #ffffff;
     padding: 0.65rem 0.85rem;
     color: #1f1b18;
     font-size: 0.875rem;
-    font-weight: 700;
+    font-weight: 600;
     line-height: 1.35;
     outline: none;
     transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
@@ -111,12 +117,12 @@ h3 {
   }
 
   .admin-input:hover {
-    border-color: rgb(31 27 24 / 0.22);
+    border-color: rgb(0 0 0 / 0.28);
   }
 
   .admin-input:focus {
-    border-color: rgb(159 23 27 / 0.7);
-    box-shadow: 0 0 0 3px rgb(159 23 27 / 0.08);
+    border-color: rgb(0 0 0 / 0.34);
+    box-shadow: 0 0 0 3px rgb(0 0 0 / 0.06);
     background: #ffffff;
   }
 
@@ -130,7 +136,8 @@ h3 {
 
 @layer utilities {
   .admin-table-scroll::-webkit-scrollbar {
-    width: 5px;
+    width: 8px;
+    height: 8px;
   }
 
   .admin-table-scroll::-webkit-scrollbar-track {
@@ -138,12 +145,17 @@ h3 {
   }
 
   .admin-table-scroll::-webkit-scrollbar-thumb {
-    background: rgb(31 27 24 / 0.12);
+    background: rgb(128 128 128 / 0.75);
     border-radius: 999px;
   }
 
   .admin-table-scroll::-webkit-scrollbar-thumb:hover {
-    background: rgb(31 27 24 / 0.25);
+    background: rgb(96 96 96 / 0.85);
+  }
+
+  .admin-table-scroll {
+    scrollbar-color: gray transparent;
+    scrollbar-width: thin;
   }
 }
 input:invalid {

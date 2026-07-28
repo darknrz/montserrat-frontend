@@ -34,7 +34,7 @@ export function AdminField({ label, children, className = "" }: { label: string;
 export function AdminFormBtn({ isBusy }: { isBusy: boolean }) {
   return (
     <button disabled={isBusy}
-      className="inline-flex items-center gap-2 rounded-[12px] bg-monserrat-red px-6 py-2.5 text-[13px] font-black text-white transition hover:bg-monserrat-red/85 disabled:opacity-60">
+      className="inline-flex items-center gap-2 rounded-[10px] bg-monserrat-ink px-6 py-2.5 text-[13px] font-black text-white transition hover:bg-monserrat-ink/85 disabled:opacity-60">
       <Save size={15} /> Guardar cambios
     </button>
   );
@@ -42,8 +42,8 @@ export function AdminFormBtn({ isBusy }: { isBusy: boolean }) {
 
 export function AdminMetric({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-[16px] border border-monserrat-ink/8 bg-white p-4 shadow-sm">
-      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[10px] bg-monserrat-red/8 text-monserrat-red">
+    <div className="flex items-center gap-3 rounded-[12px] border border-black/10 bg-white p-4">
+      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[9px] bg-black/5 text-monserrat-ink/55">
         {icon}
       </div>
       <div className="min-w-0">
@@ -85,9 +85,9 @@ export function RosterPanel({
   headerAction?: ReactNode;
 }) {
   return (
-    <div className={`overflow-hidden rounded-[16px] border border-monserrat-ink/8 bg-white shadow-sm ${className}`}>
-      <div className="flex items-center justify-between gap-2 border-b border-monserrat-ink/8 bg-monserrat-ink px-4 py-3">
-        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-cream/70">{title}</p>
+    <div className={`overflow-hidden rounded-[12px] border border-black/10 bg-white ${className}`}>
+      <div className="flex items-center justify-between gap-2 border-b border-black/12 bg-[#e9e9e8] px-4 py-3">
+        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/45">{title}</p>
         {headerAction}
       </div>
       <div className={`max-h-[420px] overflow-y-auto p-1.5 ${bodyClassName}`}>
@@ -99,13 +99,13 @@ export function RosterPanel({
             onClick={() => onSelect?.(row.id)}
             className={`flex items-center justify-between border-b border-monserrat-ink/6 pl-3 pr-2 py-3 last:border-b-0 cursor-pointer transition-all duration-200 border-l-[3px] rounded-r-lg ${
               selectedId === row.id
-                ? "bg-monserrat-red/6 border-monserrat-red/20 border-l-monserrat-red"
-                : "border-l-transparent hover:bg-monserrat-cream/15 hover:border-l-monserrat-cream/60"
+                ? "bg-[#e9e9e8] border-black/12 border-l-monserrat-ink"
+                : "border-l-transparent hover:bg-[#eeeeec] hover:border-l-black/20"
             }`}
           >
             <div className="min-w-0 flex-1">
-              <p className={`truncate text-[13px] font-black ${selectedId === row.id ? "text-monserrat-red" : "text-monserrat-ink"}`}>{row.title}</p>
-              <p className={`mt-0.5 truncate text-[11px] font-semibold ${selectedId === row.id ? "text-monserrat-red/70" : "text-monserrat-ink/45"}`}>{row.detail}</p>
+              <p className={`truncate text-[13px] font-black ${selectedId === row.id ? "text-monserrat-ink" : "text-monserrat-ink"}`}>{row.title}</p>
+              <p className={`mt-0.5 truncate text-[11px] font-semibold ${selectedId === row.id ? "text-monserrat-ink/60" : "text-monserrat-ink/45"}`}>{row.detail}</p>
             </div>
             {onEdit && row.raw && (
               <button
@@ -140,30 +140,30 @@ export function ConfigPanel({ title, items, onChange }: { title: string; items: 
   const itemToDelete = deleteIndex === null ? null : items[deleteIndex];
 
   return (
-    <div className="overflow-hidden rounded-[16px] border border-monserrat-ink/8 bg-white shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-monserrat-ink/8 bg-monserrat-ink px-5 py-4">
+    <div className="overflow-hidden rounded-[12px] border border-black/10 bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/12 bg-[#e9e9e8] px-5 py-4">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-cream/70">Configuracion</p>
-          <h4 className="font-serif text-xl font-black text-white">{title}</h4>
+          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">Configuracion</p>
+          <h4 className="font-serif text-xl font-black text-monserrat-ink">{title}</h4>
         </div>
-        <button type="button" onClick={addItem} className="inline-flex items-center gap-1 rounded-[10px] bg-white/10 px-3 py-2 text-[11px] font-black text-monserrat-cream hover:bg-white/18">
+        <button type="button" onClick={addItem} className="inline-flex cursor-pointer items-center gap-1 rounded-[9px] border border-black/12 bg-[#f3f3f2] px-3 py-2 text-[11px] font-black text-monserrat-ink hover:bg-[#dededc]">
           <Plus size={12} /> Agregar
         </button>
       </div>
       <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
         {items.map((item, index) => (
-          <div key={item.id} className={`rounded-[14px] border p-4 transition ${item.active ? "border-monserrat-ink/8 bg-monserrat-cream/25" : "border-monserrat-ink/8 bg-white opacity-60"}`}>
+          <div key={item.id} className={`rounded-[12px] border p-4 transition ${item.active ? "border-black/12 bg-white" : "border-black/12 bg-[#eeeeec] opacity-60"}`}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="truncate text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">{item.id}</p>
-                <input value={item.label} onChange={(e) => updateItem(index, { label: e.target.value })} className="mt-2 w-full rounded-[10px] border border-monserrat-ink/10 bg-white px-3 py-2 text-sm font-black text-monserrat-ink outline-none focus:border-monserrat-red" />
+                <input value={item.label} onChange={(e) => updateItem(index, { label: e.target.value })} className="mt-2 w-full rounded-[9px] border border-black/10 bg-white px-3 py-2 text-sm font-black text-monserrat-ink outline-none focus:border-black/25" />
               </div>
-              <button type="button" onClick={() => setDeleteIndex(index)} className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[8px] bg-monserrat-red/8 text-monserrat-red hover:bg-monserrat-red/16">
+              <button type="button" onClick={() => setDeleteIndex(index)} className="flex h-8 w-8 flex-shrink-0 cursor-pointer items-center justify-center rounded-[8px] bg-[#e9e9e8] text-monserrat-ink/45 hover:bg-red-50 hover:text-red-600">
                 <Trash2 size={13} />
               </button>
             </div>
             <button type="button" onClick={() => updateItem(index, { active: !item.active })}
-              className={`mt-3 w-full rounded-[10px] px-3 py-2 text-[11px] font-black ${item.active ? "bg-emerald-600 text-white" : "bg-monserrat-ink/8 text-monserrat-ink/55"}`}>
+              className={`mt-3 w-full rounded-[9px] border px-3 py-2 text-[11px] font-black ${item.active ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-black/10 bg-black/[0.035] text-monserrat-ink/55"}`}>
               {item.active ? "Activo" : "Inactivo"}
             </button>
           </div>
@@ -212,13 +212,13 @@ export function CompetenciasPanel({
   const itemToDelete = deleteIndex === null ? null : items[deleteIndex];
 
   return (
-    <div className="overflow-hidden rounded-[16px] border border-monserrat-ink/8 bg-white shadow-sm">
-      <div className="border-b border-monserrat-ink/8 bg-monserrat-ink px-5 py-4">
-        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-cream/70">Configuracion</p>
-        <h4 className="font-serif text-xl font-black text-white">Competencias de primaria</h4>
+    <div className="overflow-hidden rounded-[12px] border border-black/10 bg-white">
+      <div className="border-b border-black/12 bg-[#e9e9e8] px-5 py-4">
+        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">Configuracion</p>
+        <h4 className="font-serif text-xl font-black text-monserrat-ink">Competencias</h4>
       </div>
 
-      <div className="border-b border-monserrat-ink/8 bg-monserrat-cream/15 p-4">
+      <div className="border-b border-black/10 bg-white p-4">
         <p className="mb-2 text-[11px] font-black uppercase tracking-[0.08em] text-monserrat-ink/50">
           Escribe la nueva competencia
         </p>
@@ -234,13 +234,13 @@ export function CompetenciasPanel({
             }}
             placeholder="Ej: Resuelve problemas de cantidad usando estrategias y procedimientos matematicos."
             rows={2}
-            className="flex-1 resize-none rounded-[10px] border border-monserrat-ink/10 bg-white px-3 py-2 text-sm font-semibold text-monserrat-ink outline-none focus:border-monserrat-red"
+            className="flex-1 resize-none rounded-[9px] border border-black/10 bg-white px-3 py-2 text-sm font-semibold text-monserrat-ink outline-none focus:border-black/25"
           />
           <button
             type="button"
             onClick={addItem}
             disabled={!nuevaCompetencia.trim()}
-            className="inline-flex items-center justify-center gap-1 rounded-[10px] bg-monserrat-red px-4 py-2 text-[12px] font-black text-white transition hover:bg-monserrat-red/85 disabled:opacity-40 sm:self-start"
+            className="inline-flex items-center justify-center gap-1 rounded-[9px] bg-monserrat-ink px-4 py-2 text-[12px] font-black text-white transition hover:bg-monserrat-ink/85 disabled:opacity-40 sm:self-start"
           >
             <Plus size={14} /> Agregar
           </button>
@@ -260,7 +260,7 @@ export function CompetenciasPanel({
           <div
             key={item.id}
             className={`flex items-start gap-3 rounded-[12px] border p-3 transition ${
-              item.active ? "border-monserrat-ink/8 bg-monserrat-cream/25" : "border-monserrat-ink/8 bg-white opacity-60"
+              item.active ? "border-black/12 bg-white" : "border-black/12 bg-[#eeeeec] opacity-60"
             }`}
           >
             <span className="mt-1 flex-shrink-0 rounded-full bg-white px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] text-monserrat-ink/40">
@@ -271,14 +271,14 @@ export function CompetenciasPanel({
               maxLength={500}
               onChange={(e) => updateItem(index, { label: e.target.value })}
               rows={2}
-              className="flex-1 resize-none rounded-[10px] border border-monserrat-ink/10 bg-white px-3 py-2 text-sm font-bold text-monserrat-ink outline-none focus:border-monserrat-red"
+              className="flex-1 resize-none rounded-[9px] border border-black/10 bg-white px-3 py-2 text-sm font-bold text-monserrat-ink outline-none focus:border-black/25"
             />
             <div className="flex flex-shrink-0 flex-col gap-1.5">
               <button
                 type="button"
                 onClick={() => updateItem(index, { active: !item.active })}
                 className={`rounded-[8px] px-2.5 py-1.5 text-[10px] font-black ${
-                  item.active ? "bg-emerald-600 text-white" : "bg-monserrat-ink/8 text-monserrat-ink/55"
+                  item.active ? "border border-emerald-200 bg-emerald-50 text-emerald-700" : "border border-black/10 bg-black/[0.035] text-monserrat-ink/55"
                 }`}
               >
                 {item.active ? "Activo" : "Inactivo"}
@@ -286,7 +286,7 @@ export function CompetenciasPanel({
               <button
                 type="button"
                 onClick={() => setDeleteIndex(index)}
-                className="flex h-7 w-7 items-center justify-center self-center rounded-[8px] bg-monserrat-red/8 text-monserrat-red hover:bg-monserrat-red/16"
+                className="flex h-7 w-7 cursor-pointer items-center justify-center self-center rounded-[8px] bg-[#e9e9e8] text-monserrat-ink/45 hover:bg-red-50 hover:text-red-600"
               >
                 <Trash2 size={13} />
               </button>
@@ -341,26 +341,26 @@ export function SalonConfigPanel({
   const salonesPagina = salones.slice((pagina - 1) * SALONES_POR_PAGINA, pagina * SALONES_POR_PAGINA);
 
   return (
-    <div className="overflow-hidden rounded-[16px] border border-monserrat-ink/8 bg-white shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-monserrat-ink/8 bg-monserrat-ink px-5 py-4">
+    <div className="overflow-hidden rounded-[12px] border border-black/10 bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/12 bg-[#e9e9e8] px-5 py-4">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-cream/70">Configuracion</p>
-          <h4 className="font-serif text-xl font-black text-white">Salones de {labelAcademico(nivel)}</h4>
+          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">Configuracion</p>
+          <h4 className="font-serif text-xl font-black text-monserrat-ink">Salones de {labelAcademico(nivel)}</h4>
         </div>
-        <button type="button" onClick={() => addSalon("", "", "Nuevo")} className="inline-flex items-center gap-1 rounded-[10px] bg-white/10 px-3 py-2 text-[11px] font-black text-monserrat-cream hover:bg-white/18">
+        <button type="button" onClick={() => addSalon("", "", "Nuevo")} className="inline-flex cursor-pointer items-center gap-1 rounded-[9px] border border-black/12 bg-[#f3f3f2] px-3 py-2 text-[11px] font-black text-monserrat-ink hover:bg-[#dededc]">
           <Plus size={12} /> Agregar
         </button>
       </div>
 
       <div className="grid gap-3 p-4 xl:grid-cols-2">
         {salonesPagina.map((salon) => (
-          <div key={`${salon.nivel}-${salon.grado}-${salon.seccion}-${salon.aula}`} className={`rounded-[14px] border p-4 ${salon.active ? "border-monserrat-ink/8 bg-monserrat-cream/25" : "border-monserrat-ink/8 bg-white opacity-60"}`}>
+          <div key={`${salon.nivel}-${salon.grado}-${salon.seccion}-${salon.aula}`} className={`rounded-[12px] border p-4 ${salon.active ? "border-black/12 bg-white" : "border-black/12 bg-[#eeeeec] opacity-60"}`}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">{labelAcademico(salon.nivel)}</p>
                 <h5 className="mt-1 font-serif text-lg font-black text-monserrat-ink">Aula {salon.aula || "(vacia)"}</h5>
               </div>
-              <button type="button" onClick={() => setDeleteTarget(salon)} className="flex h-8 w-8 items-center justify-center rounded-[8px] bg-monserrat-red/8 text-monserrat-red hover:bg-monserrat-red/16">
+              <button type="button" onClick={() => setDeleteTarget(salon)} className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-[8px] bg-[#e9e9e8] text-monserrat-ink/45 hover:bg-red-50 hover:text-red-600">
                 <Trash2 size={13} />
               </button>
             </div>
@@ -379,7 +379,7 @@ export function SalonConfigPanel({
               </AdminField>
             </div>
             <button type="button" onClick={() => updateSalon(salon, { active: !salon.active })}
-              className={`mt-3 w-full rounded-[10px] px-3 py-2 text-[11px] font-black ${salon.active ? "bg-emerald-600 text-white" : "bg-monserrat-ink/8 text-monserrat-ink/55"}`}>
+              className={`mt-3 w-full rounded-[9px] border px-3 py-2 text-[11px] font-black ${salon.active ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-black/10 bg-black/[0.035] text-monserrat-ink/55"}`}>
               {salon.active ? "Activo" : "Inactivo"}
             </button>
           </div>
@@ -387,7 +387,7 @@ export function SalonConfigPanel({
       </div>
 
       {totalPaginas > 1 && (
-        <div className="flex items-center justify-between border-t border-monserrat-ink/8 px-5 py-3 bg-monserrat-cream/10">
+        <div className="flex items-center justify-between border-t border-black/10 px-5 py-3 bg-black/[0.02]">
           <p className="text-[12px] font-semibold text-monserrat-ink/45">
             Página <span className="font-black text-monserrat-ink">{pagina}</span> de{" "}
             <span className="font-black text-monserrat-ink">{totalPaginas}</span>
@@ -433,8 +433,8 @@ export function ConfirmDeleteModal({ title, message, onCancel, onConfirm }: { ti
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm">
       <div className="w-full max-w-[420px] overflow-hidden rounded-[18px] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
-        <div className="border-b border-monserrat-ink/8 bg-monserrat-cream px-5 py-4">
-          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-red">Confirmacion requerida</p>
+        <div className="border-b border-black/10 bg-black/[0.03] px-5 py-4">
+          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/45">Confirmacion requerida</p>
           <h3 className="mt-1 font-serif text-xl font-black text-monserrat-ink">{title}</h3>
         </div>
         <div className="grid gap-4 p-5">
@@ -443,7 +443,7 @@ export function ConfirmDeleteModal({ title, message, onCancel, onConfirm }: { ti
             <button type="button" onClick={onCancel} className="rounded-[10px] border border-monserrat-ink/12 px-4 py-2 text-[12px] font-black text-monserrat-ink/60 hover:border-monserrat-ink/30">
               Cancelar
             </button>
-            <button type="button" onClick={onConfirm} className="rounded-[10px] bg-monserrat-red px-4 py-2 text-[12px] font-black text-white hover:bg-monserrat-red/85">
+            <button type="button" onClick={onConfirm} className="rounded-[10px] bg-red-600 px-4 py-2 text-[12px] font-black text-white hover:bg-red-700">
               Si, eliminar
             </button>
           </div>
@@ -457,7 +457,7 @@ export function MediaPicker({ label, accept, previewUrl, previewType, onFileChan
   return (
     <div className="grid gap-2">
       <p className="text-[11px] font-black uppercase tracking-[0.08em] text-monserrat-ink/50">{label}</p>
-      <label className="flex cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-dashed border-monserrat-ink/18 bg-white py-2.5 text-[12px] font-bold text-monserrat-ink/60 transition hover:border-monserrat-red hover:text-monserrat-red">
+      <label className="flex cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-dashed border-black/15 bg-white py-2.5 text-[12px] font-bold text-monserrat-ink/60 transition hover:border-black/30 hover:text-monserrat-ink">
         <Upload size={14} /> Subir archivo
         <input type="file" accept={accept} onChange={(e) => onFileChange(e.target.files?.[0] ?? null)} className="hidden" />
       </label>
@@ -468,9 +468,9 @@ export function MediaPicker({ label, accept, previewUrl, previewType, onFileChan
           ) : previewType === "image" ? (
             <img src={previewUrl} alt="" className="h-40 w-full object-cover" />
           ) : (
-            <div className="flex h-40 w-full flex-col items-center justify-center gap-2 bg-monserrat-cream/30 px-4 text-center text-sm font-semibold text-monserrat-ink/70">
+            <div className="flex h-40 w-full flex-col items-center justify-center gap-2 bg-black/[0.035] px-4 text-center text-sm font-semibold text-monserrat-ink/70">
               <span className="text-base font-black">Documento adjunto</span>
-              <a href={previewUrl} target="_blank" rel="noreferrer" className="text-monserrat-red underline">
+              <a href={previewUrl} target="_blank" rel="noreferrer" className="text-monserrat-ink underline">
                 Ver archivo
               </a>
             </div>
@@ -497,14 +497,14 @@ export function AdminTable({
   bodyClassName?: string;
 }) {
   return (
-    <div className={`overflow-hidden rounded-[16px] border border-monserrat-ink/8 ${className}`}>
+    <div className={`overflow-hidden rounded-[12px] border border-black/10 bg-white ${className}`}>
       <div className={`admin-table-scroll max-h-[70vh] overflow-auto ${bodyClassName}`}>
         <table className="w-full min-w-[760px] table-fixed border-collapse text-left text-[12.5px]">
-          <thead className="bg-monserrat-ink sticky top-0 z-10">
+          <thead className="sticky top-0 z-10 bg-[#e3e3e1]">
             <tr>
               {headers.map((h, i) => (
                 <th key={h}
-                  className={`px-4 py-3 text-[10px] font-black uppercase tracking-[0.1em] text-monserrat-cream/70 ${i === 0 ? "w-[12%]" :   // Codigo
+                  className={`px-4 py-3 text-[10px] font-black uppercase tracking-[0.1em] text-monserrat-ink/45 ${i === 0 ? "w-[12%]" :   // Codigo
                     i === 1 ? "w-[30%]" :   // Nombre
                     i === 2 ? "w-[10%]" :   // Rol
                     i === 3 ? "w-[10%]" :   // Estado
@@ -512,18 +512,18 @@ export function AdminTable({
                     }`}
                 >{h}</th>
               ))}
-              <th className="w-[8%] px-4 py-3 bg-monserrat-ink"></th>
+              <th className="w-[8%] px-4 py-3"></th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.id} className="border-t border-monserrat-ink/6 hover:bg-monserrat-cream/20">
+              <tr key={row.id} className="border-t border-black/10 hover:bg-[#f0f0ef]">
                 {row.values.map((v, i) => <td key={i} className="truncate px-2 py-3 text-monserrat-ink/80">{v}</td>)}
 
                 <td className="py-3">
                   <div className="flex gap-1.5">
-                    <button type="button" onClick={row.onEdit} className="flex h-8 w-8 items-center justify-center rounded-[8px] border border-monserrat-ink/12 bg-white hover:border-monserrat-ink/30"><Edit3 size={13} /></button>
-                    <button type="button" onClick={row.onDelete} className="flex h-8 w-8 items-center justify-center rounded-[8px] bg-monserrat-red/8 text-monserrat-red hover:bg-monserrat-red/16"><Trash2 size={13} /></button>
+                    <button type="button" onClick={row.onEdit} className="flex h-8 w-8 items-center justify-center rounded-[8px] border border-black/10 bg-white text-monserrat-ink/60 hover:border-black/25 hover:text-monserrat-ink"><Edit3 size={13} /></button>
+                    <button type="button" onClick={row.onDelete} className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-[8px] bg-[#e9e9e8] text-monserrat-ink/45 hover:bg-red-50 hover:text-red-600"><Trash2 size={13} /></button>
                   </div>
                 </td>
               </tr>
@@ -614,15 +614,15 @@ export function CompetenciaPickerModal({
         title={otraArea ? `Mover desde ${labelAcademico(otraArea)}` : undefined}
         className={`group flex w-full items-center gap-2.5 rounded-[9px] border px-2.5 py-1.5 text-left transition ${
           variant === "linked"
-            ? "border-monserrat-red/25 bg-monserrat-red/6 hover:bg-monserrat-red/10"
+            ? "border-black/15 bg-black/[0.04] hover:bg-black/[0.06]"
             : variant === "other"
             ? "border-amber-400/35 bg-amber-50/70 hover:bg-amber-50"
-            : "border-monserrat-ink/8 bg-white hover:border-monserrat-red/20 hover:bg-monserrat-cream/10"
+            : "border-black/10 bg-white hover:border-black/20 hover:bg-black/[0.025]"
         }`}
       >
         <span
           className={`line-clamp-2 flex-1 text-[12px] font-semibold leading-snug ${
-            variant === "linked" ? "text-monserrat-red" : "text-monserrat-ink/75"
+            variant === "linked" ? "text-monserrat-ink" : "text-monserrat-ink/75"
           }`}
         >
           {c.label}
@@ -630,10 +630,10 @@ export function CompetenciaPickerModal({
         <span
           className={`flex-shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.06em] ${
             variant === "linked"
-              ? "bg-monserrat-red text-white"
+              ? "bg-monserrat-ink text-white"
               : variant === "other"
               ? "bg-amber-500 text-white"
-              : "bg-monserrat-ink/8 text-monserrat-ink/50 group-hover:bg-monserrat-red/15 group-hover:text-monserrat-red"
+              : "bg-monserrat-ink/8 text-monserrat-ink/50 group-hover:bg-black/10 group-hover:text-monserrat-ink"
           }`}
         >
           {variant === "linked" ? "Quitar" : variant === "other" ? "Mover" : "Vincular"}
@@ -648,7 +648,7 @@ export function CompetenciaPickerModal({
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm">
       <div className="flex w-full max-w-[420px] max-h-[85vh] flex-col overflow-hidden rounded-[16px] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
         {/* Header compacto: todo en una franja, sin bloques apilados grandes */}
-        <div className="flex flex-none items-center justify-between gap-3 border-b border-monserrat-ink/8 bg-monserrat-cream px-4 py-3">
+        <div className="flex flex-none items-center justify-between gap-3 border-b border-black/10 bg-black/[0.03] px-4 py-3">
           <div className="min-w-0">
             <h3 className="truncate font-serif text-[15px] font-black leading-tight text-monserrat-ink">{labelAcademico(curso)}</h3>
             <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-monserrat-ink/40">
@@ -658,7 +658,7 @@ export function CompetenciaPickerModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-white text-monserrat-ink/40 hover:bg-monserrat-red/10 hover:text-monserrat-red"
+            className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-white text-monserrat-ink/40 hover:bg-black/[0.06] hover:text-monserrat-ink"
           >
             <X size={14} />
           </button>
@@ -686,7 +686,7 @@ export function CompetenciaPickerModal({
 
           {grupos.vinculadas.length > 0 && (
             <div className="mb-3">
-              <p className="mb-1 text-[9px] font-black uppercase tracking-[0.1em] text-monserrat-red/70">
+              <p className="mb-1 text-[9px] font-black uppercase tracking-[0.1em] text-monserrat-ink/45">
                 Vinculadas a esta área ({grupos.vinculadas.length})
               </p>
               <div className="grid gap-1">{grupos.vinculadas.map((c) => renderFila(c, "linked"))}</div>
@@ -713,7 +713,7 @@ export function CompetenciaPickerModal({
         </div>
 
         <div className="flex flex-none justify-end border-t border-monserrat-ink/8 px-4 py-2.5">
-          <button type="button" onClick={onClose} className="rounded-[9px] bg-monserrat-red px-4 py-1.5 text-[11.5px] font-black text-white hover:bg-monserrat-red/85">
+          <button type="button" onClick={onClose} className="rounded-[9px] bg-monserrat-ink px-4 py-1.5 text-[11.5px] font-black text-white hover:bg-monserrat-ink/85">
             Listo
           </button>
         </div>
@@ -746,12 +746,12 @@ export function CompetenciaDocenteBoard({
   onEditCompetencia?: () => void;
 }) {
   return (
-    <div className="flex flex-col overflow-hidden rounded-[16px] border border-monserrat-ink/8 bg-white shadow-sm">
-      <div className="grid grid-cols-[1.4fr_1fr] border-b border-monserrat-ink/8 bg-monserrat-ink">
-        <p className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-cream/70 flex items-center gap-1.5">
+    <div className="flex flex-col overflow-hidden rounded-[12px] border border-black/10 bg-white">
+      <div className="grid grid-cols-[1.4fr_1fr] border-b border-black/12 bg-[#e3e3e1]">
+        <p className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/45 flex items-center gap-1.5">
           <BookOpen size={11} /> Competencias vinculadas
         </p>
-        <p className="border-l border-white/10 px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-cream/70 flex items-center gap-1.5">
+        <p className="border-l border-black/10 px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/45 flex items-center gap-1.5">
           <User size={11} /> Docente Asignado
         </p>
       </div>
@@ -760,10 +760,10 @@ export function CompetenciaDocenteBoard({
           <button
             type="button"
             onClick={() => onEditCompetencia?.()}
-            className="flex w-full flex-col items-center gap-1.5 py-12 text-center text-sm font-semibold text-monserrat-ink/40 transition hover:text-monserrat-red"
+            className="flex w-full flex-col items-center gap-1.5 py-12 text-center text-sm font-semibold text-monserrat-ink/40 transition hover:text-monserrat-ink"
           >
             <span>Sin competencias vinculadas a esta área</span>
-            <span className="text-[10px] font-black uppercase tracking-[0.08em] text-monserrat-red bg-monserrat-red/6 border border-monserrat-red/10 rounded-full px-3 py-1">
+            <span className="rounded-full border border-black/10 bg-black/[0.035] px-3 py-1 text-[10px] font-black uppercase tracking-[0.08em] text-monserrat-ink/60">
               Click para vincular competencias
             </span>
           </button>
@@ -775,12 +775,12 @@ export function CompetenciaDocenteBoard({
               <div
                 key={c.id}
                 className={`grid grid-cols-[1.4fr_1fr] border-b border-monserrat-ink/6 last:border-b-0 items-center min-h-[50px] ${
-                  i % 2 === 1 ? "bg-monserrat-cream/5" : ""
+                  i % 2 === 1 ? "bg-black/[0.015]" : ""
                 }`}
               >
                 <div
                   onClick={() => onEditCompetencia?.()}
-                  className="cursor-pointer px-4 py-3 text-[12.5px] font-semibold text-monserrat-ink/80 transition-all hover:translate-x-0.5 hover:text-monserrat-red"
+                  className="cursor-pointer px-4 py-3 text-[12.5px] font-semibold text-monserrat-ink/80 transition-all hover:translate-x-0.5 hover:text-monserrat-ink"
                 >
                   {c.label}
                 </div>
@@ -788,10 +788,10 @@ export function CompetenciaDocenteBoard({
                   {dnis.length > 0 ? (
                     <div
                       onClick={() => onEditRow(c.id)}
-                      className="cursor-pointer w-full rounded-xl border border-emerald-500/20 bg-emerald-500/6 px-3 py-2 text-emerald-800 transition-all hover:bg-emerald-500/10 hover:border-emerald-500/35"
+                      className="cursor-pointer w-full rounded-[10px] border border-black/10 bg-black/[0.025] px-3 py-2 text-monserrat-ink transition-all hover:bg-black/[0.045] hover:border-black/20"
                     >
                       <div className="flex items-center gap-1.5 text-[12.5px] font-black">
-                        <UserCheck size={13} className="shrink-0 text-emerald-600" />
+                        <UserCheck size={13} className="shrink-0 text-monserrat-ink/50" />
                         <span className="truncate">{dnis.map((dni) => labelDocenteAsignado(dni)).join(", ")}</span>
                       </div>
                       {dnis.length === 2 && (
@@ -804,7 +804,7 @@ export function CompetenciaDocenteBoard({
                     <button
                       type="button"
                       onClick={() => onEditRow(c.id)}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-dashed border-monserrat-red/30 bg-monserrat-red/4 text-monserrat-red transition-all hover:bg-monserrat-red/8 hover:border-monserrat-red/50 text-[11px] font-black uppercase tracking-wider cursor-pointer"
+                      className="inline-flex cursor-pointer items-center gap-1 rounded-[10px] border border-dashed border-black/15 bg-white px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-monserrat-ink/55 transition-all hover:border-black/30 hover:bg-black/[0.025] hover:text-monserrat-ink"
                     >
                       <UserPlus size={12} /> Asignar docentes
                     </button>
@@ -822,12 +822,10 @@ export function CompetenciaDocenteBoard({
 // Paleta rotativa para los avatares de iniciales: le da variedad visual a la
 // grilla de docentes en vez de que todos los circulos sean del mismo color.
 const AVATAR_PALETTE = [
-  "bg-rose-100 text-rose-700",
-  "bg-sky-100 text-sky-700",
-  "bg-amber-100 text-amber-700",
-  "bg-emerald-100 text-emerald-700",
-  "bg-violet-100 text-violet-700",
-  "bg-teal-100 text-teal-700",
+  "bg-black/[0.04] text-monserrat-ink/70",
+  "bg-black/[0.06] text-monserrat-ink/75",
+  "bg-black/[0.035] text-monserrat-ink/65",
+  "bg-black/[0.05] text-monserrat-ink/70",
 ];
 
 export function ElegirDocenteModal({
@@ -863,15 +861,15 @@ export function ElegirDocenteModal({
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm">
       <div className="flex w-full max-w-[420px] max-h-[80vh] flex-col overflow-hidden rounded-[16px] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
         {/* Header en una sola franja: titulo + contador + cerrar, sin bloques apilados */}
-        <div className="flex flex-none items-center justify-between gap-3 border-b border-monserrat-ink/8 bg-monserrat-cream px-4 py-3">
+        <div className="flex flex-none items-center justify-between gap-3 border-b border-black/10 bg-black/[0.03] px-4 py-3">
           <div className="min-w-0">
-            <p className="text-[9px] font-black uppercase tracking-[0.12em] text-monserrat-red/80">Asignar docente</p>
+            <p className="text-[9px] font-black uppercase tracking-[0.12em] text-monserrat-ink/45">Asignar docente</p>
             <h3 className="truncate font-serif text-[14px] font-black leading-tight text-monserrat-ink">{competenciaLabel}</h3>
           </div>
           <div className="flex flex-shrink-0 items-center gap-2">
             <span
               className={`rounded-full px-2 py-1 text-[10px] font-black ${
-                seleccionCount === 2 ? "bg-emerald-500/15 text-emerald-700" : "bg-monserrat-ink/8 text-monserrat-ink/50"
+                seleccionCount === 2 ? "bg-black/[0.08] text-monserrat-ink" : "bg-monserrat-ink/8 text-monserrat-ink/50"
               }`}
             >
               {seleccionCount}/2
@@ -879,7 +877,7 @@ export function ElegirDocenteModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-monserrat-ink/40 hover:bg-monserrat-red/10 hover:text-monserrat-red"
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-monserrat-ink/40 hover:bg-black/[0.06] hover:text-monserrat-ink"
             >
               <X size={14} />
             </button>
@@ -924,22 +922,22 @@ export function ElegirDocenteModal({
                   title={d.nombre}
                   className={`relative flex flex-col items-center gap-1.5 rounded-[12px] border p-2.5 text-center transition-all ${
                     selected
-                      ? "border-monserrat-red/40 bg-monserrat-red/6"
-                      : "border-monserrat-ink/8 bg-white hover:border-monserrat-red/25 hover:bg-monserrat-cream/10"
+                      ? "border-black/20 bg-black/[0.04]"
+                      : "border-black/10 bg-white hover:border-black/20 hover:bg-black/[0.025]"
                   } ${!canSelect ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
                 >
                   <div
                     className={`flex h-9 w-9 items-center justify-center rounded-full text-[11px] font-black ${
-                      selected ? "bg-monserrat-red text-white" : AVATAR_PALETTE[i % AVATAR_PALETTE.length]
+                      selected ? "bg-monserrat-ink text-white" : AVATAR_PALETTE[i % AVATAR_PALETTE.length]
                     }`}
                   >
                     {getInitials(d.nombre)}
                   </div>
-                  <span className={`line-clamp-2 text-[10.5px] font-bold leading-tight ${selected ? "text-monserrat-red" : "text-monserrat-ink/70"}`}>
+                  <span className={`line-clamp-2 text-[10.5px] font-bold leading-tight ${selected ? "text-monserrat-ink" : "text-monserrat-ink/70"}`}>
                     {d.nombre}
                   </span>
                   {selected && (
-                    <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-monserrat-red text-white shadow-sm">
+                    <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-monserrat-ink text-white">
                       <Check size={9} />
                     </span>
                   )}
@@ -961,7 +959,7 @@ export function ElegirDocenteModal({
           ) : (
             <span />
           )}
-          <button type="button" onClick={onClose} className="rounded-[9px] bg-monserrat-red px-4 py-1.5 text-[11.5px] font-black text-white hover:bg-monserrat-red/85">
+          <button type="button" onClick={onClose} className="rounded-[9px] bg-monserrat-ink px-4 py-1.5 text-[11.5px] font-black text-white hover:bg-monserrat-ink/85">
             Listo
           </button>
         </div>

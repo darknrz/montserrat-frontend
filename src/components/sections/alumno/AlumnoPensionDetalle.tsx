@@ -52,7 +52,7 @@ function GaugePension({ porcentaje }: { porcentaje: number | null }) {
 
 function StatChip({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: string | number; tone: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-[14px] border border-monserrat-ink/8 bg-monserrat-cream/30 px-4 py-3">
+    <div className="flex items-center gap-3 rounded-[14px] border border-monserrat-ink/8 bg-[#f2f2f1] px-4 py-3">
       <span className="flex h-9 w-9 flex-none items-center justify-center rounded-[10px]" style={{ backgroundColor: `${tone}18`, color: tone }}>
         {icon}
       </span>
@@ -113,10 +113,10 @@ export function AlumnoPensionDetalle({ token }: { token: string }) {
      
       {/* Tira del año: los 12 meses como casilleros de calendario, para ver el
           patrón de pagos de un vistazo en vez de leer 12 tarjetas de texto. */}
-      <div className="rounded-[20px] border border-monserrat-ink/10 bg-white p-5 shadow-sm">
+      <div className="rounded-[20px] border border-monserrat-ink/10 bg-white p-5 ">
         <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">Línea del año {pensionYear}</p>
         {pensionesDetalle.length === 0 ? (
-          <div className="mt-4 rounded-[16px] border border-dashed border-monserrat-ink/15 bg-monserrat-cream/30 p-6 text-center text-sm text-monserrat-ink/50">
+          <div className="mt-4 rounded-[16px] border border-dashed border-monserrat-ink/15 bg-[#f2f2f1] p-6 text-center text-sm text-monserrat-ink/50">
             No hay datos de pensiones para este año.
           </div>
         ) : (
@@ -128,7 +128,7 @@ export function AlumnoPensionDetalle({ token }: { token: string }) {
                 <div
                   key={label}
                   title={registro ? (registro.pagada ? `${label}: pagada` : `${label}: pendiente`) : `${label}: sin datos`}
-                  className="flex flex-col items-center gap-1.5 rounded-[12px] border border-monserrat-ink/8 bg-monserrat-cream/25 py-3"
+                  className="flex flex-col items-center gap-1.5 rounded-[12px] border border-monserrat-ink/8 bg-[#f2f2f1] py-3"
                 >
                   <span
                     className="flex h-8 w-8 items-center justify-center rounded-full text-[10px] font-black"
@@ -147,13 +147,13 @@ export function AlumnoPensionDetalle({ token }: { token: string }) {
       {/* Detalle de pendientes: solo los meses que necesitan atención, con su
           observación completa (la tira de arriba no tiene espacio para texto). */}
       {pendientesConDetalle.length > 0 && (
-        <div className="rounded-[20px] border border-monserrat-red/20 bg-white p-5 shadow-sm">
-          <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-red">
+        <div className="rounded-[20px] border border-black/15 bg-white p-5 ">
+          <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink">
             <AlertTriangle size={12} /> Meses pendientes
           </p>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             {pendientesConDetalle.map((p) => (
-              <div key={p.mes} className="rounded-[14px] border border-monserrat-red/15 bg-monserrat-red/5 p-3.5">
+              <div key={p.mes} className="rounded-[14px] border border-black/12 bg-[#e9e9e8] p-3.5">
                 <p className="text-xs font-black text-monserrat-ink">{MESES_LABELS[p.mes - 1] || `Mes ${p.mes}`}</p>
                 {p.observacion && <p className="mt-1 text-xs text-monserrat-ink/60">{p.observacion}</p>}
               </div>

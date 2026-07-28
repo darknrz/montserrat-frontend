@@ -98,7 +98,7 @@ function Gauge({
 
 function StatChip({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: string | number; tone: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-[14px] border border-monserrat-ink/8 bg-monserrat-cream/30 px-4 py-3">
+    <div className="flex items-center gap-3 rounded-[14px] border border-monserrat-ink/8 bg-[#f2f2f1] px-4 py-3">
       <span
         className="flex h-9 w-9 flex-none items-center justify-center rounded-[10px]"
         style={{ backgroundColor: `${tone}18`, color: tone }}
@@ -234,13 +234,13 @@ export function AlumnoAsistencias({ token }: { token: string }) {
           {/* Por bimestre: mismo aro en miniatura, para leer los cuatro períodos
               con el mismo lenguaje visual que el resumen general. */}
           {periodos.length > 0 && (
-            <div className="rounded-[20px] border border-monserrat-ink/10 bg-white p-5 shadow-sm">
+            <div className="rounded-[20px] border border-monserrat-ink/10 bg-white p-5 ">
               <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">Por bimestre</p>
               <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {periodos.map((p, i) => {
                   const stats = porcentajeEnPeriodo(p);
                   return (
-                    <div key={p.id ?? i} className="flex items-center gap-3 rounded-[14px] border border-monserrat-ink/8 bg-monserrat-cream/25 p-3">
+                    <div key={p.id ?? i} className="flex items-center gap-3 rounded-[14px] border border-monserrat-ink/8 bg-[#f2f2f1] p-3">
                       <Gauge porcentaje={stats.porcentaje} minRequerido={minAsistencia} size={64} stroke={7} showLabel={false} />
                       <div className="min-w-0">
                         <p className="text-[11px] font-black uppercase tracking-wide text-monserrat-ink/45">Bimestre {p.numeroBimestre}</p>
@@ -257,7 +257,7 @@ export function AlumnoAsistencias({ token }: { token: string }) {
 
           {/* Calendario tipo "heatmap": el patrón de faltas se ve de un vistazo,
               algo que ni la tabla ni los números sueltos comunican bien. */}
-          <div className="rounded-[20px] border border-monserrat-ink/10 bg-white p-5 shadow-sm">
+          <div className="rounded-[20px] border border-monserrat-ink/10 bg-white p-5 ">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">Calendario de asistencia</p>
               <div className="flex items-center gap-3 text-[10px] font-bold text-monserrat-ink/50">
@@ -268,7 +268,7 @@ export function AlumnoAsistencias({ token }: { token: string }) {
                   <span className="h-2.5 w-2.5 rounded-[4px]" style={{ backgroundColor: COLOR_AUSENTE }} /> Ausente
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-[4px] bg-monserrat-ink/10" /> Sin registro
+                  <span className="h-2.5 w-2.5 rounded-[4px] bg-[#e3e3e1]/10" /> Sin registro
                 </span>
               </div>
             </div>
@@ -276,7 +276,7 @@ export function AlumnoAsistencias({ token }: { token: string }) {
               {mesesConDatos.map(({ year, month }) => {
                 const cells = buildMonthCells(year, month, registrosPorFecha);
                 return (
-                  <div key={`${year}-${month}`} className="rounded-[16px] border border-monserrat-ink/8 bg-monserrat-cream/25 p-4">
+                  <div key={`${year}-${month}`} className="rounded-[16px] border border-monserrat-ink/8 bg-[#f2f2f1] p-4">
                     <p className="text-xs font-black capitalize text-monserrat-ink">{monthLabel(year, month)}</p>
                     <div className="mt-3 grid grid-cols-7 gap-1.5">
                       {DIAS_SEMANA.map((d, i) => (
@@ -310,7 +310,7 @@ export function AlumnoAsistencias({ token }: { token: string }) {
 
           {/* Actividad reciente: lista compacta en vez de una tabla larga,
               con el punto de color como único indicador de estado. */}
-          <div className="rounded-[20px] border border-monserrat-ink/10 bg-white p-5 shadow-sm">
+          <div className="rounded-[20px] border border-monserrat-ink/10 bg-white p-5 ">
             <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">Actividad reciente</p>
             <div className="mt-3 grid">
               {recientes.map((a, i) => (

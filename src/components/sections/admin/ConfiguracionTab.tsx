@@ -162,7 +162,7 @@ export function ConfiguracionTab({
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
-        <div className="grid content-start gap-2 rounded-[16px] border border-monserrat-ink/8 bg-white p-3 shadow-sm xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto">
+        <div className="grid content-start gap-1.5 rounded-[12px] border border-black/10 bg-white p-2 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto">
           <p className="px-2 pt-1 text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">
             Primaria
           </p>
@@ -198,8 +198,8 @@ export function ConfiguracionTab({
               onClick={() => setConfigView(item.id)}
               className={`flex items-center justify-between gap-3 rounded-[12px] px-3 py-3 text-left transition ${
                 configView === item.id
-                  ? "bg-monserrat-red text-white"
-                  : "bg-monserrat-cream/45 text-monserrat-ink/65 hover:bg-monserrat-cream"
+                  ? "bg-[#e3e3e1] text-monserrat-ink"
+                  : "text-monserrat-ink/58 hover:bg-[#eeeeec]"
               }`}
             >
               <span className="flex min-w-0 items-center gap-2">
@@ -208,7 +208,7 @@ export function ConfiguracionTab({
               </span>
               <span
                 className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
-                  configView === item.id ? "bg-white/18" : "bg-white"
+                  configView === item.id ? "bg-white" : "bg-[#e7e7e5]"
                 }`}
               >
                 {item.count}
@@ -250,8 +250,8 @@ export function ConfiguracionTab({
               onClick={() => setConfigView(item.id)}
               className={`flex items-center justify-between gap-3 rounded-[12px] px-3 py-3 text-left transition ${
                 configView === item.id
-                  ? "bg-monserrat-red text-white"
-                  : "bg-monserrat-cream/45 text-monserrat-ink/65 hover:bg-monserrat-cream"
+                  ? "bg-[#e3e3e1] text-monserrat-ink"
+                  : "text-monserrat-ink/58 hover:bg-[#eeeeec]"
               }`}
             >
               <span className="flex min-w-0 items-center gap-2">
@@ -260,7 +260,7 @@ export function ConfiguracionTab({
               </span>
               <span
                 className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
-                  configView === item.id ? "bg-white/18" : "bg-white"
+                  configView === item.id ? "bg-white" : "bg-[#e7e7e5]"
                 }`}
               >
                 {item.count}
@@ -275,8 +275,8 @@ export function ConfiguracionTab({
             onClick={() => setConfigView("ajustes-generales" as any)}
             className={`flex items-center justify-between gap-3 rounded-[12px] px-3 py-3 text-left transition ${
               (configView as string) === "ajustes-generales"
-                ? "bg-monserrat-red text-white"
-                : "bg-monserrat-cream/45 text-monserrat-ink/65 hover:bg-monserrat-cream"
+                ? "bg-[#e3e3e1] text-monserrat-ink"
+                : "text-monserrat-ink/58 hover:bg-[#eeeeec]"
             }`}
           >
             <span className="flex min-w-0 items-center gap-2">
@@ -289,8 +289,8 @@ export function ConfiguracionTab({
             onClick={() => setConfigView("niveles-academicos" as any)}
             className={`flex items-center justify-between gap-3 rounded-[12px] px-3 py-3 text-left transition ${
               (configView as string) === "niveles-academicos"
-                ? "bg-monserrat-red text-white"
-                : "bg-monserrat-cream/45 text-monserrat-ink/65 hover:bg-monserrat-cream"
+                ? "bg-[#e3e3e1] text-monserrat-ink"
+                : "text-monserrat-ink/58 hover:bg-[#eeeeec]"
             }`}
           >
             <span className="flex min-w-0 items-center gap-2">
@@ -299,7 +299,7 @@ export function ConfiguracionTab({
             </span>
             <span
               className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
-                (configView as string) === "niveles-academicos" ? "bg-white/18" : "bg-white"
+                (configView as string) === "niveles-academicos" ? "bg-white" : "bg-[#e7e7e5]"
               }`}
             >
               {academicoConfig.nivelesAcademicos?.length ?? 0}
@@ -310,8 +310,8 @@ export function ConfiguracionTab({
             onClick={() => setConfigView("periodos-bimestres" as any)}
             className={`flex items-center justify-between gap-3 rounded-[12px] px-3 py-3 text-left transition ${
               configView === "periodos-bimestres"
-                ? "bg-monserrat-red text-white"
-                : "bg-monserrat-cream/45 text-monserrat-ink/65 hover:bg-monserrat-cream"
+                ? "bg-[#e3e3e1] text-monserrat-ink"
+                : "text-monserrat-ink/58 hover:bg-[#eeeeec]"
             }`}
           >
             <span className="flex min-w-0 items-center gap-2">
@@ -320,7 +320,7 @@ export function ConfiguracionTab({
             </span>
             <span
               className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
-                configView === "periodos-bimestres" ? "bg-white/18" : "bg-white"
+                configView === "periodos-bimestres" ? "bg-white" : "bg-[#e7e7e5]"
               }`}
             >
               4
@@ -398,7 +398,7 @@ export function ConfiguracionTab({
             />
           )}
           {configView === "periodos-bimestres" && (
-            <div className="rounded-[16px] border border-monserrat-ink/8 bg-white p-5 shadow-sm grid gap-5">
+            <div className="grid gap-5 rounded-[12px] border border-black/10 bg-white p-5">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h3 className="font-serif text-lg font-black text-monserrat-ink">Períodos bimestrales</h3>
@@ -418,7 +418,7 @@ export function ConfiguracionTab({
                       className="admin-input"
                     />
                   </label>
-                  <span className="inline-flex items-center rounded-[10px] bg-monserrat-cream/15 px-3 py-2 text-[12px] font-semibold text-monserrat-ink/70">
+                  <span className="inline-flex items-center rounded-[9px] bg-black/[0.04] px-3 py-2 text-[12px] font-semibold text-monserrat-ink/70">
                     {loadingPeriodos ? "Cargando..." : "Datos actualizados"}
                   </span>
                 </div>
@@ -426,7 +426,7 @@ export function ConfiguracionTab({
 
               <div className="grid gap-4">
                 {periodoRows.map((row) => (
-                  <div key={row.numeroBimestre} className="rounded-[14px] border border-monserrat-ink/10 p-4 bg-monserrat-cream/10">
+                  <div key={row.numeroBimestre} className="rounded-[12px] border border-black/10 bg-white p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">Bimestre {row.numeroBimestre}</p>
@@ -439,7 +439,7 @@ export function ConfiguracionTab({
                           type="button"
                           onClick={() => handleUpdatePeriodo(row)}
                           disabled={savingPeriodo === row.numeroBimestre}
-                          className="inline-flex items-center justify-center rounded-[10px] bg-monserrat-red px-4 py-2 text-[12px] font-black text-white transition hover:bg-monserrat-red/85 disabled:opacity-50"
+                          className="inline-flex items-center justify-center rounded-[9px] bg-monserrat-ink px-4 py-2 text-[12px] font-black text-white transition hover:bg-monserrat-ink/85 disabled:opacity-50"
                         >
                           Guardar
                         </button>
@@ -448,7 +448,7 @@ export function ConfiguracionTab({
                             type="button"
                             onClick={() => handleDeletePeriodo(row)}
                             disabled={savingPeriodo === row.numeroBimestre}
-                            className="inline-flex items-center justify-center rounded-[10px] border border-monserrat-ink/10 bg-white px-4 py-2 text-[12px] font-black text-monserrat-ink transition hover:bg-monserrat-cream disabled:opacity-50"
+                            className="inline-flex items-center justify-center rounded-[9px] border border-black/10 bg-white px-4 py-2 text-[12px] font-black text-monserrat-ink transition hover:bg-black/[0.035] disabled:opacity-50"
                           >
                             Eliminar
                           </button>
@@ -496,7 +496,7 @@ export function ConfiguracionTab({
             </div>
           )}
           {configView === ("ajustes-generales" as any) && (
-            <div className="rounded-[16px] border border-monserrat-ink/8 bg-white p-5 shadow-sm grid gap-4 max-w-md">
+            <div className="grid max-w-md gap-4 rounded-[12px] border border-black/10 bg-white p-5">
               <div>
                 <h3 className="font-serif text-lg font-black text-monserrat-ink">Configuración de asistencias</h3>
                 <p className="text-[12px] font-semibold text-monserrat-ink/40 mt-1">
@@ -530,7 +530,7 @@ export function ConfiguracionTab({
                   <option value="card-featured">Tarjetas destacadas</option>
                 </select>
               </label>
-              <div className="rounded-[12px] bg-monserrat-cream/15 p-3.5 border border-monserrat-ink/6 text-[11px] font-semibold text-monserrat-ink/50 leading-relaxed">
+              <div className="rounded-[10px] border border-black/10 bg-black/[0.025] p-3.5 text-[11px] font-semibold leading-relaxed text-monserrat-ink/50">
                 Este porcentaje se utilizará en el portal de los alumnos para mostrar alertas sobre su asistencia general.
               </div>
             </div>
