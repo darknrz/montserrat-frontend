@@ -125,19 +125,47 @@ export function RosterPanel({
 }
 
 export function ConfigPanel({ title, items, onChange }: { title: string; items: CatalogItem[]; onChange: (items: CatalogItem[]) => void }) {
+  const [localItems, setLocalItems] = useState(items);
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
-  const updateItem = (index: number, patch: Partial<CatalogItem>) => {
-    onChange(items.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item));
+
+  // Sincroniza si el catálogo cambia desde afuera (ej. carga inicial o
+  // guardado confirmado por el backend).
+  useEffect(() => {
+    setLocalItems(items);
+  }, [items]);
+
+  const updateLabel = (index: number, label: string) => {
+    setLocalItems((prev) => prev.map((item, i) => (i === index ? { ...item, label } : item)));
   };
+
+  const commitLabel = (index: number) => {
+    // Solo dispara el guardado si el texto realmente cambió.
+    if (localItems[index]?.label !== items[index]?.label) {
+      onChange(localItems);
+    }
+  };
+
+  const updateActive = (index: number, active: boolean) => {
+    const next = localItems.map((item, i) => (i === index ? { ...item, active } : item));
+    setLocalItems(next);
+    onChange(next);
+  };
+
   const addItem = () => {
-    const label = `Nuevo ${title.toLowerCase()} ${items.length + 1}`;
-    onChange([...items, { id: createCatalogId(label, items), label, active: true }]);
+    const label = `Nuevo ${title.toLowerCase()} ${localItems.length + 1}`;
+    const next = [...localItems, { id: createCatalogId(label, localItems), label, active: true }];
+    setLocalItems(next);
+    onChange(next);
   };
+
   const deleteItem = (index: number) => {
-    onChange(items.filter((_, itemIndex) => itemIndex !== index));
+    const next = localItems.filter((_, itemIndex) => itemIndex !== index);
+    setLocalItems(next);
+    onChange(next);
     setDeleteIndex(null);
   };
-  const itemToDelete = deleteIndex === null ? null : items[deleteIndex];
+
+  const itemToDelete = deleteIndex === null ? null : localItems[deleteIndex];
 
   return (
     <div className="overflow-hidden rounded-[12px] border border-black/10 bg-white">
@@ -151,18 +179,29 @@ export function ConfigPanel({ title, items, onChange }: { title: string; items: 
         </button>
       </div>
       <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
-        {items.map((item, index) => (
+        {localItems.map((item, index) => (
           <div key={item.id} className={`rounded-[12px] border p-4 transition ${item.active ? "border-black/12 bg-white" : "border-black/12 bg-[#eeeeec] opacity-60"}`}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="truncate text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">{item.id}</p>
-                <input value={item.label} onChange={(e) => updateItem(index, { label: e.target.value })} className="mt-2 w-full rounded-[9px] border border-black/10 bg-white px-3 py-2 text-sm font-black text-monserrat-ink outline-none focus:border-black/25" />
+                <input
+                  value={item.label}
+                  onChange={(e) => updateLabel(index, e.target.value)}
+                  onBlur={() => commitLabel(index)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      (e.target as HTMLInputElement).blur();
+                    }
+                  }}
+                  className="mt-2 w-full rounded-[9px] border border-black/10 bg-white px-3 py-2 text-sm font-black text-monserrat-ink outline-none focus:border-black/25"
+                />
               </div>
               <button type="button" onClick={() => setDeleteIndex(index)} className="flex h-8 w-8 flex-shrink-0 cursor-pointer items-center justify-center rounded-[8px] bg-[#e9e9e8] text-monserrat-ink/45 hover:bg-red-50 hover:text-red-600">
                 <Trash2 size={13} />
               </button>
             </div>
-            <button type="button" onClick={() => updateItem(index, { active: !item.active })}
+            <button type="button" onClick={() => updateActive(index, !item.active)}
               className={`mt-3 w-full rounded-[9px] border px-3 py-2 text-[11px] font-black ${item.active ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-black/10 bg-black/[0.035] text-monserrat-ink/55"}`}>
               {item.active ? "Activo" : "Inactivo"}
             </button>
@@ -189,27 +228,48 @@ export function CompetenciasPanel({
   items: CatalogItem[];
   onChange: (items: CatalogItem[]) => void;
 }) {
+  const [localItems, setLocalItems] = useState(items);
   const [nuevaCompetencia, setNuevaCompetencia] = useState("");
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
 
-  const updateItem = (index: number, patch: Partial<CatalogItem>) => {
-    onChange(items.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)));
+  useEffect(() => {
+    setLocalItems(items);
+  }, [items]);
+
+  const updateLabel = (index: number, label: string) => {
+    setLocalItems((prev) => prev.map((item, i) => (i === index ? { ...item, label } : item)));
+  };
+
+  const commitLabel = (index: number) => {
+    if (localItems[index]?.label !== items[index]?.label) {
+      onChange(localItems);
+    }
+  };
+
+  const updateActive = (index: number, active: boolean) => {
+    const next = localItems.map((item, i) => (i === index ? { ...item, active } : item));
+    setLocalItems(next);
+    onChange(next);
   };
 
   const addItem = () => {
     const label = nuevaCompetencia.trim();
     if (!label) return;
-    const id = `C${items.length + 1}`;
-    const finalId = items.some((item) => item.id === id) ? createCatalogId(label, items) : id;
-    onChange([...items, { id: finalId, label, active: true }]);
+    const id = `C${localItems.length + 1}`;
+    const finalId = localItems.some((item) => item.id === id) ? createCatalogId(label, localItems) : id;
+    const next = [...localItems, { id: finalId, label, active: true }];
+    setLocalItems(next);
+    onChange(next);
     setNuevaCompetencia("");
   };
 
   const deleteItem = (index: number) => {
-    onChange(items.filter((_, itemIndex) => itemIndex !== index));
+    const next = localItems.filter((_, itemIndex) => itemIndex !== index);
+    setLocalItems(next);
+    onChange(next);
     setDeleteIndex(null);
   };
-  const itemToDelete = deleteIndex === null ? null : items[deleteIndex];
+  const itemToDelete = deleteIndex === null ? null : localItems[deleteIndex];
 
   return (
     <div className="overflow-hidden rounded-[12px] border border-black/10 bg-white">
@@ -251,12 +311,12 @@ export function CompetenciasPanel({
       </div>
 
       <div className="grid gap-2 p-4 max-h-[520px] overflow-y-auto">
-        {items.length === 0 && (
+        {localItems.length === 0 && (
           <p className="py-6 text-center text-sm font-semibold text-monserrat-ink/40">
             Aun no hay competencias registradas.
           </p>
         )}
-        {items.map((item, index) => (
+        {localItems.map((item, index) => (
           <div
             key={item.id}
             className={`flex items-start gap-3 rounded-[12px] border p-3 transition ${
@@ -269,14 +329,15 @@ export function CompetenciasPanel({
             <textarea
               value={item.label}
               maxLength={500}
-              onChange={(e) => updateItem(index, { label: e.target.value })}
+              onChange={(e) => updateLabel(index, e.target.value)}
+              onBlur={() => commitLabel(index)}
               rows={2}
               className="flex-1 resize-none rounded-[9px] border border-black/10 bg-white px-3 py-2 text-sm font-bold text-monserrat-ink outline-none focus:border-black/25"
             />
             <div className="flex flex-shrink-0 flex-col gap-1.5">
               <button
                 type="button"
-                onClick={() => updateItem(index, { active: !item.active })}
+                onClick={() => updateActive(index, !item.active)}
                 className={`rounded-[8px] px-2.5 py-1.5 text-[10px] font-black ${
                   item.active ? "border border-emerald-200 bg-emerald-50 text-emerald-700" : "border border-black/10 bg-black/[0.035] text-monserrat-ink/55"
                 }`}
