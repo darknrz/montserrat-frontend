@@ -728,21 +728,10 @@ function dibujarReporte(
 
   const competenciasPorCursoPrimaria = academicoConfig.competenciasPorCursoPrimaria ?? {};
   const competenciasPorCursoSecundaria = academicoConfig.competenciasPorCursoSecundaria ?? {};
-  const compatCompetenciasPorCurso = Object.fromEntries(
-    Array.from(new Set([...Object.keys(competenciasPorCursoPrimaria), ...Object.keys(competenciasPorCursoSecundaria)])).map((cursoId) => {
-      const ids = Array.from(new Set([
-        ...(competenciasPorCursoPrimaria[cursoId] ?? []),
-        ...(competenciasPorCursoSecundaria[cursoId] ?? [])
-      ]));
-      return [cursoId, ids];
-    })
-  );
-  const catalogoCompetencias = Array.from(
-    new Map([
-      ...((academicoConfig.competenciasPrimaria ?? []).map((item) => [item.id, item] as const)),
-      ...((academicoConfig.competenciasSecundaria ?? []).map((item) => [item.id, item] as const)),
-    ]).values()
-  );
+  const competenciasPorCursoActual = esSecundaria ? competenciasPorCursoSecundaria : competenciasPorCursoPrimaria;
+  const catalogoCompetenciasActual = esSecundaria
+    ? (academicoConfig.competenciasSecundaria ?? [])
+    : (academicoConfig.competenciasPrimaria ?? []);
 
   const buscarNota = (cursoId: string, competenciaId: string, periodo: string) =>
     notasAlumno.find(
@@ -834,8 +823,8 @@ function dibujarReporte(
 
   const filasCompetencias: { curso: (typeof cursos)[number]; competencia: any }[] = [];
   cursos.forEach((curso) => {
-    const idsCompetencias = compatCompetenciasPorCurso[curso.id] ?? [];
-    const competencias = catalogoCompetencias.filter((c) => idsCompetencias.includes(c.id));
+    const idsCompetencias = competenciasPorCursoActual[curso.id] ?? [];
+    const competencias = catalogoCompetenciasActual.filter((c) => idsCompetencias.includes(c.id));
     competencias.forEach((competencia) => filasCompetencias.push({ curso, competencia }));
   });
 
