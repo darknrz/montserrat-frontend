@@ -1,4 +1,4 @@
-import { ArrowUp, Clock, Facebook, Instagram, Mail, MapPin, Music2, Phone, ShieldCheck, Youtube } from "lucide-react";
+import { ArrowUp, Clock, Facebook, FileDown, Instagram, Mail, MapPin, Music2, Phone, ShieldCheck, Youtube } from "lucide-react";
 import type { Institution, RedSocial } from "../../types";
 
 const quickLinks = [
@@ -15,6 +15,8 @@ type FooterProps = {
 };
 
 export function Footer({ institution, redes }: FooterProps) {
+  const reglamentoPdfUrl = "/REGLAMENTO INTERNO.pdf";
+
   const contactItems = [
     { icon: MapPin, value: `${institution.direccion}, ${institution.ciudad}` },
     { icon: Mail, value: institution.email },
@@ -134,13 +136,25 @@ export function Footer({ institution, redes }: FooterProps) {
           <p>
             © {new Date().getFullYear()} {institution.nombre}. {institution.ciudad}
           </p>
-          <a
-            href="#inicio"
-            className="inline-flex items-center gap-2 font-bold text-white/55 transition hover:text-monserrat-gold"
-          >
-            Volver arriba
-            <ArrowUp size={15} />
-          </a>
+          <div className="flex flex-wrap items-center gap-3">
+            <a
+              href={reglamentoPdfUrl}
+              target="_blank"
+              rel="noreferrer"
+              download="reglamento-interno.pdf"
+              className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/5 px-3 py-2 font-bold text-white/70 transition hover:border-monserrat-gold/45 hover:text-monserrat-gold"
+            >
+              <FileDown size={15} />
+              Descargar reglamento (PDF)
+            </a>
+            <a
+              href="#inicio"
+              className="inline-flex items-center gap-2 font-bold text-white/55 transition hover:text-monserrat-gold"
+            >
+              Volver arriba
+              <ArrowUp size={15} />
+            </a>
+          </div>
         </div>
       </div>
     </footer>

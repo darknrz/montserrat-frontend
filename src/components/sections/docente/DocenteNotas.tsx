@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Check, ChevronRight, MessageSquarePlus, Plus, Save, Search, Sparkles, X } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Check, ChevronRight, MessageSquarePlus, Plus, Search, Sparkles, X } from "lucide-react";
 import { SectionHeader } from "../../ui/SectionHeader";
 import { monserratApi } from "../../../api/monserrat";
 import type { AsignacionAcademica, UsuarioAcademico, NotaAcademica } from "../../../types";
@@ -112,8 +112,9 @@ export function DocenteNotas({ token }: { token: string }) {
   const [isBusy, setIsBusy] = useState(false);
   const [isSavingAll, setIsSavingAll] = useState(false);
   const [drafts, setDrafts] = useState<NotaDrafts>({});
-  const [savingCompetencia, setSavingCompetencia] = useState<string | null>(null);
   const [openComentario, setOpenComentario] = useState<Record<string, boolean>>({});
+  const [autoSaveState, setAutoSaveState] = useState<Record<string, "idle" | "saving" | "saved" | "error">>({});
+  const autoSaveTimers = useRef<Record<string, ReturnType<typeof setTimeout> | null>>({});
 
   useEffect(() => {
     if (!token) return;
@@ -278,127 +279,115 @@ export function DocenteNotas({ token }: { token: string }) {
     };
   };
 
+  const persistDraft = async (periodo: string, competenciaId: string, draftValue?: NotaDraftValue) => {
+    if (!selectedAlumnoDni || !selectedCurso || !token) return;
+
+    const resolved = draftValue ?? resolveDraft(periodo, competenciaId);
+    if (!resolved.nivel) return;
+
+    const key = getNotaKey(periodo, competenciaId);
+    setAutoSaveState((current) => ({ ...current, [key]: "saving" }));
+
+    try {
+      const valor = valorDesdeNivel(resolved.nivel);
+      const observacion = periodo === "GENERAL"
+        ? (resolved.descripcion ?? "")
+        : encodeObservacion(resolved.parciales ?? [], resolved.descripcion ?? "");
+      const existing = notas.find(
+        (nota) => nota.alumnoDni === selectedAlumnoDni && nota.curso === selectedCurso && nota.periodo === periodo && nota.competenciaId === competenciaId
+      );
+
+      const saved = existing
+        ? await monserratApi.updateNota(
+            existing.id,
+            {
+              alumnoDni: selectedAlumnoDni,
+              curso: selectedCurso,
+              periodo,
+              tipoEvaluacion: existing.tipoEvaluacion ?? "EXAMEN",
+              valor,
+              observacion,
+              competenciaId
+            },
+            token
+          )
+        : await monserratApi.createNota(
+            {
+              alumnoDni: selectedAlumnoDni,
+              curso: selectedCurso,
+              periodo,
+              tipoEvaluacion: "EXAMEN",
+              valor,
+              observacion,
+              competenciaId
+            },
+            token
+          );
+
+      setNotas((current) => {
+        const exists = current.some((nota) => nota.id === saved.id);
+        if (exists) {
+          return current.map((nota) => (nota.id === saved.id ? saved : nota));
+        }
+        return [...current, saved];
+      });
+      setAutoSaveState((current) => ({ ...current, [key]: "saved" }));
+    } catch (error) {
+      setAutoSaveState((current) => ({ ...current, [key]: "error" }));
+      showToast(error instanceof Error ? error.message : "No se pudo guardar la nota.", "error");
+    }
+  };
+
+  const scheduleAutoSave = (periodo: string, competenciaId: string, draftValue: NotaDraftValue) => {
+    const key = getNotaKey(periodo, competenciaId);
+    if (autoSaveTimers.current[key]) {
+      clearTimeout(autoSaveTimers.current[key]!);
+    }
+
+    autoSaveTimers.current[key] = window.setTimeout(() => {
+      void persistDraft(periodo, competenciaId, draftValue);
+    }, 350);
+  };
+
   const updateNivel = (periodo: string, competenciaId: string, nivel: string) => {
     const key = getNotaKey(periodo, competenciaId);
-    setDrafts((current) => ({ ...current, [key]: { ...(current[key] ?? {}), nivel } }));
+    const nextDraft = { ...(drafts[key] ?? {}), nivel };
+    setDrafts((current) => ({ ...current, [key]: nextDraft }));
+    scheduleAutoSave(periodo, competenciaId, nextDraft);
   };
 
   const updateDescripcion = (periodo: string, competenciaId: string, descripcion: string) => {
     const key = getNotaKey(periodo, competenciaId);
-    setDrafts((current) => ({ ...current, [key]: { ...(current[key] ?? {}), descripcion } }));
+    const nextDraft = { ...(drafts[key] ?? {}), descripcion };
+    setDrafts((current) => ({ ...current, [key]: nextDraft }));
+    scheduleAutoSave(periodo, competenciaId, nextDraft);
   };
 
   const addParcial = (periodo: string, competenciaId: string) => {
     const key = getNotaKey(periodo, competenciaId);
     const actuales = resolveDraft(periodo, competenciaId).parciales;
     const next = [...actuales, { id: makeParcialId(), label: `Nota parcial ${actuales.length + 1}`, nivel: "" }];
-    setDrafts((current) => ({ ...current, [key]: { ...(current[key] ?? {}), parciales: next } }));
+    const nextDraft = { ...(drafts[key] ?? {}), parciales: next };
+    setDrafts((current) => ({ ...current, [key]: nextDraft }));
+    scheduleAutoSave(periodo, competenciaId, nextDraft);
   };
 
   const updateParcial = (periodo: string, competenciaId: string, parcialId: string, field: "label" | "nivel", value: string) => {
     const key = getNotaKey(periodo, competenciaId);
     const actuales = resolveDraft(periodo, competenciaId).parciales;
     const next = actuales.map((p) => (p.id === parcialId ? { ...p, [field]: value } : p));
-    setDrafts((current) => ({ ...current, [key]: { ...(current[key] ?? {}), parciales: next } }));
+    const nextDraft = { ...(drafts[key] ?? {}), parciales: next };
+    setDrafts((current) => ({ ...current, [key]: nextDraft }));
+    scheduleAutoSave(periodo, competenciaId, nextDraft);
   };
 
   const removeParcial = (periodo: string, competenciaId: string, parcialId: string) => {
     const key = getNotaKey(periodo, competenciaId);
     const actuales = resolveDraft(periodo, competenciaId).parciales;
     const next = actuales.filter((p) => p.id !== parcialId);
-    setDrafts((current) => ({ ...current, [key]: { ...(current[key] ?? {}), parciales: next } }));
-  };
-
-  // Guarda una competencia para los periodos indicados. No refresca `notas` por sí sola
-  // (para poder encadenar varias llamadas al guardar todo sin recargar de más).
-  const persistCompetencia = async (competenciaId: string, periodos: string[]) => {
-    for (const periodo of periodos) {
-      const resolved = resolveDraft(periodo, competenciaId);
-      if (!resolved.nivel) continue;
-
-      const valor = valorDesdeNivel(resolved.nivel);
-      const observacion = periodo === "GENERAL" ? resolved.descripcion : encodeObservacion(resolved.parciales, resolved.descripcion);
-      const existing = notasPorCompetencia.find((nota) => nota.periodo === periodo && nota.competenciaId === competenciaId);
-
-      if (existing) {
-        await monserratApi.updateNota(
-          existing.id,
-          {
-            alumnoDni: selectedAlumnoDni,
-            curso: selectedCurso,
-            periodo,
-            tipoEvaluacion: existing.tipoEvaluacion ?? "EXAMEN",
-            valor,
-            observacion,
-            competenciaId
-          },
-          token
-        );
-      } else {
-        await monserratApi.createNota(
-          {
-            alumnoDni: selectedAlumnoDni,
-            curso: selectedCurso,
-            periodo,
-            tipoEvaluacion: "EXAMEN",
-            valor,
-            observacion,
-            competenciaId
-          },
-          token
-        );
-      }
-    }
-  };
-
-  const saveCompetencia = async (competenciaId: string) => {
-    if (!selectedAlumnoDni || !selectedCurso || !token) {
-      showToast("Selecciona alumno y curso para guardar las notas.", "error");
-      return;
-    }
-
-    setIsBusy(true);
-    setSavingCompetencia(competenciaId);
-
-    try {
-      await persistCompetencia(competenciaId, [periodoActivo]);
-      const updated = await monserratApi.notasDocente(token);
-      setNotas(updated);
-      showToast("Nota guardada correctamente.");
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : "No se pudo guardar la nota.", "error");
-    } finally {
-      setIsBusy(false);
-      setSavingCompetencia(null);
-    }
-  };
-
-  const saveTodas = async () => {
-    if (!selectedAlumnoDni || !selectedCurso || !token || competenciasDelCurso.length === 0) {
-      showToast("Selecciona alumno y curso para guardar las notas.", "error");
-      return;
-    }
-
-    setIsBusy(true);
-    setIsSavingAll(true);
-
-    try {
-      for (const competencia of competenciasDelCurso) {
-        await persistCompetencia(competencia.id, [periodoActivo]);
-      }
-      const updated = await monserratApi.notasDocente(token);
-      setNotas(updated);
-      showToast(
-        `Guardado: ${competenciasDelCurso.length} competencia(s) para ${
-          periodoActivo === "GENERAL" ? "la nota final" : labelFromEnum(periodoActivo)
-        }.`
-      );
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : "No se pudieron guardar todas las notas.", "error");
-    } finally {
-      setIsBusy(false);
-      setIsSavingAll(false);
-    }
+    const nextDraft = { ...(drafts[key] ?? {}), parciales: next };
+    setDrafts((current) => ({ ...current, [key]: nextDraft }));
+    scheduleAutoSave(periodo, competenciaId, nextDraft);
   };
 
   const puedeCalificar = Boolean(selectedAlumnoDni && selectedCurso && competenciasDelCurso.length > 0);
@@ -541,15 +530,9 @@ export function DocenteNotas({ token }: { token: string }) {
                     </p>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  disabled={isBusy}
-                  onClick={() => void saveTodas()}
-                  className="inline-flex items-center gap-1.5 rounded-[12px] border border-black/15 px-3 py-1.5 text-xs font-black text-monserrat-ink disabled:opacity-50"
-                >
-                  <Save size={13} />
-                  {isSavingAll ? "Guardando todo…" : "Guardar todo"}
-                </button>
+                <div className="rounded-[12px] border border-black/10 bg-[#f2f2f1] px-3 py-1.5 text-[11px] font-semibold text-monserrat-ink/60">
+                  Se guarda automáticamente al elegir la nota
+                </div>
               </div>
 
               {/* Los 4 bimestres en orden, y al final la nota de cierre del período lectivo,
@@ -605,15 +588,13 @@ export function DocenteNotas({ token }: { token: string }) {
                     >
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <p className="text-sm font-black text-monserrat-ink">{competencia.label}</p>
-                        <button
-                          type="button"
-                          disabled={isBusy || !resolved.nivel}
-                          onClick={() => void saveCompetencia(competencia.id)}
-                          className="inline-flex items-center gap-1.5 rounded-[12px] bg-[#e3e3e1] px-3 py-1.5 text-xs font-black text-monserrat-ink disabled:opacity-40"
-                        >
-                          <Save size={13} />
-                          {savingCompetencia === competencia.id ? "Guardando…" : "Guardar"}
-                        </button>
+                        <span className="text-[11px] font-semibold text-monserrat-ink/55">
+                          {autoSaveState[key] === "saved"
+                            ? "Guardado"
+                            : autoSaveState[key] === "saving"
+                              ? "Guardando…"
+                              : "Se guarda al editar"}
+                        </span>
                       </div>
 
                       {/* Dos columnas dentro de la tarjeta: a la izquierda el contexto
