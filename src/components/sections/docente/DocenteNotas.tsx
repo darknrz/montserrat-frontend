@@ -204,7 +204,9 @@ export function DocenteNotas({ token }: { token: string }) {
   const competenciasDelCurso = useMemo(() => {
     if (!selectedCurso || !selectedNivelAcademico || !academicoConfig) return [] as CatalogItem[];
     const gradosDelNivel = getGradosPorNivelAcademico(selectedNivelAcademico);
-    const esSecundaria = gradosDelNivel.some((grado) => grado.endsWith("_SECUNDARIA"));
+    const esSecundaria = alumnoSeleccionado
+      ? (alumnoSeleccionado.nivelEducativo === "SECUNDARIA" || (alumnoSeleccionado.grado ?? "").endsWith("_SECUNDARIA"))
+      : gradosDelNivel.some((grado) => grado.endsWith("_SECUNDARIA"));
     const competenciasPorCurso = esSecundaria
       ? academicoConfig.competenciasPorCursoSecundaria ?? {}
       : academicoConfig.competenciasPorCursoPrimaria ?? {};
@@ -213,7 +215,7 @@ export function DocenteNotas({ token }: { token: string }) {
       : academicoConfig.competenciasPrimaria ?? [];
     const ids = competenciasPorCurso[selectedCurso] ?? [];
     return competenciasDisponibles.filter((competencia) => ids.includes(competencia.id));
-  }, [academicoConfig, selectedCurso, selectedNivelAcademico]);
+  }, [academicoConfig, selectedCurso, selectedNivelAcademico, alumnoSeleccionado]);
 
   const periodoActivo = activePeriodo;
 
@@ -224,21 +226,33 @@ export function DocenteNotas({ token }: { token: string }) {
 
   // Progreso general del alumno: 4 bimestres + la nota final del período lectivo, por competencia.
   const progresoPorAlumno = useMemo(() => {
-    const total = competenciasDelCurso.length * PERIODOS.length;
     const map = new Map<string, { done: number; total: number }>();
+    if (!selectedCurso || !academicoConfig) return map;
+
     alumnosFiltrados.forEach((al) => {
-      const done = notas.filter(
+      const esSec = al.nivelEducativo === "SECUNDARIA" || (al.grado ?? "").endsWith("_SECUNDARIA");
+      const compsPorCurso = esSec
+        ? academicoConfig.competenciasPorCursoSecundaria ?? {}
+        : academicoConfig.competenciasPorCursoPrimaria ?? {};
+      const compsDisponibles = esSec
+        ? academicoConfig.competenciasSecundaria ?? []
+        : academicoConfig.competenciasPrimaria ?? [];
+      const ids = compsPorCurso[selectedCurso] ?? [];
+      const compsDelAlumno = compsDisponibles.filter((c) => ids.includes(c.id));
+
+      const total = compsDelAlumno.length * PERIODOS.length;
+      const done = total === 0 ? 0 : notas.filter(
         (n) =>
           n.alumnoDni === al.dni &&
           n.curso === selectedCurso &&
           (PERIODOS as readonly string[]).includes(n.periodo) &&
-          competenciasDelCurso.some((c) => c.id === n.competenciaId) &&
+          compsDelAlumno.some((c) => c.id === n.competenciaId) &&
           n.valor
       ).length;
       map.set(al.dni, { done, total });
     });
     return map;
-  }, [alumnosFiltrados, notas, selectedCurso, competenciasDelCurso]);
+  }, [alumnosFiltrados, notas, selectedCurso, academicoConfig]);
 
   const progresoAlumnoActual = progresoPorAlumno.get(selectedAlumnoDni) ?? { done: 0, total: competenciasDelCurso.length };
 
