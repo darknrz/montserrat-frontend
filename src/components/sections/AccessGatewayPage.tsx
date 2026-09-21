@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { monserratApi } from "../../api/monserrat";
 import type { LoginResponse } from "../../types";
+import { isAdminRole } from "../../types";
 import { FeedbackModal } from "../ui/FeedbackModal";
 import { MonsterCharacter } from "./MonsterCharacter";
 
@@ -25,7 +26,7 @@ export function AccessGatewayPage({ onNavigate }: AccessGatewayPageProps) {
 
   useEffect(() => {
     const adminSession = readSession("monserrat_admin_session");
-    if (adminSession?.rol === "ADMIN") {
+    if (isAdminRole(adminSession?.rol)) {
       onNavigate("/portal");
       return;
     }
@@ -118,7 +119,7 @@ export function AccessGatewayPage({ onNavigate }: AccessGatewayPageProps) {
     try {
       const response = await monserratApi.login(username, password);
 
-      if (response.rol === "ADMIN") {
+      if (isAdminRole(response.rol)) {
         window.localStorage.removeItem("monserrat_academic_session");
         window.localStorage.setItem("monserrat_admin_session", JSON.stringify(response));
         if (window.location.pathname === "/portal") {

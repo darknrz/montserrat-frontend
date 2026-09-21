@@ -951,9 +951,17 @@ export function AcademicoTab({
                 <button
                   key={rol}
                   type="button"
-                  onClick={() =>
-                    prepararFormularioAcademico(rol, usuarioAcademicoForm.nivelEducativo ?? "PRIMARIA")
-                  }
+                  onClick={() => {
+                    if (editingUsuarioAcademico) {
+                      setUsuarioAcademicoForm({
+                        ...usuarioAcademicoForm,
+                        rol,
+                        nivelEducativo: rol === "ALUMNO" && !usuarioAcademicoForm.nivelEducativo ? "PRIMARIA" : usuarioAcademicoForm.nivelEducativo
+                      });
+                    } else {
+                      prepararFormularioAcademico(rol, (rol === "ALUMNO" && !usuarioAcademicoForm.nivelEducativo) ? "PRIMARIA" : (usuarioAcademicoForm.nivelEducativo ?? "PRIMARIA"));
+                    }
+                  }}
                   className={`flex items-center justify-center gap-2 rounded-[10px] border px-3 py-2.5 text-[12px] font-black transition ${usuarioAcademicoForm.rol === rol
                     ? "border-monserrat-red bg-monserrat-red text-white"
                     : "border-monserrat-ink/10 bg-monserrat-cream/45 text-monserrat-ink/65 hover:border-monserrat-ink/25"
@@ -964,17 +972,18 @@ export function AcademicoTab({
                 </button>
               ))}
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className={`grid gap-2 ${usuarioAcademicoForm.rol === "DOCENTE" ? "grid-cols-3" : "grid-cols-2"}`}>
               {NIVELES.map((nivel) => (
                 <button
                   key={nivel}
                   type="button"
-                  onClick={() =>
-                    prepararFormularioAcademico(
-                      usuarioAcademicoForm.rol === "DOCENTE" ? "DOCENTE" : "ALUMNO",
-                      nivel
-                    )
-                  }
+                  onClick={() => {
+                    if (editingUsuarioAcademico) {
+                      setUsuarioAcademicoForm({ ...usuarioAcademicoForm, nivelEducativo: nivel });
+                    } else {
+                      prepararFormularioAcademico((usuarioAcademicoForm.rol as "DOCENTE" | "ALUMNO") ?? "ALUMNO", nivel);
+                    }
+                  }}
                   className={`rounded-[10px] border px-3 py-2 text-[12px] font-black transition ${usuarioAcademicoForm.nivelEducativo === nivel
                     ? "border-monserrat-ink bg-monserrat-ink text-white"
                     : "border-monserrat-ink/10 bg-white text-monserrat-ink/60 hover:border-monserrat-ink/25"
@@ -983,6 +992,25 @@ export function AcademicoTab({
                   {labelFromEnum(nivel)}
                 </button>
               ))}
+              {usuarioAcademicoForm.rol === "DOCENTE" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUsuarioAcademicoForm({
+                      ...usuarioAcademicoForm,
+                      nivelEducativo: undefined,
+                      materia: "",
+                      especialidad: ""
+                    });
+                  }}
+                  className={`rounded-[10px] border px-3 py-2 text-[12px] font-black transition ${!usuarioAcademicoForm.nivelEducativo
+                    ? "border-monserrat-ink bg-monserrat-ink text-white"
+                    : "border-monserrat-ink/10 bg-white text-monserrat-ink/60 hover:border-monserrat-ink/25"
+                    }`}
+                >
+                  Ambos
+                </button>
+              )}
             </div>
           </div>
 
@@ -1113,53 +1141,7 @@ export function AcademicoTab({
                 Pension pagada
               </label>
             </div>
-          ) : (
-            <div className="grid gap-3 rounded-[12px] border border-monserrat-ink/8 bg-monserrat-cream/35 p-3 sm:grid-cols-2">
-              {usuarioAcademicoForm.nivelEducativo === "SECUNDARIA" && (
-                <AdminField label="Curso que ensena">
-                  <select
-                    value={usuarioAcademicoForm.materia ?? ""}
-                    onChange={(e) =>
-                      setUsuarioAcademicoForm({ ...usuarioAcademicoForm, materia: e.target.value })
-                    }
-                    className="admin-input"
-                  >
-                    {cursosActivosPorNivel("SECUNDARIA").map((curso) => (
-                      <option key={curso} value={curso}>
-                        {labelAcademico(curso)}
-                      </option>
-                    ))}
-                  </select>
-                </AdminField>
-              )}
-              <AdminField
-                label={
-                  usuarioAcademicoForm.nivelEducativo === "PRIMARIA"
-                    ? "Rol en primaria"
-                    : "Especialidad"
-                }
-                className={
-                  usuarioAcademicoForm.nivelEducativo === "PRIMARIA" ? "sm:col-span-2" : ""
-                }
-              >
-                <input
-                  value={usuarioAcademicoForm.especialidad ?? ""}
-                  onChange={(e) =>
-                    setUsuarioAcademicoForm({
-                      ...usuarioAcademicoForm,
-                      especialidad: e.target.value,
-                    })
-                  }
-                  className="admin-input"
-                  placeholder={
-                    usuarioAcademicoForm.nivelEducativo === "PRIMARIA"
-                      ? "Docente de aula"
-                      : "Especialidad del docente"
-                  }
-                />
-              </AdminField>
-            </div>
-          )}
+          ) : null}
 
           <details className="rounded-[12px] border border-monserrat-ink/8 bg-monserrat-cream/20 p-3">
             <summary className="cursor-pointer text-[11px] font-black uppercase tracking-[0.08em] text-monserrat-ink/50">
@@ -1367,8 +1349,11 @@ export function AcademicoTab({
                   labelFromEnum(u.rol),
                   labelFromEnum(u.estado ?? ""),
                   u.rol === "DOCENTE"
-                    ? `${labelFromEnum(u.nivelEducativo ?? "")} ${u.materia ? `- ${labelAcademico(u.materia)}` : "- Aula primaria"
-                      }`.trim()
+                    ? !u.nivelEducativo
+                      ? "Primaria - Secundaria"
+                      : u.nivelEducativo === "PRIMARIA"
+                        ? "Primaria - Aula primaria"
+                        : "Secundaria - Aula secundaria"
                     : `${labelFromEnum(u.nivelEducativo ?? "")} - ${labelAcademico(
                       u.grado ?? ""
                     )} ${u.seccion ?? ""}`.trim(),

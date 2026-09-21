@@ -1,4 +1,4 @@
-import type { Anuncio, AsignacionAcademica, AsistenciaAcademica, ChatbotConversationResponse, ChatbotMessageDTO, Ingresante, Institution, LoginResponse, MediaUploadResponse, NotaAcademica, PensionEstado, PensionMensual, PeriodoBimestre, PerfilAcademico, RedSocial, UsuarioAcademico, Video } from "../types";
+import type { Anuncio, AsignacionAcademica, AsistenciaAcademica, ChatbotConversationResponse, ChatbotMessageDTO, Ingresante, Institution, LoginResponse, Matricula, MediaUploadResponse, NotaAcademica, PensionEstado, PensionMensual, PeriodoBimestre, PerfilAcademico, RedSocial, Taller, UsuarioAcademico, Video } from "../types";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -197,7 +197,26 @@ export const monserratApi = {
   asistenciasAlumno: (token: string) => getJsonAuth<AsistenciaAcademica[]>("/academico/alumno/asistencias", token),
   pensionesAlumnoDetalle: (anio: number, token: string) =>
     getJsonAuth<PensionMensual[]>(`/academico/alumno/pension/detalle?anio=${encodeURIComponent(String(anio))}`, token),
-  
+
+  // Matricula
+  matriculasAcademicas: (anio: number, token: string) =>
+    getJsonAuth<Matricula[]>(`/academico/matriculas?anio=${encodeURIComponent(String(anio))}`, token),
+  updateMatriculaAcademica: (data: { alumnoDni: string; anio: number; monto?: number | null; pagada: boolean; observacion?: string }, token: string) =>
+    sendJson<Matricula>("/academico/matriculas", "PUT", data, token),
+  matriculaAlumno: (anio: number, token: string) =>
+    getJsonAuth<Matricula>(`/academico/alumno/matricula?anio=${encodeURIComponent(String(anio))}`, token),
+
+  // Talleres
+  talleresAcademicos: (anio: number | null, token: string) =>
+    getJsonAuth<Taller[]>(anio ? `/academico/talleres?anio=${encodeURIComponent(String(anio))}` : "/academico/talleres", token),
+  createTallerAcademico: (data: { alumnoDni: string; anio: number; nombre: string; monto: number; pagada?: boolean; observacion?: string }, token: string) =>
+    sendJson<Taller>("/academico/talleres", "POST", data, token),
+  updateTallerAcademico: (id: number, data: { alumnoDni: string; anio: number; nombre: string; monto: number; pagada?: boolean; observacion?: string }, token: string) =>
+    sendJson<Taller>(`/academico/talleres/${id}`, "PUT", data, token),
+  deleteTallerAcademico: (id: number, token: string) => deleteRequest(`/academico/talleres/${id}`, token),
+  talleresAlumno: (token: string) => getJsonAuth<Taller[]>("/academico/alumno/talleres", token),
+
+
   // Períodos Bimestrales
   listarPeriodosBimestres: (anio: number, token: string) =>
     getJsonAuth<PeriodoBimestre[]>(`/academico/periodos-bimestres?anio=${encodeURIComponent(String(anio))}`, token),

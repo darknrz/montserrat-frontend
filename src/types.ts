@@ -63,6 +63,26 @@ export type LoginResponse = {
   debeCambiarContrasena?: boolean;
 };
 
+// Los 3 tipos de cuenta admin: SUPER_ADMIN ve todo, ADMIN ve todo excepto
+// pensiones, ADMIN_PENSIONES solo ve pensiones.
+export const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN", "ADMIN_PENSIONES"] as const;
+
+export function isAdminRole(rol?: string | null): boolean {
+  return !!rol && (ADMIN_ROLES as readonly string[]).includes(rol);
+}
+
+export function isPensionesOnlyAdmin(rol?: string | null): boolean {
+  return rol === "ADMIN_PENSIONES";
+}
+
+export function canAccessPensiones(rol?: string | null): boolean {
+  return rol === "SUPER_ADMIN" || rol === "ADMIN_PENSIONES";
+}
+
+export function canAccessAdminGeneral(rol?: string | null): boolean {
+  return rol === "SUPER_ADMIN" || rol === "ADMIN";
+}
+
 export type UsuarioAcademico = {
   id: number;
   dni: string;
@@ -155,6 +175,38 @@ export type PensionMensual = {
   pagada: boolean;
   activa?: boolean;
   observacion?: string;
+  actualizadoEn?: string;
+};
+
+export type Matricula = {
+  id?: number;
+  alumnoDni: string;
+  alumnoCodigo?: string;
+  alumnoNombre: string;
+  nivelEducativo?: string;
+  grado?: string;
+  seccion?: string;
+  anio: number;
+  monto?: number;
+  pagada: boolean;
+  observacion?: string;
+  actualizadoEn?: string;
+};
+
+export type Taller = {
+  id: number;
+  alumnoDni: string;
+  alumnoCodigo?: string;
+  alumnoNombre: string;
+  nivelEducativo?: string;
+  grado?: string;
+  seccion?: string;
+  anio: number;
+  nombre: string;
+  monto: number;
+  pagada: boolean;
+  observacion?: string;
+  creadoEn?: string;
   actualizadoEn?: string;
 };
 

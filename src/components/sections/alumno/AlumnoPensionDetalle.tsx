@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, Wallet } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ClipboardList, Hammer, Wallet } from "lucide-react";
 import { SectionHeader } from "../../ui/SectionHeader";
 import { monserratApi } from "../../../api/monserrat";
-import type { PensionEstado, PensionMensual } from "../../../types";
+import type { Matricula, PensionEstado, PensionMensual, Taller } from "../../../types";
 
 const YEARS = [new Date().getFullYear(), new Date().getFullYear() - 1, new Date().getFullYear() - 2];
 const MESES_LABELS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Set", "Oct", "Nov", "Dic"];
@@ -68,6 +68,8 @@ export function AlumnoPensionDetalle({ token }: { token: string }) {
   const [pensionesDetalle, setPensionesDetalle] = useState<PensionMensual[]>([]);
   const [pensionYear, setPensionYear] = useState<number>(new Date().getFullYear());
   const [pensionEstado, setPensionEstado] = useState<PensionEstado | null>(null);
+  const [matricula, setMatricula] = useState<Matricula | null>(null);
+  const [talleres, setTalleres] = useState<Taller[]>([]);
   const [status, setStatus] = useState<string | null>(null);
 
   useEffect(() => {
@@ -79,6 +81,18 @@ export function AlumnoPensionDetalle({ token }: { token: string }) {
       })
       .catch((error) => setStatus(error instanceof Error ? error.message : String(error)));
   }, [token, pensionYear]);
+
+  useEffect(() => {
+    if (!token) return;
+    void Promise.all([monserratApi.matriculaAlumno(pensionYear, token), monserratApi.talleresAlumno(token)])
+      .then(([matriculaData, talleresData]) => {
+        setMatricula(matriculaData);
+        setTalleres(talleresData);
+      })
+      .catch((error) => setStatus(error instanceof Error ? error.message : String(error)));
+  }, [token, pensionYear]);
+
+  const talleresDelAnio = useMemo(() => talleres.filter((t) => t.anio === pensionYear), [talleres, pensionYear]);
 
   const acumulado = useMemo(() => {
     const pagos = pensionesDetalle.filter((p) => p.pagada).length;
@@ -105,12 +119,66 @@ export function AlumnoPensionDetalle({ token }: { token: string }) {
 
   return (
     <div className="grid gap-4">
-      <SectionHeader title="Pensiones" description="Detalle de pagos de pensiones mensuales." align="left" />
+      <SectionHeader title="Pagos" description="Matricula, talleres y pensiones mensuales." align="left" />
       {status && <div className="rounded-[16px] border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{status}</div>}
+
+      {/* Matricula: pago unico anual, y talleres: lista libre con su propio
+          monto y estado. Ambos comparten el año seleccionado abajo. */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="rounded-[20px] border border-monserrat-ink/10 bg-white p-5">
+          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">
+            <ClipboardList size={13} /> Matricula {pensionYear}
+          </div>
+          <div className="mt-3 flex items-center justify-between">
+            <div>
+              <p className="text-lg font-black text-monserrat-ink">
+                {matricula?.monto != null ? `S/ ${Number(matricula.monto).toFixed(2)}` : "Sin monto asignado"}
+              </p>
+              {matricula?.observacion && <p className="mt-1 text-xs text-monserrat-ink/50">{matricula.observacion}</p>}
+            </div>
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-black ${
+                matricula?.pagada ? "bg-emerald-100 text-emerald-700" : "bg-[#f2f2f1] text-monserrat-ink/50"
+              }`}
+            >
+              {matricula?.pagada ? <CheckCircle2 size={13} /> : <AlertTriangle size={13} />}
+              {matricula?.pagada ? "Matriculado" : "Pendiente"}
+            </span>
+          </div>
+        </div>
+
+        <div className="rounded-[20px] border border-monserrat-ink/10 bg-white p-5">
+          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">
+            <Hammer size={13} /> Talleres {pensionYear}
+          </div>
+          {talleresDelAnio.length === 0 ? (
+            <p className="mt-3 text-sm text-monserrat-ink/45">No tienes talleres registrados este año.</p>
+          ) : (
+            <div className="mt-3 grid gap-2">
+              {talleresDelAnio.map((taller) => (
+                <div key={taller.id} className="flex items-center justify-between rounded-[10px] border border-monserrat-ink/8 bg-[#f2f2f1] px-3 py-2">
+                  <div>
+                    <p className="text-[12px] font-black text-monserrat-ink">{taller.nombre}</p>
+                    <p className="text-[11px] text-monserrat-ink/45">S/ {Number(taller.monto).toFixed(2)}</p>
+                  </div>
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-black ${
+                      taller.pagada ? "bg-emerald-100 text-emerald-700" : "bg-white text-monserrat-ink/50"
+                    }`}
+                  >
+                    {taller.pagada ? <CheckCircle2 size={11} /> : <AlertTriangle size={11} />}
+                    {taller.pagada ? "Pagado" : "Pendiente"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Hero: aro de progreso del año + estado general + selector de año como
           pastillas, en vez de un <select> nativo perdido entre las tarjetas. */}
-     
+
       {/* Tira del año: los 12 meses como casilleros de calendario, para ver el
           patrón de pagos de un vistazo en vez de leer 12 tarjetas de texto. */}
       <div className="rounded-[20px] border border-monserrat-ink/10 bg-white p-5 ">

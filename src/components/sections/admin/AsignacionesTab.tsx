@@ -48,6 +48,8 @@ const emptyAsignacion = {
   activo: true,
 };
 
+const asignacionesPanelBodyClass = "max-h-[calc(100vh-220px)]";
+
 export function AsignacionesTab({
   usuariosAcademicos,
   asignacionesAcademicas,
@@ -164,24 +166,25 @@ export function AsignacionesTab({
     () => usuariosAcademicos.filter((u) => u.rol === "DOCENTE"),
     [usuariosAcademicos]
   );
+  const docenteNombrePorDni = useMemo(
+    () =>
+      new Map(
+        docentes
+          .filter((docente) => docente.dni && docente.nombre)
+          .map((docente) => [docente.dni, docente.nombre])
+      ),
+    [docentes]
+  );
   const alumnos = useMemo(
     () => usuariosAcademicos.filter((u) => u.rol === "ALUMNO"),
     [usuariosAcademicos]
   );
   const docentesPrimaria = useMemo(
-    () =>
-      docentes.filter((u) => {
-        const nivel = (u.nivelEducativo ?? "").toUpperCase();
-        return nivel === "PRIMARIA" || (!nivel && u.rol === "DOCENTE");
-      }),
+    () => docentes,
     [docentes]
   );
   const docentesSecundaria = useMemo(
-    () =>
-      docentes.filter((u) => {
-        const nivel = (u.nivelEducativo ?? "").toUpperCase();
-        return nivel === "SECUNDARIA" || (!nivel && u.rol === "DOCENTE");
-      }),
+    () => docentes,
     [docentes]
   );
 
@@ -197,19 +200,8 @@ export function AsignacionesTab({
   );
 
   const docentesDelCurso = useMemo(() => {
-    const docentesBase =
-      asignacionAcademicaForm.nivelEducativo !== "SECUNDARIA" ? docentesPrimaria : docentesSecundaria;
-
-    if (!asignacionAcademicaForm.curso) return docentesBase;
-
-    const docentesFiltrados = docentesBase.filter((u) => {
-      const materia = (u.materia ?? "").trim().toUpperCase();
-      const curso = asignacionAcademicaForm.curso?.trim().toUpperCase();
-      return !materia || materia === curso;
-    });
-
-    return docentesFiltrados.length > 0 ? docentesFiltrados : docentesBase;
-  }, [asignacionAcademicaForm.curso, asignacionAcademicaForm.nivelEducativo, docentesPrimaria, docentesSecundaria]);
+    return asignacionAcademicaForm.nivelEducativo !== "SECUNDARIA" ? docentesPrimaria : docentesSecundaria;
+  }, [asignacionAcademicaForm.nivelEducativo, docentesPrimaria, docentesSecundaria]);
 
   const asignacionesDelAula = useMemo(
     () =>
@@ -521,8 +513,7 @@ export function AsignacionesTab({
     saveAcademicoConfig({ ...academicoConfig, competenciasPorCursoPrimaria: map });
   };
 
-  const labelDocenteAsignado = (dni: string) =>
-    docentesPrimaria.find((d) => d.dni === dni)?.nombre ?? dni;
+  const labelDocenteAsignado = (dni: string) => docenteNombrePorDni.get(dni) ?? dni;
 
   const asignarDocenteParaCompetencia = (competenciaId: string, docenteDni: string) => {
     if (!asignacionAcademicaForm.grado || !asignacionAcademicaForm.curso) return;
@@ -574,8 +565,7 @@ export function AsignacionesTab({
     saveAcademicoConfig({ ...academicoConfig, competenciasPorCursoSecundaria: map });
   };
 
-  const labelDocenteAsignadoSecundaria = (dni: string) =>
-    docentesSecundaria.find((d) => d.dni === dni)?.nombre ?? dni;
+  const labelDocenteAsignadoSecundaria = (dni: string) => docenteNombrePorDni.get(dni) ?? dni;
 
   const asignarDocenteParaCompetenciaSecundaria = (competenciaId: string, docenteDni: string) => {
     if (!asignacionAcademicaForm.grado || !asignacionAcademicaForm.curso) return;
@@ -717,7 +707,7 @@ export function AsignacionesTab({
                 }))}
                 selectedId={selectedNivelAcademico}
                 onSelect={(id) => handleNivelAcademicoSelect(id)}
-                bodyClassName="max-h-[62vh]"
+                bodyClassName={asignacionesPanelBodyClass}
               />
               <RosterPanel
                 title="Grados"
@@ -732,7 +722,7 @@ export function AsignacionesTab({
                   }))}
                 selectedId={asignacionAcademicaForm.grado}
                 onSelect={(grado) => handleGradoSelectSecundaria(grado)}
-                bodyClassName="max-h-[62vh]"
+                bodyClassName={asignacionesPanelBodyClass}
               />
               <RosterPanel
                 title="Áreas curriculares"
@@ -748,7 +738,7 @@ export function AsignacionesTab({
                 })}
                 selectedId={asignacionAcademicaForm.curso}
                 onSelect={(curso) => handleAreaSelect(curso)}
-                bodyClassName="max-h-[62vh]"
+                bodyClassName={asignacionesPanelBodyClass}
               />
               <CompetenciaDocenteBoard
                 competencias={competenciasDelCursoSecundaria}
@@ -775,7 +765,7 @@ export function AsignacionesTab({
                 }))}
                 selectedId={selectedNivelAcademico}
                 onSelect={(id) => handleNivelAcademicoSelect(id)}
-                bodyClassName="max-h-[62vh]"
+                bodyClassName={asignacionesPanelBodyClass}
               />
               <RosterPanel
                 title="Grados"
@@ -790,7 +780,7 @@ export function AsignacionesTab({
                   }))}
                 selectedId={asignacionAcademicaForm.grado}
                 onSelect={(grado) => handleGradoSelect(grado)}
-                bodyClassName="max-h-[62vh]"
+                bodyClassName={asignacionesPanelBodyClass}
               />
               <RosterPanel
                 title="Áreas curriculares"
@@ -806,7 +796,7 @@ export function AsignacionesTab({
                 })}
                 selectedId={asignacionAcademicaForm.curso}
                 onSelect={(curso) => handleAreaSelect(curso)}
-                bodyClassName="max-h-[62vh]"
+                bodyClassName={asignacionesPanelBodyClass}
               />
               <CompetenciaDocenteBoard
                 competencias={competenciasDelCurso}

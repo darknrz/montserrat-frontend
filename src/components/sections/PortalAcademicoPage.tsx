@@ -167,7 +167,7 @@ export function PortalAcademicoPage() {
     { id: "cursos" as const, label: "Cursos", icon: BookOpen, visible: isDocente || isAlumno },
     { id: "asistencia" as const, label: "Asistencia", icon: ClipboardCheck, visible: isDocente || isAlumno },
     { id: "notas" as const, label: "Notas", icon: GraduationCap, visible: true },
-    { id: "pension" as const, label: "Pension", icon: WalletCards, visible: isAlumno }
+    { id: "pension" as const, label: "Pagos", icon: WalletCards, visible: isAlumno }
   ].filter((item) => item.visible);
   const activeTab = tabs.find((item) => item.id === tab) ?? tabs[0];
 
@@ -178,7 +178,7 @@ export function PortalAcademicoPage() {
   if (session.debeCambiarContrasena) {
     return (
       <PortalShell>
-        <form onSubmit={submitPassword} className="mx-auto grid max-w-[460px] gap-4 rounded-[12px] border border-black/12 bg-white p-7">
+        <form onSubmit={submitPassword} className="mx-auto grid max-w-[460px] gap-4 rounded-[12px] border border-black/12 bg-white p-7 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_rgba(15,23,42,0.06)]">
           <h2 className="font-serif text-xl font-black text-monserrat-ink">Cambio obligatorio de contrasena</h2>
           <p className="text-sm font-semibold text-monserrat-ink/60">Por seguridad, cambia la contrasena inicial antes de continuar.</p>
           <Field label="Contrasena actual"><input type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} className="admin-input" required /></Field>
@@ -193,8 +193,8 @@ export function PortalAcademicoPage() {
 
   return (
     <PortalShell>
-      <div className="overflow-hidden rounded-[12px] border border-black/12 bg-white">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-black/12 bg-[#f6f6f5] px-5 py-4">
+      <div className="overflow-hidden rounded-[12px] border border-[#dde1e6] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_30px_rgba(15,23,42,0.06)]">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#e5e7eb] bg-[#fafbfc] px-5 py-4">
           <div className="flex items-center gap-3">
             {perfil.fotoUrl ? <img src={perfil.fotoUrl} alt={perfil.nombre} className="h-12 w-12 rounded-[10px] object-cover" /> : <div className="flex h-12 w-12 items-center justify-center rounded-[10px] bg-monserrat-ink text-white"><UserRound size={22} /></div>}
             <div>
@@ -202,11 +202,11 @@ export function PortalAcademicoPage() {
               <h2 className="font-serif text-xl font-black text-monserrat-ink">{perfil.nombre || session.nombre}</h2>
             </div>
           </div>
-          <button onClick={logout} className="inline-flex items-center gap-2 rounded-full border border-black/12 bg-[#e9e9e8] px-4 py-2 text-xs font-bold text-monserrat-ink/65 hover:bg-[#dededc]"><LogOut size={14} /> Cerrar sesion</button>
+          <button onClick={logout} className="inline-flex items-center gap-2 rounded-full border border-[#dde1e6] bg-white px-4 py-2 text-xs font-bold text-monserrat-ink/65 hover:bg-[#f2f4f6]"><LogOut size={14} /> Cerrar sesion</button>
         </div>
 
         <div className="grid min-h-[70vh] lg:grid-cols-[236px_minmax(0,1fr)]">
-          <aside className="border-b border-black/12 bg-[#f2f2f1] p-3 lg:border-b-0 lg:border-r">
+          <aside className="border-b border-[#e5e7eb] bg-[#f7f8fa] p-3 lg:border-b-0 lg:border-r">
             <div className="grid gap-1.5">
               <p className="px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">
                 Secciones
@@ -222,8 +222,8 @@ export function PortalAcademicoPage() {
                       onClick={() => setTab(item.id)}
                       className={`flex shrink-0 items-center gap-2 rounded-[10px] px-3 py-2.5 text-left text-[13px] font-bold transition lg:w-full ${
                         active
-                          ? "bg-[#e3e3e1] text-monserrat-ink"
-                          : "text-monserrat-ink/58 hover:bg-[#e8e8e6] hover:text-monserrat-ink"
+                          ? "bg-white text-monserrat-ink shadow-sm ring-1 ring-[#e5e7eb]"
+                          : "text-monserrat-ink/58 hover:bg-white/70 hover:text-monserrat-ink"
                       }`}
                     >
                       <Icon size={15} className={active ? "text-monserrat-ink" : "text-monserrat-ink/45"} />
@@ -234,7 +234,7 @@ export function PortalAcademicoPage() {
               </nav>
             </div>
 
-            <div className="mt-4 hidden rounded-[10px] border border-black/10 bg-white p-3 lg:block">
+            <div className="mt-4 hidden rounded-[10px] border border-[#e5e7eb] bg-white p-3 lg:block">
               <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">Vista actual</p>
               <p className="mt-1 text-sm font-black text-monserrat-ink">{activeTab.label}</p>
               <p className="mt-1 text-[11px] font-semibold text-monserrat-ink/45">
@@ -243,7 +243,7 @@ export function PortalAcademicoPage() {
             </div>
           </aside>
 
-          <div className="min-w-0 p-5">
+          <div className="min-w-0 bg-white p-5">
             <div className="mb-5 flex items-center justify-between gap-3">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">
@@ -281,9 +281,9 @@ export function PortalAcademicoPage() {
 
 function PortalShell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="min-h-screen bg-[#f6f6f5] px-4 py-10 text-monserrat-ink sm:px-6 lg:px-10">
+    <main className="min-h-screen bg-[#eef1f4] px-4 py-10 text-monserrat-ink sm:px-6 lg:px-10">
       <div className="mx-auto max-w-[1600px]">
-        <a href="/" className="mb-5 inline-flex rounded-full border border-black/12 bg-[#e9e9e8] px-4 py-2 text-xs font-black text-monserrat-ink/65 hover:bg-[#dededc]">Volver al sitio publico</a>
+        <a href="/" className="mb-5 inline-flex rounded-full border border-[#dde1e6] bg-white px-4 py-2 text-xs font-black text-monserrat-ink/65 shadow-sm hover:bg-[#f2f4f6]">Volver al sitio publico</a>
 
         {children}
       </div>
@@ -296,7 +296,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function Alert({ children }: { children: React.ReactNode }) {
-  return <p className="mb-4 rounded-[10px] border border-black/12 bg-[#e9e9e8] px-4 py-2.5 text-xs font-bold text-monserrat-ink/70">{children}</p>;
+  return <p className="mb-4 rounded-[10px] border border-[#e5e7eb] bg-[#f7f8fa] px-4 py-2.5 text-xs font-bold text-monserrat-ink/70">{children}</p>;
 }
 
 function gradoCorto(grado: string) {

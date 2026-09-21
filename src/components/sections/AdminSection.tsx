@@ -3,7 +3,9 @@ import {
   BookOpen,
   Building2,
   Clapperboard,
+  ClipboardList,
   GraduationCap,
+  Hammer,
   LayoutDashboard,
   Link2,
   LogOut,
@@ -25,6 +27,7 @@ import type {
   UsuarioAcademico,
   Video,
 } from "../../types";
+import { canAccessAdminGeneral, canAccessPensiones, isAdminRole } from "../../types";
 import { FeedbackModal } from "../ui/FeedbackModal";
 import {
   ADMIN_TAB_STORAGE_KEY,
@@ -45,6 +48,8 @@ import { CarruselTab } from "./admin/CarruselTab";
 import { RedesSocialesTab } from "./admin/RedesSocialesTab";
 import { AsignacionesTab } from "./admin/AsignacionesTab";
 import { AcademicoTab } from "./admin/AcademicoTab";
+import { MatriculaTab } from "./admin/MatriculaTab";
+import { TalleresTab } from "./admin/TalleresTab";
 import { PensionesTab } from "./admin/PensionesTab";
 import { ConfiguracionTab } from "./admin/ConfiguracionTab";
 import { ReportesTab } from "./admin/ReportesTab";
@@ -55,6 +60,12 @@ type AdminSectionProps = {
   videos: Video[];
   redes: RedSocial[];
   onRefresh: () => Promise<void>;
+};
+
+const ADMIN_ROL_LABELS: Record<string, string> = {
+  SUPER_ADMIN: "Super admin",
+  ADMIN: "Administrador",
+  ADMIN_PENSIONES: "Admin. de pensiones",
 };
 
 export function AdminSection({
@@ -81,7 +92,10 @@ export function AdminSection({
   const [academicoConfig, setAcademicoConfig] = useState<AcademicoConfig>(defaultAcademicoConfig);
 
   const token = session?.token ?? "";
-  const isAdmin = session?.rol === "ADMIN";
+  const isAdmin = isAdminRole(session?.rol);
+  // SUPER_ADMIN: acceso total. ADMIN: todo excepto pensiones. ADMIN_PENSIONES: solo pensiones.
+  const canGeneral = canAccessAdminGeneral(session?.rol);
+  const canPensiones = canAccessPensiones(session?.rol);
 
   useEffect(() => {
     if (session && !isAdmin) {
@@ -93,20 +107,37 @@ export function AdminSection({
 
   useEffect(() => {
     if (!token) return;
-    void Promise.all([
-      monserratApi.usuariosAcademicos(token),
-      monserratApi.asignacionesAcademicas(token),
-    ])
-      .then(([usuariosData, asignacionesData]) => {
-        setUsuariosAcademicos(usuariosData);
-        setAsignacionesAcademicas(asignacionesData);
-      })
-      .catch((error: unknown) =>
-        setErrorMessage(
-          error instanceof Error ? error.message : "No se pudieron cargar datos academicos"
-        )
-      );
-  }, [token]);
+    if (canGeneral) {
+      void Promise.all([
+        monserratApi.usuariosAcademicos(token),
+        monserratApi.asignacionesAcademicas(token),
+      ])
+        .then(([usuariosData, asignacionesData]) => {
+          setUsuariosAcademicos(usuariosData);
+          setAsignacionesAcademicas(asignacionesData);
+        })
+        .catch((error: unknown) =>
+          setErrorMessage(
+            error instanceof Error ? error.message : "No se pudieron cargar datos academicos"
+          )
+        );
+      return;
+    }
+
+    if (canPensiones) {
+      // El admin de pensiones no tiene permiso para /academico/usuarios (lista
+      // completa con docentes y otros admins) ni para /academico/asignaciones;
+      // solo necesita la lista de alumnos para armar la tabla de pensiones.
+      void monserratApi
+        .alumnosAcademicos(token)
+        .then(setUsuariosAcademicos)
+        .catch((error: unknown) =>
+          setErrorMessage(
+            error instanceof Error ? error.message : "No se pudieron cargar los alumnos"
+          )
+        );
+    }
+  }, [token, canGeneral, canPensiones]);
 
   useEffect(() => {
     window.localStorage.setItem(ADMIN_TAB_STORAGE_KEY, tab);
@@ -246,7 +277,13 @@ export function AdminSection({
     });
   };
 
-  const TABS: { id: Tab; label: string }[] = [
+  // "matricula", "talleres" y "pensiones" (el area financiera) solo las ven
+  // SUPER_ADMIN y ADMIN_PENSIONES; el resto de pestañas solo SUPER_ADMIN y
+  // ADMIN (general).
+  const PENSIONES_TABS: Tab[] = ["matricula", "talleres", "pensiones"];
+  const isTabAllowed = (tabId: Tab) => (PENSIONES_TABS.includes(tabId) ? canPensiones : canGeneral);
+
+  const ALL_TABS: { id: Tab; label: string }[] = [
     { id: "institucion", label: "Institución" },
     { id: "ingresantes", label: "Ingresantes" },
     { id: "anuncios", label: "Anuncios" },
@@ -254,12 +291,15 @@ export function AdminSection({
     { id: "redes", label: "Redes sociales" },
     { id: "asignaciones", label: "Asignaciones" },
     { id: "academico", label: "Academico" },
+    { id: "matricula", label: "Matricula" },
+    { id: "talleres", label: "Talleres" },
     { id: "pensiones", label: "Pensiones" },
     { id: "configuracion", label: "Configuracion academica" },
     { id: "reportes", label: "Reportes" },
   ];
+  const TABS = ALL_TABS.filter((item) => isTabAllowed(item.id));
 
-  const SIDEBAR_TABS: { id: Tab; label: string; icon: LucideIcon }[] = [
+  const ALL_SIDEBAR_TABS: { id: Tab; label: string; icon: LucideIcon }[] = [
     { id: "institucion", label: "Institucion", icon: Building2 },
     { id: "ingresantes", label: "Ingresantes", icon: GraduationCap },
     { id: "anuncios", label: "Anuncios", icon: Megaphone },
@@ -267,10 +307,21 @@ export function AdminSection({
     { id: "redes", label: "Redes sociales", icon: Share2 },
     { id: "asignaciones", label: "Asignaciones", icon: Link2 },
     { id: "academico", label: "Academico", icon: Users },
+    { id: "matricula", label: "Matricula", icon: ClipboardList },
+    { id: "talleres", label: "Talleres", icon: Hammer },
     { id: "pensiones", label: "Pensiones", icon: Receipt },
     { id: "configuracion", label: "Configuracion", icon: Settings },
     { id: "reportes", label: "Reportes", icon: BarChart3 },
   ];
+  const SIDEBAR_TABS = ALL_SIDEBAR_TABS.filter((item) => isTabAllowed(item.id));
+
+  useEffect(() => {
+    if (!canGeneral && !canPensiones) return;
+    if (!isTabAllowed(tab)) {
+      setTab(canPensiones ? "pensiones" : "institucion");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canGeneral, canPensiones, tab]);
 
   const activeTab = SIDEBAR_TABS.find((item) => item.id === tab) ?? SIDEBAR_TABS[0];
 
@@ -338,7 +389,9 @@ export function AdminSection({
               <div className="flex items-center justify-between gap-2 rounded-[10px] px-3 py-2">
                 <div className="min-w-0">
                   <p className="truncate text-[12px] font-black">{session.nombre}</p>
-                  <p className="truncate text-[11px] font-semibold text-monserrat-ink/40">{session.username}</p>
+                  <p className="truncate text-[11px] font-semibold text-monserrat-ink/40">
+                    {session.username} · {ADMIN_ROL_LABELS[session.rol] ?? session.rol}
+                  </p>
                 </div>
                 <button
                   type="button"
@@ -478,6 +531,27 @@ export function AdminSection({
                 cursosActivosPorNivel={cursosActivosPorNivel}
                 seccionesActivasPorNivel={seccionesActivasPorNivel}
                 gradosActivosPorNivel={gradosActivosPorNivel}
+                labelAcademico={labelAcademico}
+              />
+            )}
+
+            {/* ── TAB MATRICULA ── */}
+            {tab === "matricula" && (
+              <MatriculaTab
+                usuariosAcademicos={usuariosAcademicos}
+                token={token}
+                setErrorMessage={setErrorMessage}
+                gradosActivosPorNivel={gradosActivosPorNivel}
+                labelAcademico={labelAcademico}
+              />
+            )}
+
+            {/* ── TAB TALLERES ── */}
+            {tab === "talleres" && (
+              <TalleresTab
+                usuariosAcademicos={usuariosAcademicos}
+                token={token}
+                setErrorMessage={setErrorMessage}
                 labelAcademico={labelAcademico}
               />
             )}

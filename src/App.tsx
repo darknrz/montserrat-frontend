@@ -15,6 +15,7 @@ import { PortalAcademicoPage } from "./components/sections/PortalAcademicoPage";
 import { Ubicacion } from "./components/sections/Ubicacion";
 import { useChatbot } from "./hooks/useChatbot";
 import type { Anuncio, Ingresante, Institution, RedSocial, Video } from "./types";
+import { isAdminRole } from "./types";
 
 function App() {
   const [pathname, setPathname] = useState(() => window.location.pathname);
@@ -109,7 +110,7 @@ function App() {
 
   if (pathname === "/portal") {
     const adminSession = readSession("monserrat_admin_session");
-    if (adminSession?.rol === "ADMIN") {
+    if (isAdminRole(adminSession?.rol)) {
       return (
         <AdminPage
           institution={institution}

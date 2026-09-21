@@ -25,7 +25,7 @@ export const MESES_PENSION = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "
 
 export const ADMIN_TAB_STORAGE_KEY = "monserrat_admin_active_tab";
 
-export type Tab = "institucion" | "ingresantes" | "anuncios" | "videos" | "redes" | "academico" | "asignaciones" | "pensiones" | "configuracion" | "reportes";
+export type Tab = "institucion" | "ingresantes" | "anuncios" | "videos" | "redes" | "academico" | "asignaciones" | "matricula" | "talleres" | "pensiones" | "configuracion" | "reportes";
 export type CatalogItem = { id: string; label: string; active: boolean };
 export type SalonItem = { nivel: string; grado: string; seccion: string; aula: string; active: boolean };
 export type ConfigView =
@@ -581,6 +581,8 @@ export function isAdminTab(value: string | null): value is Tab {
     || value === "redes"
     || value === "academico"
     || value === "asignaciones"
+    || value === "matricula"
+    || value === "talleres"
     || value === "pensiones"
     || value === "configuracion"
     || value === "reportes";

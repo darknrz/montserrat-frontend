@@ -816,7 +816,7 @@ export function CompetenciaDocenteBoard({
           <User size={11} /> Docente Asignado
         </p>
       </div>
-      <div className="max-h-[62vh] overflow-y-auto">
+      <div className="max-h-[calc(100vh-220px)] overflow-y-auto">
         {competencias.length === 0 ? (
           <button
             type="button"
