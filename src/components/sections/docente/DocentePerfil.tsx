@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { SectionHeader } from "../../ui/SectionHeader";
 import { monserratApi } from "../../../api/monserrat";
 import type { PerfilAcademico } from "../../../types";
+import { GRUPO_LABELS } from "../admin/adminShared";
 
 function labelFromEnum(value?: string | null) {
   if (!value) return "No asignado";
@@ -71,7 +72,7 @@ export function DocentePerfil({ token }: { token: string }) {
       { label: "Código docente", value: perfil.codigo || "No asignado" },
       { label: "Nivel educativo", value: perfil.nivelEducativo ? labelFromEnum(perfil.nivelEducativo) : "No asignado" },
       { label: "Grado", value: perfil.grado ? labelFromEnum(perfil.grado.replace(/_PRIMARIA|_SECUNDARIA/g, "")) : "No asignado" },
-      { label: "Sección", value: perfil.seccion || "No asignado" },
+      { label: "Sección / Grupo", value: perfil.seccion ? GRUPO_LABELS[perfil.seccion] ?? perfil.seccion : "No asignado" },
       { label: "Materia", value: perfil.materia || "No asignada" },
       { label: "Especialidad", value: perfil.especialidad || "No registrada" }
     ];

@@ -10,6 +10,7 @@ import {
   CompetenciaDocenteBoard,
   ElegirDocenteModal,
   matrixKey,
+  matrixKeyConGrupo,
 } from "./adminComponents";
 
 import {
@@ -18,7 +19,8 @@ import {
   aulaPorGradoSeccion,
   labelFromEnum,
   type AcademicoConfig,
-  getGradosPorNivelAcademico,
+  getGruposPorGrado,
+  GRUPO_LABELS,
   normalizeDocentesPorCompetencia,
 } from "./adminShared";
 
@@ -68,69 +70,6 @@ export function AsignacionesTab({
   const [editingAsignacionAcademica, setEditingAsignacionAcademica] =
     useState<AsignacionAcademica | null>(null);
   const [asignacionAcademicaForm, setAsignacionAcademicaForm] = useState(emptyAsignacion);
-  const [selectedNivelAcademico, setSelectedNivelAcademico] = useState<string>("");
-
-  const getNivelesAcademicosPorNivelEducativo = (nivelEducativo: "PRIMARIA" | "SECUNDARIA") => {
-    const todos = academicoConfig.nivelesAcademicos ?? [];
-    return todos.filter((n) => {
-      if (!n.active) return false;
-      const grados = getGradosPorNivelAcademico(n.id);
-      return grados.some((g) => {
-        if (nivelEducativo === "PRIMARIA") {
-          return g.endsWith("_PRIMARIA");
-        } else {
-          return g.endsWith("_SECUNDARIA");
-        }
-      });
-    });
-  };
-
-  useEffect(() => {
-    if (!selectedNivelAcademico && academicoConfig.nivelesAcademicos?.length) {
-      const activeNiveles = getNivelesAcademicosPorNivelEducativo(
-        asignacionAcademicaForm.nivelEducativo as "PRIMARIA" | "SECUNDARIA"
-      );
-      if (activeNiveles.length > 0) {
-        setSelectedNivelAcademico(activeNiveles[0].id);
-      }
-    }
-  }, [academicoConfig.nivelesAcademicos, asignacionAcademicaForm.nivelEducativo, selectedNivelAcademico]);
-
-  // Synchronize selectedNivelAcademico when the selected grade changes
-  useEffect(() => {
-    const currentGrado = asignacionAcademicaForm.grado;
-    if (!currentGrado) return;
-
-    if (selectedNivelAcademico) {
-      const gradesInCurrentLevel = getGradosPorNivelAcademico(selectedNivelAcademico);
-      if (gradesInCurrentLevel.includes(currentGrado)) {
-        return; // Already matched
-      }
-    }
-
-    const levelsContainingGrado = (academicoConfig.nivelesAcademicos ?? []).filter((n) =>
-      n.active && getGradosPorNivelAcademico(n.id).includes(currentGrado)
-    );
-    if (levelsContainingGrado.length > 0) {
-      setSelectedNivelAcademico(levelsContainingGrado[0].id);
-    }
-  }, [asignacionAcademicaForm.grado, academicoConfig.nivelesAcademicos, selectedNivelAcademico]);
-
-  const handleNivelAcademicoSelect = (nivelAcademicoId: string) => {
-    setSelectedNivelAcademico(nivelAcademicoId);
-    const educationalLevel = asignacionAcademicaForm.nivelEducativo;
-    const matchingGrados = getGradosPorNivelAcademico(nivelAcademicoId).filter(g => 
-      educationalLevel === "SECUNDARIA" ? g.endsWith("_SECUNDARIA") : g.endsWith("_PRIMARIA")
-    );
-    if (matchingGrados.length > 0) {
-      const targetGrado = matchingGrados[0];
-      if (educationalLevel === "SECUNDARIA") {
-        handleGradoSelectSecundaria(targetGrado);
-      } else {
-        handleGradoSelect(targetGrado);
-      }
-    }
-  };
   const [aulaNumero, setAulaNumero] = useState("101");
   const [tutorSecundariaDni, setTutorSecundariaDni] = useState("");
   const [selectedCompetenciaPorCurso, setSelectedCompetenciaPorCurso] = useState<Record<string, string>>({});
@@ -139,6 +78,24 @@ export function AsignacionesTab({
   const [addingCompetenciaCursoSecundaria, setAddingCompetenciaCursoSecundaria] = useState<string | null>(null);
   const [elegirDocenteFor, setElegirDocenteFor] = useState<string | null>(null);
   const [elegirDocenteForSecundaria, setElegirDocenteForSecundaria] = useState<string | null>(null);
+  const [grupoSeleccionado, setGrupoSeleccionado] = useState<string>("");
+
+  const gruposDelGradoActual = getGruposPorGrado(asignacionAcademicaForm.grado);
+
+  useEffect(() => {
+    if (gruposDelGradoActual.length === 0) {
+      if (grupoSeleccionado !== "") setGrupoSeleccionado("");
+      return;
+    }
+    if (!gruposDelGradoActual.includes(grupoSeleccionado)) {
+      setGrupoSeleccionado(gruposDelGradoActual[0]);
+    }
+  }, [gruposDelGradoActual, grupoSeleccionado]);
+
+  const claveEfectiva = (curso: string, competencia: string) =>
+    gruposDelGradoActual.length > 0 && grupoSeleccionado
+      ? matrixKeyConGrupo(asignacionAcademicaForm.grado ?? "", grupoSeleccionado, curso, competencia)
+      : matrixKey(asignacionAcademicaForm.grado ?? "", curso, competencia);
 
   useEffect(() => {
     const matchingSalon = academicoConfig.salones.find(
@@ -312,8 +269,8 @@ export function AsignacionesTab({
   );
 
   const claveActual = useMemo(
-    () => matrixKey(asignacionAcademicaForm.grado ?? "", asignacionAcademicaForm.curso ?? "", selectedCompetencia),
-    [asignacionAcademicaForm.grado, asignacionAcademicaForm.curso, selectedCompetencia]
+    () => claveEfectiva(asignacionAcademicaForm.curso ?? "", selectedCompetencia),
+    [asignacionAcademicaForm.grado, asignacionAcademicaForm.curso, selectedCompetencia, grupoSeleccionado, gruposDelGradoActual]
   );
 
   const docentesAsignadosActual = docentesPorCompetencia[claveActual] ?? [];
@@ -333,8 +290,8 @@ export function AsignacionesTab({
   );
 
   const claveActualSecundaria = useMemo(
-    () => matrixKey(asignacionAcademicaForm.grado ?? "", asignacionAcademicaForm.curso ?? "", selectedCompetenciaSecundaria),
-    [asignacionAcademicaForm.grado, asignacionAcademicaForm.curso, selectedCompetenciaSecundaria]
+    () => claveEfectiva(asignacionAcademicaForm.curso ?? "", selectedCompetenciaSecundaria),
+    [asignacionAcademicaForm.grado, asignacionAcademicaForm.curso, selectedCompetenciaSecundaria, grupoSeleccionado, gruposDelGradoActual]
   );
 
   const docentesAsignadosActualSecundaria = docentesPorCompetenciaSecundaria[claveActualSecundaria] ?? [];
@@ -517,7 +474,7 @@ export function AsignacionesTab({
 
   const asignarDocenteParaCompetencia = (competenciaId: string, docenteDni: string) => {
     if (!asignacionAcademicaForm.grado || !asignacionAcademicaForm.curso) return;
-    const key = matrixKey(asignacionAcademicaForm.grado, asignacionAcademicaForm.curso, competenciaId);
+    const key = claveEfectiva(asignacionAcademicaForm.curso, competenciaId);
     const next = { ...(academicoConfig.docentesPorCompetencia ?? {}) };
     const current = normalizeDocentesPorCompetencia(next as Record<string, string | string[]> | undefined)[key] ?? [];
 
@@ -569,7 +526,7 @@ export function AsignacionesTab({
 
   const asignarDocenteParaCompetenciaSecundaria = (competenciaId: string, docenteDni: string) => {
     if (!asignacionAcademicaForm.grado || !asignacionAcademicaForm.curso) return;
-    const key = matrixKey(asignacionAcademicaForm.grado, asignacionAcademicaForm.curso, competenciaId);
+    const key = claveEfectiva(asignacionAcademicaForm.curso, competenciaId);
     const next = { ...(academicoConfig.docentesPorCompetenciaSecundaria ?? {}) };
     const current = normalizeDocentesPorCompetencia(next as Record<string, string | string[]> | undefined)[key] ?? [];
 
@@ -638,16 +595,7 @@ export function AsignacionesTab({
   const esSecundaria = asignacionAcademicaForm.nivelEducativo === "SECUNDARIA";
 
   const cambiarNivel = (nivel: "PRIMARIA" | "SECUNDARIA") => {
-    const niveles = getNivelesAcademicosPorNivelEducativo(nivel);
-    const defaultNivelAcademico = niveles[0]?.id ?? "";
-    setSelectedNivelAcademico(defaultNivelAcademico);
-
-    const matchingGrados = defaultNivelAcademico 
-      ? getGradosPorNivelAcademico(defaultNivelAcademico).filter(g => 
-          nivel === "SECUNDARIA" ? g.endsWith("_SECUNDARIA") : g.endsWith("_PRIMARIA")
-        )
-      : [];
-    const grado = matchingGrados[0] ?? (nivel === "PRIMARIA" ? "PRIMERO_PRIMARIA" : "PRIMERO_SECUNDARIA");
+    const grado = gradosActivosPorNivel(nivel)[0] ?? (nivel === "PRIMARIA" ? "PRIMERO_PRIMARIA" : "PRIMERO_SECUNDARIA");
     const curso = asignacionAcademicaForm.curso || cursosActivosPorNivel(nivel)[0] || "MATEMATICA";
 
     setAsignacionAcademicaForm({
@@ -695,20 +643,7 @@ export function AsignacionesTab({
         <div className="grid gap-4">
 
           {esSecundaria ? (
-            <div className="grid gap-4 lg:grid-cols-[1fr_1fr_1fr_2fr]">
-              <RosterPanel
-                title="Nivel Académico"
-                empty="No hay niveles académicos activos"
-                rows={getNivelesAcademicosPorNivelEducativo("SECUNDARIA").map((n) => ({
-                  id: n.id,
-                  title: n.label,
-                  detail: n.id,
-                  raw: n.id,
-                }))}
-                selectedId={selectedNivelAcademico}
-                onSelect={(id) => handleNivelAcademicoSelect(id)}
-                bodyClassName={asignacionesPanelBodyClass}
-              />
+            <div className={`grid gap-4 ${gruposDelGradoActual.length > 0 ? "lg:grid-cols-[1fr_1fr_1fr_2fr]" : "lg:grid-cols-[1fr_1fr_2fr]"}`}>
               <RosterPanel
                 title="Grados"
                 empty="No hay grados activos"
@@ -724,6 +659,16 @@ export function AsignacionesTab({
                 onSelect={(grado) => handleGradoSelectSecundaria(grado)}
                 bodyClassName={asignacionesPanelBodyClass}
               />
+              {gruposDelGradoActual.length > 0 && (
+                <RosterPanel
+                  title="Grupo"
+                  empty="Sin grupos"
+                  rows={gruposDelGradoActual.map((g) => ({ id: g, title: GRUPO_LABELS[g] ?? g, detail: g, raw: g }))}
+                  selectedId={grupoSeleccionado}
+                  onSelect={(grupo) => setGrupoSeleccionado(grupo)}
+                  bodyClassName={asignacionesPanelBodyClass}
+                />
+              )}
               <RosterPanel
                 title="Áreas curriculares"
                 empty="No hay áreas activas"
@@ -744,6 +689,7 @@ export function AsignacionesTab({
                 competencias={competenciasDelCursoSecundaria}
                 docentesPorCompetencia={docentesPorCompetenciaSecundaria}
                 grado={asignacionAcademicaForm.grado ?? ""}
+                grupo={gruposDelGradoActual.length > 0 ? grupoSeleccionado : undefined}
                 curso={asignacionAcademicaForm.curso ?? ""}
                 labelDocenteAsignado={labelDocenteAsignadoSecundaria}
                 onEditRow={(competenciaId) => setElegirDocenteForSecundaria(competenciaId)}
@@ -753,20 +699,7 @@ export function AsignacionesTab({
               />
             </div>
           ) : (
-            <div className="grid gap-4 lg:grid-cols-[1fr_1fr_1fr_2fr]">
-              <RosterPanel
-                title="Nivel Académico"
-                empty="No hay niveles académicos activos"
-                rows={getNivelesAcademicosPorNivelEducativo("PRIMARIA").map((n) => ({
-                  id: n.id,
-                  title: n.label,
-                  detail: n.id,
-                  raw: n.id,
-                }))}
-                selectedId={selectedNivelAcademico}
-                onSelect={(id) => handleNivelAcademicoSelect(id)}
-                bodyClassName={asignacionesPanelBodyClass}
-              />
+            <div className={`grid gap-4 ${gruposDelGradoActual.length > 0 ? "lg:grid-cols-[1fr_1fr_1fr_2fr]" : "lg:grid-cols-[1fr_1fr_2fr]"}`}>
               <RosterPanel
                 title="Grados"
                 empty="No hay grados activos"
@@ -782,6 +715,16 @@ export function AsignacionesTab({
                 onSelect={(grado) => handleGradoSelect(grado)}
                 bodyClassName={asignacionesPanelBodyClass}
               />
+              {gruposDelGradoActual.length > 0 && (
+                <RosterPanel
+                  title="Grupo"
+                  empty="Sin grupos"
+                  rows={gruposDelGradoActual.map((g) => ({ id: g, title: GRUPO_LABELS[g] ?? g, detail: g, raw: g }))}
+                  selectedId={grupoSeleccionado}
+                  onSelect={(grupo) => setGrupoSeleccionado(grupo)}
+                  bodyClassName={asignacionesPanelBodyClass}
+                />
+              )}
               <RosterPanel
                 title="Áreas curriculares"
                 empty="No hay áreas activas"
@@ -802,6 +745,7 @@ export function AsignacionesTab({
                 competencias={competenciasDelCurso}
                 docentesPorCompetencia={docentesPorCompetencia}
                 grado={asignacionAcademicaForm.grado ?? ""}
+                grupo={gruposDelGradoActual.length > 0 ? grupoSeleccionado : undefined}
                 curso={asignacionAcademicaForm.curso ?? ""}
                 labelDocenteAsignado={labelDocenteAsignado}
                 onEditRow={(competenciaId) => setElegirDocenteFor(competenciaId)}
@@ -829,7 +773,7 @@ export function AsignacionesTab({
         <ElegirDocenteModal
           competenciaLabel={competenciasDelCurso.find((c) => c.id === elegirDocenteFor)?.label ?? ""}
           docentes={docentesDelCurso.map((d) => ({ dni: d.dni, nombre: d.nombre }))}
-          docentesAsignados={docentesPorCompetencia[matrixKey(asignacionAcademicaForm.grado ?? "", asignacionAcademicaForm.curso ?? "", elegirDocenteFor)] ?? []}
+          docentesAsignados={docentesPorCompetencia[claveEfectiva(asignacionAcademicaForm.curso ?? "", elegirDocenteFor)] ?? []}
           onToggle={(dni) => {
             asignarDocenteParaCompetencia(elegirDocenteFor, dni);
           }}
@@ -852,7 +796,7 @@ export function AsignacionesTab({
         <ElegirDocenteModal
           competenciaLabel={competenciasDelCursoSecundaria.find((c) => c.id === elegirDocenteForSecundaria)?.label ?? ""}
           docentes={docentesDelCurso.map((d) => ({ dni: d.dni, nombre: d.nombre }))}
-          docentesAsignados={docentesPorCompetenciaSecundaria[matrixKey(asignacionAcademicaForm.grado ?? "", asignacionAcademicaForm.curso ?? "", elegirDocenteForSecundaria)] ?? []}
+          docentesAsignados={docentesPorCompetenciaSecundaria[claveEfectiva(asignacionAcademicaForm.curso ?? "", elegirDocenteForSecundaria)] ?? []}
           onToggle={(dni) => {
             asignarDocenteParaCompetenciaSecundaria(elegirDocenteForSecundaria, dni);
           }}

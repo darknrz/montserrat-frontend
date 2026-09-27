@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { SectionHeader } from "../../ui/SectionHeader";
 import { monserratApi } from "../../../api/monserrat";
 import type { UsuarioAcademico, AsistenciaAcademica, AsignacionAcademica } from "../../../types";
-import { getGradosPorNivelAcademico, type AcademicoConfig } from "../admin/adminShared";
+import { getGruposPorGrado, GRUPO_LABELS, type AcademicoConfig } from "../admin/adminShared";
 
 const ESTADOS_ASISTENCIA = ["PRESENTE", "AUSENTE"] as const;
 
@@ -24,7 +24,8 @@ export function DocenteAsistencias({ token }: { token: string }) {
   const [periodos, setPeriodos] = useState<any[]>([]);
   const [selectedPeriodo, setSelectedPeriodo] = useState<any | null>(null);
   const [selectedCurso, setSelectedCurso] = useState("");
-  const [selectedNivelAcademico, setSelectedNivelAcademico] = useState("");
+  const [selectedGradoAcademico, setSelectedGradoAcademico] = useState("");
+  const [selectedGrupo, setSelectedGrupo] = useState("");
   const [asistenciaFecha, setAsistenciaFecha] = useState(new Date().toISOString().slice(0, 10));
   const [asistenciaBulk, setAsistenciaBulk] = useState<Record<string, EstadoAsistencia>>({});
   const [isBusy, setIsBusy] = useState(false);
@@ -111,41 +112,43 @@ export function DocenteAsistencias({ token }: { token: string }) {
 
   const cursosDisponibles = useMemo(() => Array.from(new Set(asignaciones.map((a) => a.curso))).filter(Boolean), [asignaciones]);
 
-  const nivelesDeCurso = useMemo(() => {
-    if (!selectedCurso) return [] as { id: string; label: string }[];
-    const activeLevels = (academicoConfig?.nivelesAcademicos ?? []).filter((nivel) => nivel.active);
-    const map = new Map<string, { id: string; label: string }>();
-    asignaciones
-      .filter((a) => a.curso === selectedCurso && a.grado)
-      .forEach((a) => {
-        const matchingLevel = activeLevels.find((nivel) =>
-          getGradosPorNivelAcademico(nivel.id).includes(a.grado ?? "")
-        );
-        if (matchingLevel && !map.has(matchingLevel.id)) {
-          map.set(matchingLevel.id, { id: matchingLevel.id, label: matchingLevel.label });
-        }
-      });
-    return Array.from(map.values());
-  }, [academicoConfig?.nivelesAcademicos, selectedCurso, asignaciones]);
+  // Grados donde el docente realmente tiene asignaciones para el curso elegido
+  // (sin pasar por el catalogo decorativo de "nivel academico").
+  const gradosDelCurso = useMemo(() => {
+    if (!selectedCurso) return [] as string[];
+    return Array.from(
+      new Set(asignaciones.filter((a) => a.curso === selectedCurso && a.grado).map((a) => a.grado as string))
+    );
+  }, [selectedCurso, asignaciones]);
 
   useEffect(() => {
-    if (nivelesDeCurso.length > 0) {
-      const stillValid = nivelesDeCurso.some((nivel) => nivel.id === selectedNivelAcademico);
-      if (!stillValid) {
-        setSelectedNivelAcademico(nivelesDeCurso[0].id);
-      }
+    if (gradosDelCurso.length > 0) {
+      const stillValid = gradosDelCurso.includes(selectedGradoAcademico);
+      if (!stillValid) setSelectedGradoAcademico(gradosDelCurso[0]);
     } else {
-      setSelectedNivelAcademico("");
+      setSelectedGradoAcademico("");
     }
-  }, [nivelesDeCurso, selectedNivelAcademico]);
+  }, [gradosDelCurso, selectedGradoAcademico]);
+
+  // Grupo (Ciclado I/II, Anual, Letras, Ciencias): solo aplica a los grados que lo tienen.
+  const gruposDelGrado = useMemo(() => getGruposPorGrado(selectedGradoAcademico), [selectedGradoAcademico]);
+
+  useEffect(() => {
+    if (gruposDelGrado.length === 0) {
+      if (selectedGrupo !== "") setSelectedGrupo("");
+      return;
+    }
+    if (!gruposDelGrado.includes(selectedGrupo)) setSelectedGrupo(gruposDelGrado[0]);
+  }, [gruposDelGrado, selectedGrupo]);
 
   const alumnosFiltrados = useMemo(() => {
-    if (!selectedCurso || !selectedNivelAcademico) return alumnos;
-    const gradosDelNivel = getGradosPorNivelAcademico(selectedNivelAcademico);
-    return alumnos.filter((al) =>
-      asignaciones.some((a) => a.alumnoDni === al.dni && a.curso === selectedCurso && gradosDelNivel.includes(a.grado ?? ""))
+    if (!selectedCurso || !selectedGradoAcademico) return alumnos;
+    return alumnos.filter(
+      (al) =>
+        (gruposDelGrado.length === 0 || al.seccion === selectedGrupo) &&
+        asignaciones.some((a) => a.alumnoDni === al.dni && a.curso === selectedCurso && a.grado === selectedGradoAcademico)
     );
-  }, [selectedCurso, selectedNivelAcademico, alumnos, asignaciones]);
+  }, [selectedCurso, selectedGradoAcademico, gruposDelGrado, selectedGrupo, alumnos, asignaciones]);
 
   const submitAsistenciaBulk = async () => {
     setIsBusy(true);
@@ -233,14 +236,25 @@ export function DocenteAsistencias({ token }: { token: string }) {
             </label>
 
             <label className="flex items-center gap-2">
-              <span className="text-sm text-monserrat-ink/70">Nivel académico:</span>
-              <select value={selectedNivelAcademico} onChange={(e) => setSelectedNivelAcademico(e.target.value)} className="admin-input">
+              <span className="text-sm text-monserrat-ink/70">Grado:</span>
+              <select value={selectedGradoAcademico} onChange={(e) => setSelectedGradoAcademico(e.target.value)} className="admin-input">
                 <option value="">--</option>
-                {nivelesDeCurso.map((nivel) => (
-                  <option key={nivel.id} value={nivel.id}>{nivel.label}</option>
+                {gradosDelCurso.map((grado) => (
+                  <option key={grado} value={grado}>{labelFromEnum(grado)}</option>
                 ))}
               </select>
             </label>
+
+            {gruposDelGrado.length > 0 && (
+              <label className="flex items-center gap-2">
+                <span className="text-sm text-monserrat-ink/70">Grupo:</span>
+                <select value={selectedGrupo} onChange={(e) => setSelectedGrupo(e.target.value)} className="admin-input">
+                  {gruposDelGrado.map((grupo) => (
+                    <option key={grupo} value={grupo}>{GRUPO_LABELS[grupo] ?? grupo}</option>
+                  ))}
+                </select>
+              </label>
+            )}
 
             <input type="date" value={asistenciaFecha} onChange={(e) => setAsistenciaFecha(e.target.value)} className="admin-input max-w-55" />
             <button type="button" onClick={() => marcarTodos("PRESENTE")} className="inline-flex items-center rounded-xl border border-monserrat-ink/12 bg-[#f2f2f1] px-4 py-2 text-sm font-black text-monserrat-ink">Todos presentes</button>
@@ -285,7 +299,7 @@ export function DocenteAsistencias({ token }: { token: string }) {
             ))}
           </div>
           <div className="mt-6 rounded-[14px] border border-monserrat-ink/8 bg-white p-4">
-            <p className="text-sm font-black">Resumen del nivel académico</p>
+            <p className="text-sm font-black">Resumen del grado seleccionado</p>
             <p className="mt-2 text-sm text-monserrat-ink/70">Alumnos en filtro: <span className="font-black">{nivelSummary.total}</span></p>
             <p className="mt-1 text-sm text-monserrat-ink">Por debajo del mínimo ({minAsistencia}%): <span className="font-black">{nivelSummary.below}</span></p>
             {nivelSummary.below > 0 && <p className="mt-2 text-xs text-monserrat-ink/60">Revisa los alumnos marcados en rojo en la lista para detalles.</p>}

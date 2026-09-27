@@ -511,9 +511,11 @@ export const defaultAcademicoConfig: AcademicoConfig = {
     { id: "3RO_PRIM", label: "3ro prim", active: true },
     { id: "4TO_PRIM", label: "4to prim", active: true },
     { id: "PREFORMATIVO", label: "preformativo", active: true },
-    { id: "CICLADO", label: "ciclado", active: true },
+    { id: "CICLADO_I", label: "Ciclado I", active: true },
+    { id: "CICLADO_II", label: "Ciclado II", active: true },
     { id: "ANUAL", label: "anual", active: true },
-    { id: "LETRAS_CIENCIAS", label: "Letras/Ciencias", active: true }
+    { id: "LETRAS", label: "Letras", active: true },
+    { id: "CIENCIAS", label: "Ciencias", active: true }
   ]
 };
 
@@ -535,6 +537,27 @@ export function normalizeDocentesPorCompetencia(value?: Record<string, string | 
       return [];
     })
   );
+}
+
+// Misma logica de resolucion que el backend (AcademicoService.exigirAsignacionCompetencia):
+// primero busca la asignacion fina (grado+grupo+curso+competencia) y, si no existe,
+// cae a la asignacion general del grado. Evita que el docente vea una competencia
+// como "suya" en el frontend cuando el backend la resolveria distinto.
+export function tieneAccesoCompetencia(
+  mapping: Record<string, string[]>,
+  grado: string | undefined | null,
+  seccion: string | undefined | null,
+  curso: string,
+  competenciaId: string,
+  docenteDni: string
+): boolean {
+  if (!grado || !docenteDni) return true;
+  if (seccion) {
+    const fina = mapping[`${grado}||${seccion}||${curso}||${competenciaId}`];
+    if (fina) return fina.includes(docenteDni);
+  }
+  const general = mapping[`${grado}||${curso}||${competenciaId}`] ?? [];
+  return general.includes(docenteDni);
 }
 
 export function mergeAcademicoConfig(config: Partial<AcademicoConfig>) {
@@ -678,6 +701,7 @@ export function normalizeGrado(value: unknown, nivel: string) {
   };
   const token = normalized.split("_").find((part) => ordinalMap[part]);
   const ordinal = token ? ordinalMap[token] : "";
+  if (!ordinal) return "";
   return grados.find((grado) => grado.startsWith(ordinal)) ?? "";
 }
 
@@ -703,4 +727,45 @@ export function getGradosPorNivelAcademico(nivelAcademicoId: string): string[] {
     return ["TERCERO_SECUNDARIA", "CUARTO_SECUNDARIA", "QUINTO_SECUNDARIA"];
   }
   return [];
+}
+
+// Grupos especiales por grado, verificados contra Curricula_Monserrat.xlsx (hoja "PyS por nivel")
+// y RELACION ACTUALIZADA DE ALUMNOS 2026.xlsx (hoja "Alumnos-por nivel"): en estos grados cada
+// alumno pertenece a exactamente un grupo, en vez de una sección A/B/C/D.
+export const GRUPOS_POR_GRADO: Record<string, string[]> = {
+  SEXTO_PRIMARIA: ["CICLADO_I", "CICLADO_II"],
+  PRIMERO_SECUNDARIA: ["CICLADO_I", "CICLADO_II", "ANUAL"],
+  TERCERO_SECUNDARIA: ["ANUAL", "LETRAS", "CIENCIAS"],
+  CUARTO_SECUNDARIA: ["LETRAS", "CIENCIAS"],
+  QUINTO_SECUNDARIA: ["LETRAS", "CIENCIAS"]
+};
+
+export const GRUPO_LABELS: Record<string, string> = {
+  CICLADO_I: "Ciclado I",
+  CICLADO_II: "Ciclado II",
+  ANUAL: "Anual",
+  LETRAS: "Letras",
+  CIENCIAS: "Ciencias"
+};
+
+export function getGruposPorGrado(grado: string | undefined | null): string[] {
+  if (!grado) return [];
+  return GRUPOS_POR_GRADO[grado] ?? [];
+}
+
+export function normalizeGrupo(value: unknown): string {
+  const normalized = String(value ?? "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  if (!normalized || normalized === "VACIO") return "";
+  if (normalized.includes("CICLADO") && normalized.includes("II")) return "CICLADO_II";
+  if (normalized.includes("CICLADO")) return "CICLADO_I";
+  if (normalized.includes("LETRAS")) return "LETRAS";
+  if (normalized.includes("CIENCIAS")) return "CIENCIAS";
+  if (normalized.includes("ANUAL")) return "ANUAL";
+  return "";
 }

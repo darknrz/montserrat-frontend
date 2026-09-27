@@ -86,7 +86,7 @@ export function RosterPanel({
 }) {
   return (
     <div className={`overflow-hidden rounded-[12px] border border-black/10 bg-white ${className}`}>
-      <div className="flex items-center justify-between gap-2 border-b border-black/12 bg-[#e9e9e8] px-4 py-3">
+      <div className="flex items-center justify-between gap-2 border-b border-monserrat-gold/25 bg-gradient-to-r from-monserrat-cream/60 to-monserrat-cream/25 px-4 py-3">
         <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/45">{title}</p>
         {headerAction}
       </div>
@@ -99,13 +99,13 @@ export function RosterPanel({
             onClick={() => onSelect?.(row.id)}
             className={`flex items-center justify-between border-b border-monserrat-ink/6 pl-3 pr-2 py-3 last:border-b-0 cursor-pointer transition-all duration-200 border-l-[3px] rounded-r-lg ${
               selectedId === row.id
-                ? "bg-[#e9e9e8] border-black/12 border-l-monserrat-ink"
-                : "border-l-transparent hover:bg-[#eeeeec] hover:border-l-black/20"
+                ? "bg-monserrat-gold/10 border-monserrat-gold/25 border-l-monserrat-red"
+                : "border-l-transparent hover:bg-monserrat-cream/30 hover:border-l-monserrat-gold/40"
             }`}
           >
             <div className="min-w-0 flex-1">
               <p className={`truncate text-[13px] font-black ${selectedId === row.id ? "text-monserrat-ink" : "text-monserrat-ink"}`}>{row.title}</p>
-              <p className={`mt-0.5 truncate text-[11px] font-semibold ${selectedId === row.id ? "text-monserrat-ink/60" : "text-monserrat-ink/45"}`}>{row.detail}</p>
+              <p className={`mt-0.5 truncate text-[11px] font-semibold ${selectedId === row.id ? "text-monserrat-redDark/70" : "text-monserrat-ink/45"}`}>{row.detail}</p>
             </div>
             {onEdit && row.raw && (
               <button
@@ -550,12 +550,14 @@ export function AdminTable({
   headers,
   rows,
   className = "",
-  bodyClassName = ""
+  bodyClassName = "",
+  columnWidths
 }: {
   headers: string[];
   rows: { id: number; values: string[]; onEdit: () => void; onDelete: () => void }[];
   className?: string;
   bodyClassName?: string;
+  columnWidths?: string[];
 }) {
   return (
     <div className={`overflow-hidden rounded-[12px] border border-black/10 bg-white ${className}`}>
@@ -565,12 +567,12 @@ export function AdminTable({
             <tr>
               {headers.map((h, i) => (
                 <th key={h}
-                  className={`px-4 py-3 text-[10px] font-black uppercase tracking-[0.1em] text-monserrat-ink/45 ${i === 0 ? "w-[12%]" :   // Codigo
+                  className={`px-4 py-3 text-[10px] font-black uppercase tracking-[0.1em] text-monserrat-ink/45 ${columnWidths?.[i] ?? (i === 0 ? "w-[12%]" :   // Codigo
                     i === 1 ? "w-[30%]" :   // Nombre
                     i === 2 ? "w-[10%]" :   // Rol
                     i === 3 ? "w-[10%]" :   // Estado
                     "w-[30%]"               // Detalle
-                    }`}
+                    )}`}
                 >{h}</th>
               ))}
               <th className="w-[8%] px-4 py-3"></th>
@@ -602,6 +604,12 @@ export function AdminTable({
 
 export function matrixKey(grado: string, curso: string, competencia: string) {
   return `${grado}||${curso}||${competencia}`;
+}
+
+// Clave fina que además distingue el grupo (Ciclado I/II, Anual, Letras, Ciencias) dentro de un
+// mismo grado, para grados donde un mismo curso+competencia puede tener docentes distintos por grupo.
+export function matrixKeyConGrupo(grado: string, grupo: string, curso: string, competencia: string) {
+  return `${grado}||${grupo}||${curso}||${competencia}`;
 }
 
 export function CompetenciaPickerModal({
@@ -675,10 +683,10 @@ export function CompetenciaPickerModal({
         title={otraArea ? `Mover desde ${labelAcademico(otraArea)}` : undefined}
         className={`group flex w-full items-center gap-2.5 rounded-[9px] border px-2.5 py-1.5 text-left transition ${
           variant === "linked"
-            ? "border-black/15 bg-black/[0.04] hover:bg-black/[0.06]"
+            ? "border-emerald-600/20 bg-emerald-600/[0.05] hover:bg-emerald-600/[0.08]"
             : variant === "other"
             ? "border-amber-400/35 bg-amber-50/70 hover:bg-amber-50"
-            : "border-black/10 bg-white hover:border-black/20 hover:bg-black/[0.025]"
+            : "border-black/10 bg-white hover:border-monserrat-gold/35 hover:bg-monserrat-cream/25"
         }`}
       >
         <span
@@ -691,10 +699,10 @@ export function CompetenciaPickerModal({
         <span
           className={`flex-shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.06em] ${
             variant === "linked"
-              ? "bg-monserrat-ink text-white"
+              ? "bg-emerald-600 text-white"
               : variant === "other"
               ? "bg-amber-500 text-white"
-              : "bg-monserrat-ink/8 text-monserrat-ink/50 group-hover:bg-black/10 group-hover:text-monserrat-ink"
+              : "bg-monserrat-gold/12 text-monserrat-goldDark/80 group-hover:bg-monserrat-gold/25 group-hover:text-monserrat-goldDark"
           }`}
         >
           {variant === "linked" ? "Quitar" : variant === "other" ? "Mover" : "Vincular"}
@@ -708,11 +716,12 @@ export function CompetenciaPickerModal({
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm">
       <div className="flex w-full max-w-[420px] max-h-[85vh] flex-col overflow-hidden rounded-[16px] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+        <div className="h-[3px] flex-none bg-gradient-to-r from-monserrat-red via-monserrat-gold to-monserrat-red" />
         {/* Header compacto: todo en una franja, sin bloques apilados grandes */}
-        <div className="flex flex-none items-center justify-between gap-3 border-b border-black/10 bg-black/[0.03] px-4 py-3">
+        <div className="flex flex-none items-center justify-between gap-3 border-b border-monserrat-gold/25 bg-gradient-to-r from-monserrat-cream/70 to-monserrat-cream/25 px-4 py-3">
           <div className="min-w-0">
             <h3 className="truncate font-serif text-[15px] font-black leading-tight text-monserrat-ink">{labelAcademico(curso)}</h3>
-            <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-monserrat-ink/40">
+            <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-monserrat-redDark/55">
               {yaVinculadas.length}/{catalogo.length} vinculadas
             </p>
           </div>
@@ -774,7 +783,7 @@ export function CompetenciaPickerModal({
         </div>
 
         <div className="flex flex-none justify-end border-t border-monserrat-ink/8 px-4 py-2.5">
-          <button type="button" onClick={onClose} className="rounded-[9px] bg-monserrat-ink px-4 py-1.5 text-[11.5px] font-black text-white hover:bg-monserrat-ink/85">
+          <button type="button" onClick={onClose} className="rounded-[9px] bg-monserrat-red px-4 py-1.5 text-[11.5px] font-black text-white hover:bg-monserrat-redDark">
             Listo
           </button>
         </div>
@@ -793,6 +802,7 @@ export function CompetenciaDocenteBoard({
   competencias,
   docentesPorCompetencia,
   grado,
+  grupo,
   curso,
   labelDocenteAsignado,
   onEditRow,
@@ -801,6 +811,7 @@ export function CompetenciaDocenteBoard({
   competencias: CatalogItem[];
   docentesPorCompetencia: Record<string, string[]>;
   grado: string;
+  grupo?: string;
   curso: string;
   labelDocenteAsignado: (dni: string) => string;
   onEditRow: (competenciaId: string) => void;
@@ -808,12 +819,12 @@ export function CompetenciaDocenteBoard({
 }) {
   return (
     <div className="flex flex-col overflow-hidden rounded-[12px] border border-black/10 bg-white">
-      <div className="grid grid-cols-[1.4fr_1fr] border-b border-black/12 bg-[#e3e3e1]">
+      <div className="grid grid-cols-[1.4fr_1fr] border-b border-monserrat-gold/25 bg-gradient-to-r from-monserrat-cream/60 to-monserrat-cream/25">
         <p className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/45 flex items-center gap-1.5">
-          <BookOpen size={11} /> Competencias vinculadas
+          <BookOpen size={11} className="text-monserrat-goldDark/70" /> Competencias vinculadas
         </p>
-        <p className="border-l border-black/10 px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/45 flex items-center gap-1.5">
-          <User size={11} /> Docente Asignado
+        <p className="border-l border-monserrat-gold/20 px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/45 flex items-center gap-1.5">
+          <User size={11} className="text-monserrat-goldDark/70" /> Docente Asignado
         </p>
       </div>
       <div className="max-h-[calc(100vh-220px)] overflow-y-auto">
@@ -824,19 +835,22 @@ export function CompetenciaDocenteBoard({
             className="flex w-full flex-col items-center gap-1.5 py-12 text-center text-sm font-semibold text-monserrat-ink/40 transition hover:text-monserrat-ink"
           >
             <span>Sin competencias vinculadas a esta área</span>
-            <span className="rounded-full border border-black/10 bg-black/[0.035] px-3 py-1 text-[10px] font-black uppercase tracking-[0.08em] text-monserrat-ink/60">
+            <span className="rounded-full border border-monserrat-gold/25 bg-monserrat-gold/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.08em] text-monserrat-goldDark/80">
               Click para vincular competencias
             </span>
           </button>
         ) : (
           competencias.map((c, i) => {
-            const key = matrixKey(grado, curso, c.id);
-            const dnis = docentesPorCompetencia[key] ?? [];
+            const key = grupo ? matrixKeyConGrupo(grado, grupo, curso, c.id) : matrixKey(grado, curso, c.id);
+            const keyGeneral = matrixKey(grado, curso, c.id);
+            // Si aun no se asigno nada especifico para este grupo, se muestra la asignacion
+            // general del grado (misma logica de fallback que usa el backend al validar).
+            const dnis = docentesPorCompetencia[key] ?? (grupo ? docentesPorCompetencia[keyGeneral] ?? [] : []);
             return (
               <div
                 key={c.id}
                 className={`grid grid-cols-[1.4fr_1fr] border-b border-monserrat-ink/6 last:border-b-0 items-center min-h-[50px] ${
-                  i % 2 === 1 ? "bg-black/[0.015]" : ""
+                  i % 2 === 1 ? "bg-monserrat-cream/20" : ""
                 }`}
               >
                 <div
@@ -849,10 +863,10 @@ export function CompetenciaDocenteBoard({
                   {dnis.length > 0 ? (
                     <div
                       onClick={() => onEditRow(c.id)}
-                      className="cursor-pointer w-full rounded-[10px] border border-black/10 bg-black/[0.025] px-3 py-2 text-monserrat-ink transition-all hover:bg-black/[0.045] hover:border-black/20"
+                      className="cursor-pointer w-full rounded-[10px] border border-emerald-600/15 bg-emerald-600/[0.05] px-3 py-2 text-monserrat-ink transition-all hover:bg-emerald-600/[0.09] hover:border-emerald-600/25"
                     >
                       <div className="flex items-center gap-1.5 text-[12.5px] font-black">
-                        <UserCheck size={13} className="shrink-0 text-monserrat-ink/50" />
+                        <UserCheck size={13} className="shrink-0 text-emerald-700/70" />
                         <span className="truncate">{dnis.map((dni) => labelDocenteAsignado(dni)).join(", ")}</span>
                       </div>
                       {dnis.length === 2 && (
@@ -865,7 +879,7 @@ export function CompetenciaDocenteBoard({
                     <button
                       type="button"
                       onClick={() => onEditRow(c.id)}
-                      className="inline-flex cursor-pointer items-center gap-1 rounded-[10px] border border-dashed border-black/15 bg-white px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-monserrat-ink/55 transition-all hover:border-black/30 hover:bg-black/[0.025] hover:text-monserrat-ink"
+                      className="inline-flex cursor-pointer items-center gap-1 rounded-[10px] border border-dashed border-monserrat-red/25 bg-monserrat-red/[0.03] px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-monserrat-red/70 transition-all hover:border-monserrat-red/45 hover:bg-monserrat-red/[0.06] hover:text-monserrat-red"
                     >
                       <UserPlus size={12} /> Asignar docentes
                     </button>
@@ -883,10 +897,10 @@ export function CompetenciaDocenteBoard({
 // Paleta rotativa para los avatares de iniciales: le da variedad visual a la
 // grilla de docentes en vez de que todos los circulos sean del mismo color.
 const AVATAR_PALETTE = [
-  "bg-black/[0.04] text-monserrat-ink/70",
-  "bg-black/[0.06] text-monserrat-ink/75",
-  "bg-black/[0.035] text-monserrat-ink/65",
-  "bg-black/[0.05] text-monserrat-ink/70",
+  "bg-monserrat-gold/15 text-monserrat-goldDark",
+  "bg-monserrat-red/10 text-monserrat-red",
+  "bg-teal-500/10 text-teal-700",
+  "bg-sky-500/10 text-sky-700",
 ];
 
 export function ElegirDocenteModal({
@@ -921,16 +935,17 @@ export function ElegirDocenteModal({
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm">
       <div className="flex w-full max-w-[420px] max-h-[80vh] flex-col overflow-hidden rounded-[16px] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+        <div className="h-[3px] flex-none bg-gradient-to-r from-monserrat-red via-monserrat-gold to-monserrat-red" />
         {/* Header en una sola franja: titulo + contador + cerrar, sin bloques apilados */}
-        <div className="flex flex-none items-center justify-between gap-3 border-b border-black/10 bg-black/[0.03] px-4 py-3">
+        <div className="flex flex-none items-center justify-between gap-3 border-b border-monserrat-gold/25 bg-gradient-to-r from-monserrat-cream/70 to-monserrat-cream/25 px-4 py-3">
           <div className="min-w-0">
-            <p className="text-[9px] font-black uppercase tracking-[0.12em] text-monserrat-ink/45">Asignar docente</p>
+            <p className="text-[9px] font-black uppercase tracking-[0.12em] text-monserrat-redDark/60">Asignar docente</p>
             <h3 className="truncate font-serif text-[14px] font-black leading-tight text-monserrat-ink">{competenciaLabel}</h3>
           </div>
           <div className="flex flex-shrink-0 items-center gap-2">
             <span
               className={`rounded-full px-2 py-1 text-[10px] font-black ${
-                seleccionCount === 2 ? "bg-black/[0.08] text-monserrat-ink" : "bg-monserrat-ink/8 text-monserrat-ink/50"
+                seleccionCount === 2 ? "bg-monserrat-gold/20 text-monserrat-goldDark" : "bg-monserrat-ink/8 text-monserrat-ink/50"
               }`}
             >
               {seleccionCount}/2
@@ -983,13 +998,13 @@ export function ElegirDocenteModal({
                   title={d.nombre}
                   className={`relative flex flex-col items-center gap-1.5 rounded-[12px] border p-2.5 text-center transition-all ${
                     selected
-                      ? "border-black/20 bg-black/[0.04]"
-                      : "border-black/10 bg-white hover:border-black/20 hover:bg-black/[0.025]"
+                      ? "border-monserrat-red/30 bg-monserrat-red/[0.05]"
+                      : "border-black/10 bg-white hover:border-monserrat-gold/35 hover:bg-monserrat-cream/25"
                   } ${!canSelect ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
                 >
                   <div
                     className={`flex h-9 w-9 items-center justify-center rounded-full text-[11px] font-black ${
-                      selected ? "bg-monserrat-ink text-white" : AVATAR_PALETTE[i % AVATAR_PALETTE.length]
+                      selected ? "bg-monserrat-red text-white" : AVATAR_PALETTE[i % AVATAR_PALETTE.length]
                     }`}
                   >
                     {getInitials(d.nombre)}
@@ -998,7 +1013,7 @@ export function ElegirDocenteModal({
                     {d.nombre}
                   </span>
                   {selected && (
-                    <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-monserrat-ink text-white">
+                    <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-monserrat-red text-white">
                       <Check size={9} />
                     </span>
                   )}
@@ -1020,7 +1035,7 @@ export function ElegirDocenteModal({
           ) : (
             <span />
           )}
-          <button type="button" onClick={onClose} className="rounded-[9px] bg-monserrat-ink px-4 py-1.5 text-[11.5px] font-black text-white hover:bg-monserrat-ink/85">
+          <button type="button" onClick={onClose} className="rounded-[9px] bg-monserrat-red px-4 py-1.5 text-[11.5px] font-black text-white hover:bg-monserrat-redDark">
             Listo
           </button>
         </div>
