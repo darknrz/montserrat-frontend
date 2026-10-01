@@ -194,8 +194,12 @@ export function AdminSection({
     () => academicoConfig.cursosSecundaria.filter((item) => item.active).map((item) => item.id),
     [academicoConfig.cursosSecundaria]
   );
+  const cursosInicialActivos = useMemo(
+    () => (academicoConfig.cursosInicial ?? []).filter((item) => item.active).map((item) => item.id),
+    [academicoConfig.cursosInicial]
+  );
   const cursosActivosPorNivel = (nivel?: string) =>
-    nivel === "SECUNDARIA" ? cursosSecundariaActivos : cursosPrimariaActivos;
+    nivel === "SECUNDARIA" ? cursosSecundariaActivos : nivel === "INICIAL" ? cursosInicialActivos : cursosPrimariaActivos;
 
   const seccionesPrimariaActivas = useMemo(
     () => academicoConfig.seccionesPrimaria.filter((item) => item.active).map((item) => item.id),
@@ -207,17 +211,25 @@ export function AdminSection({
     [academicoConfig.seccionesSecundaria]
   );
   const seccionesActivasPorNivel = (nivel?: string) =>
-    nivel === "SECUNDARIA" ? seccionesSecundariaActivas : seccionesPrimariaActivas;
+    nivel === "SECUNDARIA"
+      ? seccionesSecundariaActivas
+      : nivel === "INICIAL"
+        ? (academicoConfig.seccionesInicial ?? []).filter((item) => item.active).map((item) => item.id)
+        : seccionesPrimariaActivas;
 
   const gradosActivosPorNivel = (nivel?: string) =>
-    (nivel === "SECUNDARIA" ? academicoConfig.gradosSecundaria : academicoConfig.gradosPrimaria)
+    (nivel === "SECUNDARIA"
+      ? academicoConfig.gradosSecundaria
+      : nivel === "INICIAL"
+        ? academicoConfig.gradosInicial ?? []
+        : academicoConfig.gradosPrimaria)
       .filter((item) => item.active)
       .map((item) => item.id);
 
   const salonesActivosPorNivel = (nivel?: string) =>
     academicoConfig.salones
       .filter(
-        (item) => item.active && item.nivel === (nivel === "SECUNDARIA" ? "SECUNDARIA" : "PRIMARIA")
+        (item) => item.active && item.nivel === (nivel === "SECUNDARIA" ? "SECUNDARIA" : nivel === "INICIAL" ? "INICIAL" : "PRIMARIA")
       )
       .map((item) => item.aula);
 
@@ -226,6 +238,8 @@ export function AdminSection({
       ...academicoConfig.cursosPrimaria,
       ...academicoConfig.competenciasPrimaria,
       ...academicoConfig.cursosSecundaria,
+      ...(academicoConfig.cursosInicial ?? []),
+      ...(academicoConfig.gradosInicial ?? []),
       ...academicoConfig.gradosPrimaria,
       ...academicoConfig.gradosSecundaria,
       ...academicoConfig.seccionesPrimaria,
@@ -520,6 +534,7 @@ export function AdminSection({
             {tab === "academico" && (
               <AcademicoTab
                 usuariosAcademicos={usuariosAcademicos}
+                asignacionesAcademicas={asignacionesAcademicas}
                 setUsuariosAcademicos={setUsuariosAcademicos}
                 academicoConfig={academicoConfig}
                 token={token}

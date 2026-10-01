@@ -1,8 +1,24 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { SectionHeader } from "../../ui/SectionHeader";
 import { monserratApi } from "../../../api/monserrat";
-import type { AsignacionAcademica, UsuarioAcademico } from "../../../types";
-import { GRUPO_LABELS, type AcademicoConfig } from "../admin/adminShared";
+import type { AsignacionAcademica, LoginResponse, UsuarioAcademico } from "../../../types";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import { competenciaConAbreviatura, formatGrado, GRUPO_LABELS, normalizeDocentesPorCompetencia, normalizeGrupo, tieneAccesoCompetencia, type AcademicoConfig } from "../admin/adminShared";
+
+const SALON_ORDER = [
+  "PRIMERO_PRIMARIA", "SEGUNDO_PRIMARIA", "TERCERO_PRIMARIA", "CUARTO_PRIMARIA", "QUINTO_PRIMARIA",
+  "CICLADO_I", "CICLADO_II", "ANUAL", "CIENCIAS", "LETRAS"
+];
+
+function salonKey(grado?: string | null, seccion?: string | null) {
+  const g = normalizeGrupo(seccion);
+  return g || String(grado ?? "").toUpperCase();
+}
+
+function salonLabel(key: string) {
+  if (key === "QUINTO_PRIMARIA") return "Preformativo";
+  return GRUPO_LABELS[key] ?? formatGrado(key);
+}
 
 function labelFromEnum(value: string) {
   return value
@@ -17,6 +33,7 @@ export function DocenteCursos({ token }: { token: string }) {
   const [alumnos, setAlumnos] = useState<UsuarioAcademico[]>([]);
   const [academicoConfig, setAcademicoConfig] = useState<AcademicoConfig | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [abiertos, setAbiertos] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!token) return;
@@ -29,51 +46,76 @@ export function DocenteCursos({ token }: { token: string }) {
       .catch((e) => setStatus(String(e)));
   }, [token]);
 
+  const docenteDni = useMemo(() => {
+    try {
+      const sessionStr = window.localStorage.getItem("monserrat_academic_session");
+      return sessionStr ? (JSON.parse(sessionStr) as LoginResponse).username : "";
+    } catch {
+      return "";
+    }
+  }, []);
+
+  // Salones (Ciclado I, Anual, Ciencias, 3ro Prim...) con los cursos y SOLO las competencias
+  // que este docente dicta, numeradas C1, C2... segun el orden de la boleta.
   const salones = useMemo(() => {
-    const grouped = new Map<string, { nivel: string; grado?: string; seccion?: string; alumnos: Set<string>; cursos: Set<string> }>();
+    const grouped = new Map<string, { key: string; alumnos: Set<string>; cursos: Map<string, { grado?: string; seccion?: string; nivel?: string }[]> }>();
 
     asignaciones.forEach((item) => {
-      const key = `${item.nivelEducativo ?? ""}-${item.grado ?? ""}-${item.seccion ?? ""}`;
-      if (!grouped.has(key)) {
-        grouped.set(key, {
-          nivel: item.nivelEducativo ?? "",
-          grado: item.grado,
-          seccion: item.seccion,
-          alumnos: new Set<string>(),
-          cursos: new Set<string>()
-        });
-      }
+      const key = salonKey(item.grado, item.seccion);
+      if (!key) return;
+      if (!grouped.has(key)) grouped.set(key, { key, alumnos: new Set<string>(), cursos: new Map() });
       const current = grouped.get(key)!;
       if (item.alumnoDni) current.alumnos.add(item.alumnoDni);
-      if (item.curso) current.cursos.add(item.curso);
+      if (item.curso) {
+        const list = current.cursos.get(item.curso) ?? [];
+        list.push({ grado: item.grado, seccion: item.seccion, nivel: item.nivelEducativo });
+        current.cursos.set(item.curso, list);
+      }
     });
 
-    return Array.from(grouped.values()).map((item) => {
-      const cursos = Array.from(item.cursos);
-      const cursosWithCompetencias = cursos.map((curso) => {
-        const isSec = (item.nivel || "").toUpperCase().includes("SECUNDARIA");
-        const competenciasMap = isSec ? academicoConfig?.competenciasPorCursoSecundaria ?? {} : academicoConfig?.competenciasPorCursoPrimaria ?? {};
-        const competenciasCatalog = isSec ? academicoConfig?.competenciasSecundaria ?? [] : academicoConfig?.competenciasPrimaria ?? [];
-        const ids: string[] = competenciasMap[curso] ?? [];
-        const competencias = competenciasCatalog.filter((c) => ids.includes(c.id)).map((c) => ({ id: c.id, label: c.label }));
-        return { curso, competencias };
+    const orden = (k: string) => {
+      const idx = SALON_ORDER.indexOf(k);
+      return idx === -1 ? SALON_ORDER.length : idx;
+    };
+
+    return Array.from(grouped.values())
+      .sort((a, b) => orden(a.key) - orden(b.key))
+      .map((item) => {
+        const cursos = Array.from(item.cursos.entries()).map(([curso, contextos]) => {
+          const comps = new Map<string, { label: string; index: number }>();
+          contextos.forEach((ctx) => {
+            const isSec = (ctx.nivel || "").toUpperCase().includes("SECUNDARIA") || (ctx.grado ?? "").endsWith("_SECUNDARIA");
+            const ids: string[] = (isSec ? academicoConfig?.competenciasPorCursoSecundaria : academicoConfig?.competenciasPorCursoPrimaria)?.[curso] ?? [];
+            const catalogo = isSec ? academicoConfig?.competenciasSecundaria ?? [] : academicoConfig?.competenciasPrimaria ?? [];
+            const mapping = normalizeDocentesPorCompetencia((isSec ? academicoConfig?.docentesPorCompetenciaSecundaria : academicoConfig?.docentesPorCompetencia) as any);
+            ids.forEach((id, index) => {
+              if (comps.has(id)) return;
+              if (!tieneAccesoCompetencia(mapping, ctx.grado, ctx.seccion, curso, id, docenteDni)) return;
+              const c = catalogo.find((x) => x.id === id);
+              if (c) comps.set(id, { label: c.label, index });
+            });
+          });
+          const vistos = new Set<string>();
+          const competencias = Array.from(comps.entries())
+            .sort((a, b) => a[1].index - b[1].index)
+            .filter(([, v]) => {
+              const k = v.label.trim().toLowerCase();
+              if (vistos.has(k)) return false;
+              vistos.add(k);
+              return true;
+            })
+            .map(([id, v]) => ({ id, label: competenciaConAbreviatura(v.label, v.index) }));
+          return { curso, competencias };
+        });
+        return {
+          key: item.key,
+          salon: salonLabel(item.key),
+          alumnoCount: item.alumnos.size,
+          cursoCount: cursos.length,
+          cursos
+        };
       });
-
-      const gradoLabel = item.grado ? labelFromEnum(item.grado.replace(/_PRIMARIA|_SECUNDARIA/g, "")) : "Sin grado";
-      const grupoLabel = item.seccion ? GRUPO_LABELS[item.seccion] : undefined;
-
-      return {
-        ...item,
-        salon: grupoLabel ? `${gradoLabel} · ${grupoLabel}` : gradoLabel,
-        nivel: item.nivel ? labelFromEnum(item.nivel) : "Sin nivel",
-        alumnoCount: item.alumnos.size,
-        cursoCount: item.cursos.size,
-        cursos: cursosWithCompetencias
-      };
-    });
-  }, [asignaciones]);
-
-  const cursosTotales = useMemo(() => Array.from(new Set(asignaciones.map((item) => item.curso))).filter(Boolean), [asignaciones]);
+  }, [asignaciones, academicoConfig, docenteDni]);
 
   return (
     <div className="grid gap-4">
@@ -84,13 +126,13 @@ export function DocenteCursos({ token }: { token: string }) {
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-[18px] border border-monserrat-ink/10 bg-white p-5 ">
           <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">Cursos activos</p>
-          <p className="mt-4 text-3xl font-black text-monserrat-ink">{cursosTotales.length}</p>
+          <p className="mt-4 text-3xl font-black text-monserrat-ink">{new Set(salones.flatMap((s) => s.cursos.map((c) => c.curso))).size}</p>
           <p className="mt-2 text-sm text-monserrat-ink/60">Cursos diferentes que atiendes.</p>
         </div>
         <div className="rounded-[18px] border border-monserrat-ink/10 bg-white p-5 ">
-          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">Grados asignados</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">Salones asignados</p>
           <p className="mt-4 text-3xl font-black text-monserrat-ink">{salones.length}</p>
-          <p className="mt-2 text-sm text-monserrat-ink/60">Grados (y grupos) que atiendes.</p>
+          <p className="mt-2 text-sm text-monserrat-ink/60">Salones que atiendes.</p>
         </div>
         <div className="rounded-[18px] border border-monserrat-ink/10 bg-white p-5 ">
           <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">Alumnos totales</p>
@@ -103,36 +145,48 @@ export function DocenteCursos({ token }: { token: string }) {
         {salones.length === 0 ? (
           <div className="rounded-[18px] border border-monserrat-ink/10 bg-[#f2f2f1] p-5 text-sm text-monserrat-ink/60">No hay grados asignados.</div>
         ) : (
-          salones.map((salon) => (
-            <div key={`${salon.salon}-${salon.nivel}`} className="rounded-[18px] border border-monserrat-ink/10 bg-white p-5 ">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm font-black uppercase tracking-[0.14em] text-monserrat-ink/40">{salon.salon || "Salón"}</p>
-                  <p className="mt-2 text-xl font-black text-monserrat-ink">{salon.nivel}</p>
-                </div>
-                <div className="flex gap-2 text-sm text-monserrat-ink/60">
-                  <span>{salon.alumnoCount} alumnos</span>
-                  <span>{salon.cursoCount} cursos</span>
-                </div>
-              </div>
-              <div className="mt-4 grid gap-2">
-                {salon.cursos.map((c: any) => (
-                  <div key={c.curso} className="flex flex-col gap-2 rounded-[10px] border border-monserrat-ink/8 bg-[#f2f2f1] p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="font-black text-monserrat-ink">{labelFromEnum(c.curso)}</div>
-                      <div className="text-sm text-monserrat-ink/60">{(c.competencias || []).length} competencias</div>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {(c.competencias || []).slice(0, 6).map((comp: any) => (
-                        <span key={comp.id} className="rounded-full bg-white/70 px-2 py-1 text-xs font-semibold text-monserrat-ink border border-monserrat-ink/8">{comp.label}</span>
-                      ))}
-                      {(c.competencias || []).length > 6 && <span className="text-xs text-monserrat-ink/50">+{(c.competencias || []).length - 6} más</span>}
-                    </div>
+          salones.map((salon) => {
+            const abierto = abiertos[salon.key] ?? false;
+            return (
+              <div key={salon.key} className="rounded-[18px] border border-monserrat-ink/10 bg-white p-5 ">
+                <button
+                  type="button"
+                  onClick={() => setAbiertos((cur) => ({ ...cur, [salon.key]: !abierto }))}
+                  className="flex w-full flex-wrap items-center justify-between gap-4 text-left"
+                  aria-expanded={abierto}
+                >
+                  <div className="flex items-center gap-2">
+                    {abierto ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                    <p className="text-xl font-black text-monserrat-ink">{salon.salon}</p>
                   </div>
-                ))}
+                  <div className="flex gap-3 text-sm text-monserrat-ink/60">
+                    <span>{salon.alumnoCount} alumnos</span>
+                    <span>{salon.cursoCount} cursos</span>
+                  </div>
+                </button>
+                {abierto && (
+                  <div className="mt-4 grid gap-2">
+                    {salon.cursos.map((c) => (
+                      <details key={c.curso} className="rounded-[10px] border border-monserrat-ink/8 bg-[#f2f2f1] p-3">
+                        <summary className="flex cursor-pointer items-center justify-between gap-2">
+                          <span className="font-black text-monserrat-ink">{labelFromEnum(c.curso)}</span>
+                          <span className="text-sm text-monserrat-ink/60">{c.competencias.length} competencias</span>
+                        </summary>
+                        <ul className="mt-3 grid gap-1.5">
+                          {c.competencias.length === 0 && <li className="text-xs text-monserrat-ink/50">Sin competencias asignadas.</li>}
+                          {c.competencias.map((comp) => (
+                            <li key={comp.id} className="rounded-[8px] border border-monserrat-ink/8 bg-white/70 px-2.5 py-1.5 text-xs font-semibold text-monserrat-ink">
+                              {comp.label}
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

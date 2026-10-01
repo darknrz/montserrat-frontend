@@ -157,6 +157,21 @@ export function DocentePerfil({ token }: { token: string }) {
     }
   };
 
+  const handlePhotoDelete = async () => {
+    if (!token || !perfil?.fotoUrl) return;
+    setIsUploading(true);
+    setStatus(null);
+    try {
+      const updated = await monserratApi.updatePerfilAcademico(buildProfilePayload({ fotoUrl: "" }), token);
+      setPerfil({ ...updated, fotoUrl: updated.fotoUrl || undefined });
+      setStatus("Foto de perfil eliminada correctamente.");
+    } catch (error) {
+      setStatus(String(error));
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   if (!perfil) {
     return <div className="rounded-xl bg-white p-4">Cargando perfil del docente...</div>;
   }
@@ -189,6 +204,16 @@ export function DocentePerfil({ token }: { token: string }) {
                   <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={isUploading} />
                   {isUploading ? "Subiendo..." : "Cambiar foto"}
                 </label>
+                {perfil.fotoUrl && (
+                  <button
+                    type="button"
+                    onClick={handlePhotoDelete}
+                    disabled={isUploading}
+                    className="rounded-[999px] border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-60"
+                  >
+                    Eliminar foto
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setIsEditing((value) => !value)}

@@ -6,7 +6,6 @@ import type { AsignacionAcademica, AsistenciaAcademica, LoginResponse, NotaAcade
 import { SectionHeader } from "../ui/SectionHeader";
 import DocentePerfil from "./docente/DocentePerfil";
 import DocenteCursos from "./docente/DocenteCursos";
-import DocenteAsistencias from "./docente/DocenteAsistencias";
 import DocenteNotas from "./docente/DocenteNotas";
 import AlumnoPerfil from "./alumno/AlumnoPerfil";
 import AlumnoCursos from "./alumno/AlumnoCursos";
@@ -165,7 +164,7 @@ export function PortalAcademicoPage() {
   const tabs = [
     { id: "perfil" as const, label: "Perfil", icon: UserRound, visible: true },
     { id: "cursos" as const, label: "Cursos", icon: BookOpen, visible: isDocente || isAlumno },
-    { id: "asistencia" as const, label: "Asistencia", icon: ClipboardCheck, visible: isDocente || isAlumno },
+    { id: "asistencia" as const, label: "Asistencia", icon: ClipboardCheck, visible: isAlumno },
     { id: "notas" as const, label: "Notas", icon: GraduationCap, visible: true },
     { id: "pension" as const, label: "Pagos", icon: WalletCards, visible: isAlumno }
   ].filter((item) => item.visible);
@@ -264,7 +263,7 @@ export function PortalAcademicoPage() {
             )}
 
             {tab === "asistencia" && (
-              isDocente ? <DocenteAsistencias token={token} /> : <AlumnoAsistencias token={token} />
+              <AlumnoAsistencias token={token} />
             )}
 
             {tab === "notas" && (

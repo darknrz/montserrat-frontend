@@ -17,7 +17,8 @@ import {
   NIVELES,
   defaultGrado,
   aulaPorGradoSeccion,
-  labelFromEnum,
+  formatGrado,
+  formatSalon,
   type AcademicoConfig,
   getGruposPorGrado,
   GRUPO_LABELS,
@@ -182,20 +183,29 @@ export function AsignacionesTab({
     return selected?.nombre ?? profesoresDelAula[0]?.docenteNombre ?? "Sin tutor";
   }, [docentesSecundaria, profesoresDelAula, tutorSecundariaDni]);
 
+  const esInicial = asignacionAcademicaForm.nivelEducativo === "INICIAL";
+
+  // PRIMARIA e INICIAL comparten la misma estructura; cada nivel usa su propio catalogo.
+  const cursosBasicosCfg = esInicial ? academicoConfig.cursosInicial ?? [] : academicoConfig.cursosPrimaria;
+  const competenciasBasicasCfg = esInicial ? academicoConfig.competenciasInicial ?? [] : academicoConfig.competenciasPrimaria;
+  const gradosBasicosCfg = esInicial ? academicoConfig.gradosInicial ?? [] : academicoConfig.gradosPrimaria;
+  const competenciasPorCursoKey = esInicial ? "competenciasPorCursoInicial" : "competenciasPorCursoPrimaria";
+  const docentesPorCompetenciaKey = esInicial ? "docentesPorCompetenciaInicial" : "docentesPorCompetencia";
+
   const cursosPrimariaActivos = useMemo(
-    () => academicoConfig.cursosPrimaria.filter((item) => item.active).map((item) => item.id),
-    [academicoConfig.cursosPrimaria]
+    () => cursosBasicosCfg.filter((item) => item.active).map((item) => item.id),
+    [cursosBasicosCfg]
   );
 
   const competenciasPrimaria = useMemo(
-    () => academicoConfig.competenciasPrimaria.filter((item) => item.active),
-    [academicoConfig.competenciasPrimaria]
+    () => competenciasBasicasCfg.filter((item) => item.active),
+    [competenciasBasicasCfg]
   );
 
   // Mapa curso -> ids de competencias vinculadas a esa área curricular.
   // Cada competencia solo puede estar en UN curso a la vez (ver
   // toggleCompetenciaForCurso más abajo, que garantiza esa exclusividad).
-  const competenciasPorCurso = academicoConfig.competenciasPorCursoPrimaria ?? {};
+  const competenciasPorCurso = academicoConfig[competenciasPorCursoKey] ?? {};
 
   // Competencias vinculadas al área curricular seleccionada (columna 3).
   // Si el área no tiene ninguna vinculada, queda vacía y se ofrece "Vincular".
@@ -264,8 +274,8 @@ export function AsignacionesTab({
 
   // Asignación docente por (grado, curso, competencia) -> lista de dnis, vive en academicoConfig
   const docentesPorCompetencia = useMemo(
-    () => normalizeDocentesPorCompetencia(academicoConfig.docentesPorCompetencia as Record<string, string | string[]> | undefined),
-    [academicoConfig.docentesPorCompetencia]
+    () => normalizeDocentesPorCompetencia(academicoConfig[docentesPorCompetenciaKey] as Record<string, string | string[]> | undefined),
+    [academicoConfig, docentesPorCompetenciaKey]
   );
 
   const claveActual = useMemo(
@@ -311,11 +321,11 @@ export function AsignacionesTab({
     const aula = matchingSalon ? matchingSalon.aula : aulaPorGradoSeccion(nivel, grado, seccion);
     setAulaNumero(aula);
 
-    if (nivel === "PRIMARIA") {
-      const curso = asignacionAcademicaForm.curso || cursosActivosPorNivel("PRIMARIA")[0] || "MATEMATICA";
+    if (nivel === "PRIMARIA" || nivel === "INICIAL") {
+      const curso = asignacionAcademicaForm.curso || cursosActivosPorNivel(nivel)[0] || "MATEMATICA";
       setAsignacionAcademicaForm({
         ...asignacionAcademicaForm,
-        nivelEducativo: "PRIMARIA",
+        nivelEducativo: nivel,
         grado,
         seccion,
         curso,
@@ -467,7 +477,7 @@ export function AsignacionesTab({
     }
 
     map[curso] = Array.from(destino);
-    saveAcademicoConfig({ ...academicoConfig, competenciasPorCursoPrimaria: map });
+    saveAcademicoConfig({ ...academicoConfig, [competenciasPorCursoKey]: map });
   };
 
   const labelDocenteAsignado = (dni: string) => docenteNombrePorDni.get(dni) ?? dni;
@@ -475,7 +485,7 @@ export function AsignacionesTab({
   const asignarDocenteParaCompetencia = (competenciaId: string, docenteDni: string) => {
     if (!asignacionAcademicaForm.grado || !asignacionAcademicaForm.curso) return;
     const key = claveEfectiva(asignacionAcademicaForm.curso, competenciaId);
-    const next = { ...(academicoConfig.docentesPorCompetencia ?? {}) };
+    const next = { ...(academicoConfig[docentesPorCompetenciaKey] ?? {}) };
     const current = normalizeDocentesPorCompetencia(next as Record<string, string | string[]> | undefined)[key] ?? [];
 
     let nextDnis: string[];
@@ -494,7 +504,7 @@ export function AsignacionesTab({
     } else {
       delete next[key];
     }
-    saveAcademicoConfig({ ...academicoConfig, docentesPorCompetencia: next });
+    saveAcademicoConfig({ ...academicoConfig, [docentesPorCompetenciaKey]: next });
   };
 
   // Igual que toggleCompetenciaForCurso pero para SECUNDARIA.
@@ -551,7 +561,7 @@ export function AsignacionesTab({
 
   const handleGradoSelect = (gradoId: string) => {
     const seccion = "A";
-    const nivel = "PRIMARIA";
+    const nivel = esInicial ? "INICIAL" : "PRIMARIA";
     setAsignacionAcademicaForm({
       ...asignacionAcademicaForm,
       nivelEducativo: nivel,
@@ -594,8 +604,8 @@ export function AsignacionesTab({
 
   const esSecundaria = asignacionAcademicaForm.nivelEducativo === "SECUNDARIA";
 
-  const cambiarNivel = (nivel: "PRIMARIA" | "SECUNDARIA") => {
-    const grado = gradosActivosPorNivel(nivel)[0] ?? (nivel === "PRIMARIA" ? "PRIMERO_PRIMARIA" : "PRIMERO_SECUNDARIA");
+  const cambiarNivel = (nivel: "INICIAL" | "PRIMARIA" | "SECUNDARIA") => {
+    const grado = gradosActivosPorNivel(nivel)[0] ?? defaultGrado(nivel);
     const curso = asignacionAcademicaForm.curso || cursosActivosPorNivel(nivel)[0] || "MATEMATICA";
 
     setAsignacionAcademicaForm({
@@ -605,7 +615,7 @@ export function AsignacionesTab({
       curso,
     });
 
-    if (nivel === "PRIMARIA") {
+    if (nivel !== "SECUNDARIA") {
       setSelectedCompetenciaPorCurso({});
     } else {
       setSelectedCompetenciaPorCursoSecundaria({});
@@ -617,26 +627,22 @@ export function AsignacionesTab({
     <div className="flex flex-col">
       {/* Selector de Nivel */}
       <div className="flex gap-3 pb-4 border-b border-monserrat-ink/10 mb-4 flex-none">
-        <button
-          onClick={() => cambiarNivel("PRIMARIA")}
-          className={`px-5 py-2 rounded-xl text-xs font-black tracking-wide uppercase transition-all duration-300 ${
-            !esSecundaria
-              ? "bg-monserrat-red text-white shadow-md shadow-monserrat-red/10 scale-105"
-              : "bg-monserrat-cream/40 text-monserrat-ink/60 border border-monserrat-ink/8 hover:bg-monserrat-cream/70 hover:text-monserrat-ink"
-          }`}
-        >
-          Primaria
-        </button>
-        <button
-          onClick={() => cambiarNivel("SECUNDARIA")}
-          className={`px-5 py-2 rounded-xl text-xs font-black tracking-wide uppercase transition-all duration-300 ${
-            esSecundaria
-              ? "bg-monserrat-red text-white shadow-md shadow-monserrat-red/10 scale-105"
-              : "bg-monserrat-cream/40 text-monserrat-ink/60 border border-monserrat-ink/8 hover:bg-monserrat-cream/70 hover:text-monserrat-ink"
-          }`}
-        >
-          Secundaria
-        </button>
+        {NIVELES.map((nivel) => {
+          const activo = asignacionAcademicaForm.nivelEducativo === nivel;
+          return (
+            <button
+              key={nivel}
+              onClick={() => cambiarNivel(nivel)}
+              className={`px-5 py-2 rounded-xl text-xs font-black tracking-wide uppercase transition-all duration-300 ${
+                activo
+                  ? "bg-monserrat-red text-white shadow-md shadow-monserrat-red/10 scale-105"
+                  : "bg-monserrat-cream/40 text-monserrat-ink/60 border border-monserrat-ink/8 hover:bg-monserrat-cream/70 hover:text-monserrat-ink"
+              }`}
+            >
+              {nivel === "INICIAL" ? "Inicial" : nivel === "PRIMARIA" ? "Primaria" : "Secundaria"}
+            </button>
+          );
+        })}
       </div>
 
       <div className="grid gap-5 pt-4">
@@ -651,8 +657,8 @@ export function AsignacionesTab({
                   .filter((g) => g.active)
                   .map((grado) => ({
                     id: grado.id,
-                    title: labelAcademico(grado.id),
-                    detail: grado.label,
+                    title: formatGrado(grado.id),
+                    detail: formatSalon(grado.id, null) || "Salón según grupo",
                     raw: grado.id,
                   }))}
                 selectedId={asignacionAcademicaForm.grado}
@@ -703,12 +709,12 @@ export function AsignacionesTab({
               <RosterPanel
                 title="Grados"
                 empty="No hay grados activos"
-                rows={academicoConfig.gradosPrimaria
+                rows={gradosBasicosCfg
                   .filter((g) => g.active)
                   .map((grado) => ({
                     id: grado.id,
-                    title: labelAcademico(grado.id),
-                    detail: grado.label,
+                    title: formatGrado(grado.id),
+                    detail: formatSalon(grado.id, null) || "Salón según grupo",
                     raw: grado.id,
                   }))}
                 selectedId={asignacionAcademicaForm.grado}

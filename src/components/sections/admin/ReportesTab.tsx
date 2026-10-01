@@ -2,7 +2,7 @@ import { Download, X, User, Users, GraduationCap, Building2, FileText, CheckCirc
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { NotaAcademica, UsuarioAcademico } from "../../../types";
 import { monserratApi } from "../../../api/monserrat";
-import { getGradosPorNivelAcademico, type AcademicoConfig } from "./adminShared";
+import { GRADOS_INICIAL, GRADOS_PRIMARIA_SOLO, GRADOS_SECUNDARIA, SALONES, formatGrado, formatSalon, type AcademicoConfig } from "./adminShared";
 
 type ReportType = "individual" | "porGrado" | "porNivelAcademico" | "porNivelEducativo" | "general";
 
@@ -101,8 +101,8 @@ const REPORT_OPTIONS: {
 }[] = [
   { value: "individual", label: "Individual", description: "Reporte de un solo alumno", icon: User },
   { value: "porGrado", label: "Por grado", description: "Todos los alumnos de un grado", icon: Users },
-  { value: "porNivelEducativo", label: "Nivel educativo", description: "Primaria o secundaria", icon: GraduationCap },
-  { value: "porNivelAcademico", label: "Nivel académico", description: "1ro prim, 2do prim, 3ro prim, etc.", icon: GraduationCap },
+  { value: "porNivelEducativo", label: "Nivel educativo", description: "Inicial, primaria o secundaria", icon: GraduationCap },
+  { value: "porNivelAcademico", label: "Salón", description: "Ciencias, Letras, Anual, Ciclado, etc.", icon: GraduationCap },
   { value: "general", label: "General", description: "Toda la institución", icon: Building2 },
 ];
 
@@ -171,15 +171,24 @@ export function ReportesTab({
     (u) => u.rol === "ALUMNO" && (u.activo || u.estado === "ACTIVO")
   );
 
-  const gradosUnicos = Array.from(new Set(alumnosActivos.map((a) => a.grado).filter(Boolean)));
+  // Todos los grados en formato estandar (Inicial, 1ro Prim ... 5to Sec).
+  const gradosUnicos: string[] = [...GRADOS_INICIAL, ...GRADOS_PRIMARIA_SOLO, ...GRADOS_SECUNDARIA];
 
   const nivelesEducativos = [
+    { id: "INICIAL", label: "Inicial" },
     { id: "PRIMARIA", label: "Primaria" },
     { id: "SECUNDARIA", label: "Secundaria" },
   ];
 
-  const nivelesAcademicosConfigurados = academicoConfig.nivelesAcademicos ?? [];
-  const nivelesAcademicosFiltrados = nivelesAcademicosConfigurados;
+  const perteneceANivel = (a: UsuarioAcademico, nivel: string) => {
+    if (nivel === "INICIAL") return a.grado === "INICIAL" || a.nivelEducativo === "INICIAL";
+    if (nivel === "PRIMARIA") return Boolean(a.grado?.endsWith("_PRIMARIA"));
+    return Boolean(a.grado?.endsWith("_SECUNDARIA"));
+  };
+
+  // "Salón" (antes "Nivel académico"): lista oficial de salones; Ciencias y Letras van separados.
+  const salonesConfigurados = SALONES.map((salon) => ({ id: salon as string, label: salon as string }));
+  const salonDeAlumno = (a: UsuarioAcademico) => formatSalon(a.grado, a.seccion);
 
   const getAlumnosFiltrados = () => {
     let filtered = [...alumnosActivos];
@@ -190,15 +199,10 @@ export function ReportesTab({
       return selectedGrado ? filtered.filter((a) => a.grado === selectedGrado) : [];
     } else if (reportType === "porNivelEducativo") {
       if (!selectedNivelEducativo) return [];
-      return filtered.filter((a) =>
-        selectedNivelEducativo === "PRIMARIA"
-          ? a.grado?.endsWith("_PRIMARIA")
-          : a.grado?.endsWith("_SECUNDARIA")
-      );
+      return filtered.filter((a) => perteneceANivel(a, selectedNivelEducativo));
     } else if (reportType === "porNivelAcademico") {
       if (!selectedNivelAcademico) return [];
-      const gradosDelNivel = getGradosPorNivelAcademico(selectedNivelAcademico);
-      return filtered.filter((a) => a.grado && gradosDelNivel.includes(a.grado));
+      return filtered.filter((a) => salonDeAlumno(a) === selectedNivelAcademico);
     }
     return filtered;
   };
@@ -271,13 +275,12 @@ export function ReportesTab({
       const alumno = alumnosActivos.find((a) => a.dni === selectedAlumno);
       return `Reporte_${alumno?.nombre}_${fecha}.pdf`;
     } else if (reportType === "porGrado") {
-      return `Reporte_Grado_${selectedGrado}_${fecha}.pdf`;
+      return `Reporte_Grado_${formatGrado(selectedGrado)}_${fecha}.pdf`;
     } else if (reportType === "porNivelEducativo") {
       const nivel = nivelesEducativos.find((n) => n.id === selectedNivelEducativo);
       return `Reporte_${nivel?.label}_${fecha}.pdf`;
     } else if (reportType === "porNivelAcademico") {
-      const nivelAcademico = nivelesAcademicosConfigurados.find((n) => n.id === selectedNivelAcademico);
-      return `Reporte_${nivelAcademico?.label ?? "NivelAcademico"}_${fecha}.pdf`;
+      return `Reporte_Salon_${selectedNivelAcademico || "Salon"}_${fecha}.pdf`;
     }
     return `Reporte_General_${fecha}.pdf`;
   };
@@ -313,39 +316,34 @@ export function ReportesTab({
         grado: grado as string,
         count: alumnosActivos.filter((a) => a.grado === grado).length,
       })),
-    [gradosUnicos, alumnosActivos]
+    [alumnosActivos]
   );
 
   const nivelesEducativosConConteo = useMemo(
     () =>
       nivelesEducativos.map((n) => ({
         ...n,
-        count: alumnosActivos.filter((a) =>
-          n.id === "PRIMARIA" ? a.grado?.endsWith("_PRIMARIA") : a.grado?.endsWith("_SECUNDARIA")
-        ).length,
+        count: alumnosActivos.filter((a) => perteneceANivel(a, n.id)).length,
       })),
     [alumnosActivos]
   );
 
   const nivelesAcademicosConConteo = useMemo(
     () =>
-      nivelesAcademicosFiltrados.map((n) => {
-        const gradosDelNivel = getGradosPorNivelAcademico(n.id);
-        return {
-          ...n,
-          count: alumnosActivos.filter((a) => a.grado && gradosDelNivel.includes(a.grado)).length,
-        };
-      }),
-    [nivelesAcademicosFiltrados, alumnosActivos]
+      salonesConfigurados.map((n) => ({
+        ...n,
+        count: alumnosActivos.filter((a) => salonDeAlumno(a) === n.id).length,
+      })),
+    [alumnosActivos]
   );
 
   const resumenAlcance = (() => {
     if (reportType === "individual") return alumnoSeleccionado?.nombre ?? null;
-    if (reportType === "porGrado") return selectedGrado || null;
+    if (reportType === "porGrado") return selectedGrado ? formatGrado(selectedGrado) : null;
     if (reportType === "porNivelEducativo")
       return nivelesEducativos.find((n) => n.id === selectedNivelEducativo)?.label ?? null;
     if (reportType === "porNivelAcademico")
-      return nivelesAcademicosConfigurados.find((n) => n.id === selectedNivelAcademico)?.label ?? null;
+      return selectedNivelAcademico || null;
     return "Toda la institución";
   })();
 
@@ -414,7 +412,7 @@ export function ReportesTab({
                 {reportType === "individual" && "Busca al alumno"}
                 {reportType === "porGrado" && "Selecciona el grado"}
                 {reportType === "porNivelEducativo" && "Selecciona el nivel educativo"}
-                {reportType === "porNivelAcademico" && "Selecciona el nivel académico"}
+                {reportType === "porNivelAcademico" && "Selecciona el salón"}
                 {reportType === "general" && "Alcance del reporte"}
               </h3>
               {necesitaSeleccion && (
@@ -441,7 +439,7 @@ export function ReportesTab({
                         <div>
                           <div className="text-sm font-bold text-monserrat-ink">{alumnoSeleccionado.nombre}</div>
                           <div className="text-xs text-monserrat-ink/50">
-                            DNI {alumnoSeleccionado.dni} · {alumnoSeleccionado.grado}
+                            DNI {alumnoSeleccionado.dni} · {formatGrado(alumnoSeleccionado.grado)}
                           </div>
                         </div>
                       </div>
@@ -495,7 +493,7 @@ export function ReportesTab({
                                   <div className="text-xs text-monserrat-ink/45">DNI {alumno.dni}</div>
                                 </div>
                                 <span className="shrink-0 rounded-full bg-monserrat-ink/8 px-2 py-0.5 text-[10px] font-bold text-monserrat-ink/60">
-                                  {alumno.grado}
+                                  {formatGrado(alumno.grado)}
                                 </span>
                               </button>
                             ))
@@ -522,7 +520,7 @@ export function ReportesTab({
                         }`}
                       >
                         <span className={`text-sm font-semibold ${isSelected ? "text-monserrat-red" : "text-monserrat-ink"}`}>
-                          {grado}
+                          {formatGrado(grado)}
                         </span>
                         <span className="flex items-center gap-2">
                           <span className="text-xs text-monserrat-ink/45">{count} alum.</span>
@@ -589,7 +587,7 @@ export function ReportesTab({
                     );
                   })}
                   {nivelesAcademicosConConteo.length === 0 && (
-                    <p className="p-3 text-xs text-monserrat-ink/50">No hay niveles académicos configurados.</p>
+                    <p className="p-3 text-xs text-monserrat-ink/50">No hay salones configurados.</p>
                   )}
                 </div>
               )}
@@ -715,7 +713,11 @@ function dibujarReporte(
   const esSecundaria = (alumno.nivelEducativo ?? "").toUpperCase() === "SECUNDARIA"
     || (alumno.grado ?? "").endsWith("_SECUNDARIA");
 
-  const cursosPrimaria = (academicoConfig.cursosPrimaria ?? []).filter((c) => c.active);
+  const esInicial = (alumno.nivelEducativo ?? "").toUpperCase() === "INICIAL" || alumno.grado === "INICIAL";
+  const cursosPrimaria = [
+    ...(academicoConfig.cursosPrimaria ?? []),
+    ...(esInicial ? academicoConfig.cursosInicial ?? [] : []),
+  ].filter((c) => c.active);
   const cursosSecundaria = (academicoConfig.cursosSecundaria ?? []).filter((c) => c.active);
   const cursosMap = new Map<string, (typeof cursosPrimaria)[number]>();
   cursosPrimaria.forEach((curso) => cursosMap.set(curso.id, curso));
@@ -728,10 +730,16 @@ function dibujarReporte(
 
   const competenciasPorCursoPrimaria = academicoConfig.competenciasPorCursoPrimaria ?? {};
   const competenciasPorCursoSecundaria = academicoConfig.competenciasPorCursoSecundaria ?? {};
-  const competenciasPorCursoActual = esSecundaria ? competenciasPorCursoSecundaria : competenciasPorCursoPrimaria;
+  const competenciasPorCursoActual = esSecundaria
+    ? competenciasPorCursoSecundaria
+    : esInicial
+      ? academicoConfig.competenciasPorCursoInicial ?? {}
+      : competenciasPorCursoPrimaria;
   const catalogoCompetenciasActual = esSecundaria
     ? (academicoConfig.competenciasSecundaria ?? [])
-    : (academicoConfig.competenciasPrimaria ?? []);
+    : esInicial
+      ? (academicoConfig.competenciasInicial ?? [])
+      : (academicoConfig.competenciasPrimaria ?? []);
 
   const buscarNota = (cursoId: string, competenciaId: string, periodo: string) =>
     notasAlumno.find(
@@ -740,7 +748,7 @@ function dibujarReporte(
 
   const anioLectivo = new Date().getFullYear();
   const gradoTexto = gradoOrdinal(alumno.grado);
-  const nivelTexto = alumno.nivelEducativo ?? (esSecundaria ? "SECUNDARIA" : "PRIMARIA");
+  const nivelTexto = alumno.nivelEducativo ?? (esSecundaria ? "SECUNDARIA" : esInicial ? "INICIAL" : "PRIMARIA");
 
   // --- Estilos base (compartidos) -----------------------------------
   const baseStyles = {

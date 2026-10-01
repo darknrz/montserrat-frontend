@@ -2,6 +2,7 @@ import { CheckCircle2, XCircle } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { monserratApi } from "../../../api/monserrat";
 import type { Matricula, UsuarioAcademico } from "../../../types";
+import { formatGrado, formatSalon } from "./adminShared";
 
 type MatriculaTabProps = {
   usuariosAcademicos: UsuarioAcademico[];
@@ -65,7 +66,8 @@ export function MatriculaTab({
         ) {
           return false;
         }
-        if (nivelFiltro && alumno.nivelEducativo !== nivelFiltro) return false;
+        const nivelAlumno = alumno.grado === "INICIAL" ? "INICIAL" : alumno.nivelEducativo;
+        if (nivelFiltro && nivelAlumno !== nivelFiltro) return false;
         if (gradoFiltro && alumno.grado !== gradoFiltro) return false;
         return true;
       })
@@ -89,6 +91,7 @@ export function MatriculaTab({
   );
 
   const guardar = async (alumno: UsuarioAcademico, patch: { pagada?: boolean; monto?: number | null }) => {
+    if (patch.monto != null && patch.monto < 0) patch = { ...patch, monto: 0 };
     const actual = matriculaPorAlumno.get(alumno.dni);
     const base = pendientePorAlumno.current.get(alumno.dni) ?? {
       monto: actual?.monto ?? null,
@@ -115,7 +118,11 @@ export function MatriculaTab({
     }
   };
 
-  const gradosDelNivel = nivelFiltro ? gradosActivosPorNivel(nivelFiltro) : [];
+  const gradosDelNivel = nivelFiltro === "INICIAL"
+    ? ["INICIAL"]
+    : nivelFiltro
+      ? gradosActivosPorNivel(nivelFiltro).filter((g) => g !== "INICIAL")
+      : [];
 
   return (
     <div className="grid gap-4">
@@ -145,6 +152,7 @@ export function MatriculaTab({
             className="admin-input"
           >
             <option value="">Todos los niveles</option>
+            <option value="INICIAL">Inicial</option>
             <option value="PRIMARIA">Primaria</option>
             <option value="SECUNDARIA">Secundaria</option>
           </select>
@@ -157,7 +165,7 @@ export function MatriculaTab({
             <option value="">Todos los grados</option>
             {gradosDelNivel.map((g) => (
               <option key={g} value={g}>
-                {labelAcademico(g)}
+                {formatGrado(g) || labelAcademico(g)}
               </option>
             ))}
           </select>
@@ -202,6 +210,7 @@ export function MatriculaTab({
               <tr className="border-b border-monserrat-ink/8 text-left">
                 <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-monserrat-ink/40">Alumno</th>
                 <th className="px-3 py-2.5 text-[10px] font-black uppercase tracking-wide text-monserrat-ink/40">Grado</th>
+                <th className="px-3 py-2.5 text-[10px] font-black uppercase tracking-wide text-monserrat-ink/40">Salón</th>
                 <th className="w-[140px] px-3 py-2.5 text-[10px] font-black uppercase tracking-wide text-monserrat-ink/40">Monto (S/)</th>
                 <th className="w-[140px] px-3 py-2.5 text-center text-[10px] font-black uppercase tracking-wide text-monserrat-ink/40">Estado</th>
               </tr>
@@ -217,21 +226,25 @@ export function MatriculaTab({
                       <p className="font-black text-monserrat-ink">{alumno.nombre}</p>
                       <p className="text-[11px] text-monserrat-ink/40">{alumno.dni}</p>
                     </td>
-                    <td className="px-3 py-2.5 text-monserrat-ink/60">
-                      {labelAcademico(alumno.grado ?? "")}
-                      {alumno.seccion ? ` · ${alumno.seccion}` : ""}
-                    </td>
+                    <td className="px-3 py-2.5 text-monserrat-ink/60">{formatGrado(alumno.grado)}</td>
+                    <td className="px-3 py-2.5 text-monserrat-ink/60">{formatSalon(alumno.grado, alumno.seccion)}</td>
                     <td className="px-3 py-2.5">
                       <input
                         type="number"
                         min={0}
                         step="0.01"
                         value={montoValor}
-                        onChange={(e) => setMontosBorrador((c) => ({ ...c, [montoKey]: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (e.key === "-" || e.key === "e" || e.key === "E") e.preventDefault();
+                        }}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setMontosBorrador((c) => ({ ...c, [montoKey]: v !== "" && Number(v) < 0 ? "0" : v }));
+                        }}
                         onBlur={() => {
                           const raw = montosBorrador[montoKey];
                           if (raw === undefined) return;
-                          const parsed = raw.trim() === "" ? null : Number(raw);
+                          const parsed = raw.trim() === "" || !Number.isFinite(Number(raw)) ? null : Math.max(0, Number(raw));
                           void guardar(alumno, { monto: parsed });
                         }}
                         className="admin-input h-8 w-full py-0 text-[12px]"

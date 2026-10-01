@@ -1,7 +1,7 @@
 import { Edit3, ImagePlus, Plus, Save, Search, Trash2, Upload, User, UserCheck, UserPlus, BookOpen, Check, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { createCatalogId, aulaPorGradoSeccion, type CatalogItem, type SalonItem } from "./adminShared";
+import { createCatalogId, aulaPorGradoSeccion, competenciaConAbreviatura, formatGrado, SALONES, type CatalogItem, type SalonItem } from "./adminShared";
 
 // Cierra cualquier modal con la tecla Escape. Un solo hook compartido
 // evita repetir el mismo useEffect en cada modal de la app.
@@ -117,6 +117,51 @@ export function RosterPanel({
                 <Edit3 size={12} />
               </button>
             )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Panel de grados: los grados son fijos (formato estandar "1ro Prim"), solo se activan/desactivan.
+export function GradosConfigPanel({ title, items, onChange }: { title: string; items: CatalogItem[]; onChange: (items: CatalogItem[]) => void }) {
+  return (
+    <div className="overflow-hidden rounded-[12px] border border-black/10 bg-white">
+      <div className="border-b border-black/12 bg-[#e9e9e8] px-5 py-4">
+        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">Configuracion</p>
+        <h4 className="font-serif text-xl font-black text-monserrat-ink">{title}</h4>
+      </div>
+      <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+        {items.map((item) => (
+          <div key={item.id} className={`rounded-[12px] border p-4 transition ${item.active ? "border-black/12 bg-white" : "border-black/12 bg-[#eeeeec] opacity-60"}`}>
+            <p className="text-base font-black text-monserrat-ink">{formatGrado(item.id)}</p>
+            <button
+              type="button"
+              onClick={() => onChange(items.map((it) => (it.id === item.id ? { ...it, active: !it.active } : it)))}
+              className={`mt-3 w-full rounded-[9px] border px-3 py-2 text-[11px] font-black ${item.active ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-black/10 bg-black/[0.035] text-monserrat-ink/55"}`}
+            >
+              {item.active ? "Activo" : "Inactivo"}
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Salones oficiales de la institucion (lista fija; no confundir con grados).
+export function SalonesOficialesPanel() {
+  return (
+    <div className="overflow-hidden rounded-[12px] border border-black/10 bg-white">
+      <div className="border-b border-black/12 bg-[#e9e9e8] px-5 py-4">
+        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">Configuracion</p>
+        <h4 className="font-serif text-xl font-black text-monserrat-ink">Salones</h4>
+      </div>
+      <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+        {SALONES.map((salon) => (
+          <div key={salon} className="rounded-[12px] border border-black/12 bg-white p-4">
+            <p className="text-sm font-black uppercase text-monserrat-ink">{salon}</p>
           </div>
         ))}
       </div>
@@ -857,7 +902,7 @@ export function CompetenciaDocenteBoard({
                   onClick={() => onEditCompetencia?.()}
                   className="cursor-pointer px-4 py-3 text-[12.5px] font-semibold text-monserrat-ink/80 transition-all hover:translate-x-0.5 hover:text-monserrat-ink"
                 >
-                  {c.label}
+                  {competenciaConAbreviatura(c.label, i)}
                 </div>
                 <div className="border-l border-monserrat-ink/6 h-full px-4 py-2 flex items-center min-w-0">
                   {dnis.length > 0 ? (

@@ -2,8 +2,11 @@ export const TIPOS_SELECCION = ["Ordinario", "Primera Selección", "Ingreso Espe
 export type TipoSeleccion = typeof TIPOS_SELECCION[number];
 
 export const YEARS = ["2025", "2024", "2023", "2022", "2021"];
-export const NIVELES = ["PRIMARIA", "SECUNDARIA"] as const;
+export const NIVELES = ["INICIAL", "PRIMARIA", "SECUNDARIA"] as const;
+export const GRADOS_INICIAL = ["INICIAL"] as const;
 export const GRADOS_PRIMARIA = ["INICIAL", "PRIMERO_PRIMARIA", "SEGUNDO_PRIMARIA", "TERCERO_PRIMARIA", "CUARTO_PRIMARIA", "QUINTO_PRIMARIA", "SEXTO_PRIMARIA"] as const;
+// Grados de primaria sin INICIAL (INICIAL es un nivel propio).
+export const GRADOS_PRIMARIA_SOLO = GRADOS_PRIMARIA.filter((g) => g !== "INICIAL") as Exclude<typeof GRADOS_PRIMARIA[number], "INICIAL">[];
 export const GRADOS_SECUNDARIA = ["PRIMERO_SECUNDARIA", "SEGUNDO_SECUNDARIA", "TERCERO_SECUNDARIA", "CUARTO_SECUNDARIA", "QUINTO_SECUNDARIA"] as const;
 export const SECCIONES = ["A", "B", "C", "D"] as const;
 export const CURSOS = [
@@ -29,6 +32,10 @@ export type Tab = "institucion" | "ingresantes" | "anuncios" | "videos" | "redes
 export type CatalogItem = { id: string; label: string; active: boolean };
 export type SalonItem = { nivel: string; grado: string; seccion: string; aula: string; active: boolean };
 export type ConfigView =
+  | "inicial-cursos"
+  | "inicial-competencias"
+  | "inicial-grados"
+  | "inicial-salones"
   | "primaria-cursos"
   | "primaria-competencias"
   | "primaria-grados"
@@ -59,6 +66,13 @@ export type AcademicoConfig = {
   docentesPorCompetenciaSecundaria?: Record<string, string | string[]>;
   gradosPrimaria: CatalogItem[];
   gradosSecundaria: CatalogItem[];
+  // Nivel INICIAL (mismas divisiones que primaria/secundaria)
+  cursosInicial?: CatalogItem[];
+  competenciasInicial?: CatalogItem[];
+  competenciasPorCursoInicial?: Record<string, string[]>;
+  docentesPorCompetenciaInicial?: Record<string, string | string[]>;
+  gradosInicial?: CatalogItem[];
+  seccionesInicial?: CatalogItem[];
   seccionesPrimaria: CatalogItem[];
   seccionesSecundaria: CatalogItem[];
   salones: SalonItem[];
@@ -497,11 +511,17 @@ export const defaultAcademicoConfig: AcademicoConfig = {
     CIENCIA_TECNOLOGIA: ["CS27", "CS28", "CS29"]
   },
   docentesPorCompetenciaSecundaria: {},
-  gradosPrimaria: GRADOS_PRIMARIA.map((id) => ({ id, label: labelFromEnum(id), active: true })),
+  cursosInicial: [],
+  competenciasInicial: [],
+  competenciasPorCursoInicial: {},
+  docentesPorCompetenciaInicial: {},
+  gradosInicial: GRADOS_INICIAL.map((id) => ({ id, label: labelFromEnum(id), active: true })),
+  seccionesInicial: SECCIONES.map((id) => ({ id, label: id, active: true })),
+  gradosPrimaria: GRADOS_PRIMARIA_SOLO.map((id) => ({ id, label: labelFromEnum(id), active: true })),
   gradosSecundaria: GRADOS_SECUNDARIA.map((id) => ({ id, label: labelFromEnum(id), active: true })),
   seccionesPrimaria: SECCIONES.map((id) => ({ id, label: id, active: true })),
   seccionesSecundaria: SECCIONES.map((id) => ({ id, label: id, active: true })),
-  salones: [...GRADOS_PRIMARIA.map((grado) => ({ nivel: "PRIMARIA", grado })), ...GRADOS_SECUNDARIA.map((grado) => ({ nivel: "SECUNDARIA", grado }))]
+  salones: [...GRADOS_INICIAL.map((grado) => ({ nivel: "INICIAL", grado })), ...GRADOS_PRIMARIA_SOLO.map((grado) => ({ nivel: "PRIMARIA", grado })), ...GRADOS_SECUNDARIA.map((grado) => ({ nivel: "SECUNDARIA", grado }))]
     .flatMap(({ nivel, grado }) => SECCIONES.map((seccion) => ({ nivel, grado, seccion, aula: aulaPorGradoSeccion(nivel, grado, seccion), active: true }))),
   minAsistenciaPorcentaje: 70,
   ingresantesModelo: "card-grid",
@@ -586,11 +606,22 @@ export function mergeAcademicoConfig(config: Partial<AcademicoConfig>) {
     competenciasSecundaria: config.competenciasSecundaria ?? defaultAcademicoConfig.competenciasSecundaria,
     competenciasPorCursoSecundaria: config.competenciasPorCursoSecundaria ?? defaultAcademicoConfig.competenciasPorCursoSecundaria,
     docentesPorCompetenciaSecundaria: normalizeDocentesPorCompetencia(config.docentesPorCompetenciaSecundaria as Record<string, string | string[]> | undefined) ?? defaultAcademicoConfig.docentesPorCompetenciaSecundaria,
-    gradosPrimaria: config.gradosPrimaria ?? defaultAcademicoConfig.gradosPrimaria,
+    cursosInicial: config.cursosInicial ?? defaultAcademicoConfig.cursosInicial,
+    competenciasInicial: config.competenciasInicial ?? defaultAcademicoConfig.competenciasInicial,
+    competenciasPorCursoInicial: config.competenciasPorCursoInicial ?? defaultAcademicoConfig.competenciasPorCursoInicial,
+    docentesPorCompetenciaInicial: normalizeDocentesPorCompetencia(config.docentesPorCompetenciaInicial as Record<string, string | string[]> | undefined) ?? defaultAcademicoConfig.docentesPorCompetenciaInicial,
+    gradosInicial: config.gradosInicial && config.gradosInicial.length > 0 ? config.gradosInicial : defaultAcademicoConfig.gradosInicial,
+    seccionesInicial: config.seccionesInicial && config.seccionesInicial.length > 0 ? config.seccionesInicial : defaultAcademicoConfig.seccionesInicial,
+    gradosPrimaria: (config.gradosPrimaria ?? defaultAcademicoConfig.gradosPrimaria).filter((g) => g.id !== "INICIAL"),
     gradosSecundaria: config.gradosSecundaria ?? defaultAcademicoConfig.gradosSecundaria,
     seccionesPrimaria: config.seccionesPrimaria ?? legacy.secciones ?? defaultAcademicoConfig.seccionesPrimaria,
     seccionesSecundaria: config.seccionesSecundaria ?? defaultAcademicoConfig.seccionesSecundaria,
-    salones: config.salones ?? defaultAcademicoConfig.salones,
+    salones: [
+      ...(config.salones ?? defaultAcademicoConfig.salones).filter((s) => s.nivel !== "INICIAL" && s.grado !== "INICIAL"),
+      ...((config.salones ?? []).filter((s) => s.nivel === "INICIAL").length > 0
+        ? (config.salones ?? []).filter((s) => s.nivel === "INICIAL")
+        : defaultAcademicoConfig.salones.filter((s) => s.nivel === "INICIAL"))
+    ],
     minAsistenciaPorcentaje: config.minAsistenciaPorcentaje ?? defaultAcademicoConfig.minAsistenciaPorcentaje,
     ingresantesModelo: (config as any).ingresantesModelo ?? defaultAcademicoConfig.ingresantesModelo,
     nivelesAcademicos: config.nivelesAcademicos ?? defaultAcademicoConfig.nivelesAcademicos
@@ -627,22 +658,24 @@ export function createCatalogId(label: string, existing: CatalogItem[]) {
   return id;
 }
 
-export function gradosPorNivel(nivel?: string) {
-  return nivel === "SECUNDARIA" ? GRADOS_SECUNDARIA : GRADOS_PRIMARIA;
+export function gradosPorNivel(nivel?: string): readonly string[] {
+  if (nivel === "INICIAL") return GRADOS_INICIAL;
+  return nivel === "SECUNDARIA" ? GRADOS_SECUNDARIA : GRADOS_PRIMARIA_SOLO;
 }
 
 export function defaultGrado(nivel: string) {
+  if (nivel === "INICIAL") return "INICIAL";
   return nivel === "SECUNDARIA" ? "PRIMERO_SECUNDARIA" : "PRIMERO_PRIMARIA";
 }
 
 export function aulasPorNivel(nivel?: string) {
-  const grados = nivel === "SECUNDARIA" ? GRADOS_SECUNDARIA : GRADOS_PRIMARIA;
+  const grados = gradosPorNivel(nivel);
   return grados.flatMap((grado) => SECCIONES.map((seccion) => aulaPorGradoSeccion(nivel, grado, seccion)));
 }
 
 export function aulaPorGradoSeccion(nivel: string | undefined, grado: string, seccion: string) {
-  const grados = nivel === "SECUNDARIA" ? GRADOS_SECUNDARIA : GRADOS_PRIMARIA;
-  const base = nivel === "SECUNDARIA" ? 700 : 100;
+  const grados: readonly string[] = nivel === "SECUNDARIA" ? GRADOS_SECUNDARIA : nivel === "INICIAL" ? GRADOS_INICIAL : GRADOS_PRIMARIA;
+  const base = nivel === "SECUNDARIA" ? 700 : nivel === "INICIAL" ? 0 : 100;
   const gradoIndex = Math.max(grados.indexOf(grado as never), 0) + 1;
   const seccionIndex = Math.max(SECCIONES.indexOf(seccion as never), 0) + 1;
   return String(base + gradoIndex * 10 + seccionIndex);
@@ -656,6 +689,7 @@ export function normalizeNivel(value: unknown) {
     .toUpperCase();
   if (normalized.includes("SECUNDARIA")) return "SECUNDARIA";
   if (normalized.includes("PRIMARIA")) return "PRIMARIA";
+  if (normalized.includes("INICIAL")) return "INICIAL";
   return "";
 }
 
@@ -668,7 +702,8 @@ export function normalizeGrado(value: unknown, nivel: string) {
     .toUpperCase()
     .replace(/[^A-Z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
-  const grados = nivel === "SECUNDARIA" ? GRADOS_SECUNDARIA : GRADOS_PRIMARIA;
+  if (nivel === "INICIAL") return normalized.includes("INICIAL") ? "INICIAL" : "";
+  const grados = nivel === "SECUNDARIA" ? GRADOS_SECUNDARIA : GRADOS_PRIMARIA_SOLO;
   const exact = grados.find((grado) => grado === normalized);
   if (exact) return exact;
   const ordinalMap: Record<string, string> = {
@@ -713,7 +748,7 @@ export function parseBooleanCell(value: unknown) {
 export function getGradosPorNivelAcademico(nivelAcademicoId: string): string[] {
   if (!nivelAcademicoId) return [];
   const cleanId = nivelAcademicoId.toUpperCase().replace(/[^A-Z0-9_]/g, "_");
-  if (cleanId === "PRIMARIA") return [...GRADOS_PRIMARIA];
+  if (cleanId === "PRIMARIA") return [...GRADOS_PRIMARIA_SOLO];
   if (cleanId === "SECUNDARIA") return [...GRADOS_SECUNDARIA];
   if (cleanId.includes("INICIAL")) return ["INICIAL"];
   if (cleanId.includes("1RO_PRIM") || cleanId === "1_PRIM") return ["PRIMERO_PRIMARIA"];
@@ -768,4 +803,60 @@ export function normalizeGrupo(value: unknown): string {
   if (normalized.includes("CIENCIAS")) return "CIENCIAS";
   if (normalized.includes("ANUAL")) return "ANUAL";
   return "";
+}
+// ---- Formato estándar de grados y salones (Modificaciones_Interfaz_Monserrat.pdf) ----
+export const GRADO_SHORT_LABELS: Record<string, string> = {
+  INICIAL: "Inicial",
+  PRIMERO_PRIMARIA: "1ro Prim",
+  SEGUNDO_PRIMARIA: "2do Prim",
+  TERCERO_PRIMARIA: "3ro Prim",
+  CUARTO_PRIMARIA: "4to Prim",
+  QUINTO_PRIMARIA: "5to Prim",
+  SEXTO_PRIMARIA: "6to Prim",
+  PRIMERO_SECUNDARIA: "1ro Sec",
+  SEGUNDO_SECUNDARIA: "2do Sec",
+  TERCERO_SECUNDARIA: "3ro Sec",
+  CUARTO_SECUNDARIA: "4to Sec",
+  QUINTO_SECUNDARIA: "5to Sec"
+};
+
+export function formatGrado(grado?: string | null): string {
+  if (!grado) return "";
+  const key = String(grado).toUpperCase();
+  return GRADO_SHORT_LABELS[key] ?? labelFromEnum(String(grado));
+}
+
+// Salones oficiales (en este orden).
+export const SALONES = [
+  "CIENCIAS", "LETRAS", "ANUAL", "CICLADO II", "CICLADO I", "PRE FORMATIVO",
+  "CUARTO PRIMARIA", "TERCERO PRIMARIA", "SEGUNDO PRIMARIA", "PRIMERO PRIMARIA", "INICIAL"
+] as const;
+
+const GRUPO_SALON_LABELS: Record<string, string> = {
+  CICLADO_I: "CICLADO I", CICLADO_II: "CICLADO II", ANUAL: "ANUAL", LETRAS: "LETRAS", CIENCIAS: "CIENCIAS"
+};
+
+// Salón de un alumno a partir de su grado y grupo (grupo = CICLADO_I, ANUAL, ...).
+export function formatSalon(grado?: string | null, grupo?: string | null): string {
+  const g = normalizeGrupo(grupo);
+  if (g) return GRUPO_SALON_LABELS[g];
+  switch (String(grado ?? "").toUpperCase()) {
+    case "INICIAL": return "INICIAL";
+    case "PRIMERO_PRIMARIA": return "PRIMERO PRIMARIA";
+    case "SEGUNDO_PRIMARIA": return "SEGUNDO PRIMARIA";
+    case "TERCERO_PRIMARIA": return "TERCERO PRIMARIA";
+    case "CUARTO_PRIMARIA": return "CUARTO PRIMARIA";
+    case "QUINTO_PRIMARIA": return "PRE FORMATIVO";
+    default: return "";
+  }
+}
+
+// Nombres de personas siempre en mayúsculas (APELLIDOS NOMBRES).
+export function toUpperName(value: string): string {
+  return value.replace(/\s+/g, " ").trim().toLocaleUpperCase("es-PE");
+}
+
+// "C1 – Nombre de la competencia" según su posición (orden de la boleta).
+export function competenciaConAbreviatura(nombre: string, index: number): string {
+  return /^C\d+\s*[-–]/i.test(nombre.trim()) ? nombre : `C${index + 1} – ${nombre}`;
 }

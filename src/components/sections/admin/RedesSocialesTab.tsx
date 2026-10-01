@@ -1,9 +1,10 @@
 import { Plus, Save, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { monserratApi } from "../../../api/monserrat";
 import type { RedSocial } from "../../../types";
-import { AdminField, AdminTable } from "./adminComponents";
+import { AdminField } from "./adminComponents";
+import { SortableAdminTable } from "./SortableAdminTable";
 
 type RedesSocialesTabProps = {
   redes: RedSocial[];
@@ -21,13 +22,20 @@ const emptyRed: Omit<RedSocial, "id"> = {
 };
 
 export function RedesSocialesTab({
-  redes,
   token,
   isBusy,
   runAdminAction
 }: RedesSocialesTabProps) {
   const [editingRed, setEditingRed] = useState<RedSocial | null>(null);
   const [redForm, setRedForm] = useState<Omit<RedSocial, "id">>(emptyRed);
+  const [items, setItems] = useState<RedSocial[]>([]);
+
+  const reload = async () => setItems(await monserratApi.redesSocialesAdmin(token));
+
+  useEffect(() => {
+    void reload().catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   const submitRed = (e: FormEvent) => {
     e.preventDefault();
@@ -39,6 +47,7 @@ export function RedesSocialesTab({
       }
       setEditingRed(null);
       setRedForm(emptyRed);
+      await reload();
     }, "Red social guardada");
   };
 
@@ -53,10 +62,26 @@ export function RedesSocialesTab({
   };
 
   const handleDelete = (id: number) => {
-    runAdminAction(
-      () => monserratApi.deleteRedSocial(id, token),
-      "Red social eliminada"
-    );
+    runAdminAction(async () => {
+      await monserratApi.deleteRedSocial(id, token);
+      await reload();
+    }, "Red social eliminada");
+  };
+
+  const handleToggle = (r: RedSocial) => {
+    runAdminAction(async () => {
+      const { id: _id, ...rest } = r;
+      await monserratApi.updateRedSocial(r.id, { ...rest, activo: r.activo === false }, token);
+      await reload();
+    }, r.activo === false ? "Red social activada" : "Red social desactivada");
+  };
+
+  const handleReorder = (ids: number[]) => {
+    setItems((prev) => ids.map((id, i) => ({ ...prev.find((x) => x.id === id)!, orden: i })));
+    runAdminAction(async () => {
+      await monserratApi.reorderRedesSociales(ids, token);
+      await reload();
+    }, "Orden actualizado");
   };
 
   return (
@@ -65,9 +90,6 @@ export function RedesSocialesTab({
         onSubmit={submitRed}
         className="grid content-start gap-3 rounded-[18px] border border-monserrat-ink/8 bg-monserrat-cream/40 p-5"
       >
-        <h4 className="font-serif text-[16px] font-black text-monserrat-ink">
-          {editingRed ? "Editar red social" : "Nueva red social"}
-        </h4>
         <AdminField label="Nombre">
           <input
             value={redForm.nombre}
@@ -92,14 +114,6 @@ export function RedesSocialesTab({
             onChange={(e) => setRedForm({ ...redForm, url: e.target.value })}
             className="admin-input"
             required
-          />
-        </AdminField>
-        <AdminField label="Orden">
-          <input
-            type="number"
-            value={redForm.orden}
-            onChange={(e) => setRedForm({ ...redForm, orden: Number(e.target.value) })}
-            className="admin-input"
           />
         </AdminField>
         <div className="flex gap-2">
@@ -128,14 +142,17 @@ export function RedesSocialesTab({
           )}
         </div>
       </form>
-      <AdminTable
+      <SortableAdminTable
         headers={["Nombre", "Ícono", "URL"]}
-        rows={redes.map((r) => ({
+        rows={items.map((r) => ({
           id: r.id,
           values: [r.nombre, r.icono, r.url],
+          activo: r.activo !== false,
+          onToggle: () => handleToggle(r),
           onEdit: () => handleEditClick(r),
           onDelete: () => handleDelete(r.id),
         }))}
+        onReorder={handleReorder}
         className="bg-white shadow-sm"
         bodyClassName="max-h-[70vh]"
       />

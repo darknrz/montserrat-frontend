@@ -2,7 +2,7 @@ import { Download } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { monserratApi } from "../../../api/monserrat";
 import type { PensionMensual, UsuarioAcademico } from "../../../types";
-import { MESES_PENSION, labelFromEnum } from "./adminShared";
+import { MESES_PENSION, formatGrado, formatSalon, labelFromEnum } from "./adminShared";
 
 type PensionesTabProps = {
   usuariosAcademicos: UsuarioAcademico[];
@@ -84,7 +84,8 @@ export function PensionesTab({
           return false;
         }
 
-        if (pensionNivelFiltro && alumno.nivelEducativo !== pensionNivelFiltro) {
+        const nivelAlumno = alumno.grado === "INICIAL" ? "INICIAL" : alumno.nivelEducativo;
+        if (pensionNivelFiltro && nivelAlumno !== pensionNivelFiltro) {
           return false;
         }
 
@@ -219,7 +220,11 @@ export function PensionesTab({
   const RADIO = 30;
   const CIRCUNFERENCIA = 2 * Math.PI * RADIO;
 
-  const gradosDelNivel = pensionNivelFiltro ? gradosActivosPorNivel(pensionNivelFiltro) : [];
+  const gradosDelNivel = pensionNivelFiltro === "INICIAL"
+    ? ["INICIAL"]
+    : pensionNivelFiltro
+      ? gradosActivosPorNivel(pensionNivelFiltro).filter((g) => g !== "INICIAL")
+      : [];
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
@@ -313,6 +318,7 @@ export function PensionesTab({
             className="admin-input"
           >
             <option value="">Todos los niveles</option>
+            <option value="INICIAL">Inicial</option>
             <option value="PRIMARIA">Primaria</option>
             <option value="SECUNDARIA">Secundaria</option>
           </select>
@@ -488,8 +494,8 @@ export function PensionesTab({
                           <div className="min-w-0">
                             <p className="truncate text-[12px] font-black text-monserrat-ink">{alumno.nombre}</p>
                             <p className="truncate text-[10px] font-semibold text-monserrat-ink/40">
-                              {labelAcademico(alumno.grado ?? "")}
-                              {alumno.seccion ? ` · ${alumno.seccion}` : ""}
+                              {formatGrado(alumno.grado)}
+                              {formatSalon(alumno.grado, alumno.seccion) ? ` · ${formatSalon(alumno.grado, alumno.seccion)}` : ""}
                             </p>
                           </div>
                         </div>

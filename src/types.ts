@@ -193,8 +193,19 @@ export type Matricula = {
   actualizadoEn?: string;
 };
 
+export type TallerCatalogo = {
+  id: number;
+  anio: number;
+  nombre: string;
+  monto: number;
+  // "SALON:CICLADO I" | "GRADO:SEGUNDO_SECUNDARIA"
+  aplicaA: string[];
+};
+
 export type Taller = {
   id: number;
+  catalogoId?: number | null;
+  montoPagado?: number | null;
   alumnoDni: string;
   alumnoCodigo?: string;
   alumnoNombre: string;

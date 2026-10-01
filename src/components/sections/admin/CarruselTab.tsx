@@ -1,9 +1,10 @@
 import { Plus, Save, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { monserratApi } from "../../../api/monserrat";
 import type { Video } from "../../../types";
-import { AdminField, AdminTable, MediaPicker } from "./adminComponents";
+import { AdminField, MediaPicker } from "./adminComponents";
+import { SortableAdminTable } from "./SortableAdminTable";
 
 type CarruselTabProps = {
   videos: Video[];
@@ -27,7 +28,6 @@ const emptyVideo: Omit<Video, "id"> = {
 };
 
 export function CarruselTab({
-  videos,
   token,
   isBusy,
   runAdminAction
@@ -35,6 +35,14 @@ export function CarruselTab({
   const [editingVideo, setEditingVideo] = useState<Video | null>(null);
   const [videoForm, setVideoForm] = useState<Omit<Video, "id">>(emptyVideo);
   const [videoMediaFile, setVideoMediaFile] = useState<File | null>(null);
+  const [items, setItems] = useState<Video[]>([]);
+
+  const reload = async () => setItems(await monserratApi.videosAdmin(token));
+
+  useEffect(() => {
+    void reload().catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   const uploadVideoMedia = async () => {
     if (!videoMediaFile) {
@@ -75,6 +83,7 @@ export function CarruselTab({
       setEditingVideo(null);
       setVideoForm(emptyVideo);
       setVideoMediaFile(null);
+      await reload();
     }, "Medio guardado correctamente");
   };
 
@@ -94,7 +103,24 @@ export function CarruselTab({
     runAdminAction(async () => {
       await monserratApi.deleteVideo(v.id, token);
       await monserratApi.deleteMedia(v.publicId, v.mediaType, token);
+      await reload();
     }, "Medio eliminado");
+  };
+
+  const handleToggle = (v: Video) => {
+    runAdminAction(async () => {
+      const { id: _id, ...rest } = v;
+      await monserratApi.updateVideo(v.id, { ...rest, activo: v.activo === false }, token);
+      await reload();
+    }, v.activo === false ? "Medio activado" : "Medio desactivado");
+  };
+
+  const handleReorder = (ids: number[]) => {
+    setItems((prev) => ids.map((id, i) => ({ ...prev.find((x) => x.id === id)!, orden: i })));
+    runAdminAction(async () => {
+      await monserratApi.reorderVideos(ids, token);
+      await reload();
+    }, "Orden actualizado");
   };
 
   const videoPreview = videoMediaFile
@@ -113,9 +139,6 @@ export function CarruselTab({
         onSubmit={submitVideo}
         className="grid content-start gap-3 rounded-[18px] border border-monserrat-ink/8 bg-monserrat-cream/40 p-5"
       >
-        <h4 className="font-serif text-[16px] font-black text-monserrat-ink">
-          {editingVideo ? "Editar medio" : "Nuevo medio"}
-        </h4>
         <AdminField label="Título">
           <input
             value={videoForm.titulo}
@@ -139,25 +162,6 @@ export function CarruselTab({
           previewType={videoPreview.type}
           onFileChange={setVideoMediaFile}
         />
-        <AdminField label="Tag">
-          <select
-            value={videoForm.tag}
-            onChange={(e) => setVideoForm({ ...videoForm, tag: e.target.value })}
-            className="admin-input"
-          >
-            {["Institucional", "Eventos", "Logros", "Deportes", "Académico"].map((t) => (
-              <option key={t}>{t}</option>
-            ))}
-          </select>
-        </AdminField>
-        <AdminField label="Orden">
-          <input
-            type="number"
-            value={videoForm.orden}
-            onChange={(e) => setVideoForm({ ...videoForm, orden: Number(e.target.value) })}
-            className="admin-input"
-          />
-        </AdminField>
         <div className="flex gap-2">
           <button
             disabled={isBusy}
@@ -184,14 +188,17 @@ export function CarruselTab({
           )}
         </div>
       </form>
-      <AdminTable
-        headers={["Título", "Tipo", "Orden"]}
-        rows={videos.map((v) => ({
+      <SortableAdminTable
+        headers={["Título", "Tipo"]}
+        rows={items.map((v) => ({
           id: v.id,
-          values: [v.titulo, v.mediaType, String(v.orden ?? 0)],
+          values: [v.titulo, v.mediaType],
+          activo: v.activo !== false,
+          onToggle: () => handleToggle(v),
           onEdit: () => handleEditClick(v),
           onDelete: () => handleDelete(v),
         }))}
+        onReorder={handleReorder}
         className="bg-white shadow-sm"
         bodyClassName="max-h-[70vh]"
       />

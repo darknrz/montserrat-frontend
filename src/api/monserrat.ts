@@ -1,4 +1,4 @@
-import type { Anuncio, AsignacionAcademica, AsistenciaAcademica, ChatbotConversationResponse, ChatbotMessageDTO, Ingresante, Institution, LoginResponse, Matricula, MediaUploadResponse, NotaAcademica, PensionEstado, PensionMensual, PeriodoBimestre, PerfilAcademico, RedSocial, Taller, UsuarioAcademico, Video } from "../types";
+import type { Anuncio, AsignacionAcademica, AsistenciaAcademica, ChatbotConversationResponse, ChatbotMessageDTO, Ingresante, Institution, LoginResponse, Matricula, MediaUploadResponse, NotaAcademica, PensionEstado, PensionMensual, PeriodoBimestre, PerfilAcademico, RedSocial, Taller, TallerCatalogo, UsuarioAcademico, Video } from "../types";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -122,6 +122,12 @@ export const monserratApi = {
   institution: () => getJson<Institution>("/institution"),
   ingresantes: () => getJson<Ingresante[]>("/ingresantes"),
   videos: () => getJson<Video[]>("/videos"),
+  videosAdmin: (token: string) => getJsonAuth<Video[]>("/videos/admin", token),
+  reorderVideos: (ids: number[], token: string) => sendJson<void>("/videos/reorder", "PUT", { ids }, token),
+  redesSocialesAdmin: (token: string) => getJsonAuth<RedSocial[]>("/redes-sociales/admin", token),
+  reorderRedesSociales: (ids: number[], token: string) => sendJson<void>("/redes-sociales/reorder", "PUT", { ids }, token),
+  anunciosAdmin: (token: string) => getJsonAuth<Anuncio[]>("/anuncios/admin", token),
+  reorderAnuncios: (ids: number[], token: string) => sendJson<void>("/anuncios/reorder", "PUT", { ids }, token),
   redesSociales: () => getJson<RedSocial[]>("/redes-sociales"),
   createChatbotConversation: () =>
     sendJson<ChatbotConversationResponse>("/chatbot/conversations", "POST", {}),
@@ -215,6 +221,15 @@ export const monserratApi = {
   updateTallerAcademico: (id: number, data: { alumnoDni: string; anio: number; nombre: string; monto: number; pagada?: boolean; observacion?: string }, token: string) =>
     sendJson<Taller>(`/academico/talleres/${id}`, "PUT", data, token),
   deleteTallerAcademico: (id: number, token: string) => deleteRequest(`/academico/talleres/${id}`, token),
+  talleresCatalogo: (anio: number, token: string) =>
+    getJsonAuth<TallerCatalogo[]>(`/academico/talleres/catalogo?anio=${encodeURIComponent(String(anio))}`, token),
+  createTallerCatalogo: (data: { anio: number; nombre: string; monto: number; aplicaA: string[] }, token: string) =>
+    sendJson<TallerCatalogo>("/academico/talleres/catalogo", "POST", data, token),
+  updateTallerCatalogo: (id: number, data: { anio: number; nombre: string; monto: number; aplicaA: string[] }, token: string) =>
+    sendJson<TallerCatalogo>(`/academico/talleres/catalogo/${id}`, "PUT", data, token),
+  deleteTallerCatalogo: (id: number, token: string) => deleteRequest(`/academico/talleres/catalogo/${id}`, token),
+  registrarPagoTaller: (data: { alumnoDni: string; catalogoId: number; montoPagado?: number | null; pagada?: boolean; observacion?: string }, token: string) =>
+    sendJson<Taller>("/academico/talleres/pago", "PUT", data, token),
   talleresAlumno: (token: string) => getJsonAuth<Taller[]>("/academico/alumno/talleres", token),
 
 

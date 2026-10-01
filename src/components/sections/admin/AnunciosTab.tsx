@@ -1,9 +1,10 @@
-import { Edit3, Plus, Save, Trash2, X } from "lucide-react";
+import { Save, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { monserratApi } from "../../../api/monserrat";
 import type { Anuncio } from "../../../types";
-import { AdminField, AdminTable, MediaPicker } from "./adminComponents";
+import { AdminField, MediaPicker } from "./adminComponents";
+import { SortableAdminTable } from "./SortableAdminTable";
 
 type AnunciosTabProps = {
   token: string;
@@ -38,12 +39,12 @@ export function AnunciosTab({ token, isBusy, runAdminAction }: AnunciosTabProps)
 
   useEffect(() => {
     void monserratApi
-      .anuncios()
+      .anunciosAdmin(token)
       .then((data) => setAnuncios(data))
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : "No se pudieron cargar los anuncios");
       });
-  }, []);
+  }, [token]);
 
   const uploadFile = async (file: File | null, existingData: {
     url?: string;
@@ -120,7 +121,7 @@ export function AnunciosTab({ token, isBusy, runAdminAction }: AnunciosTabProps)
       setEditingAnuncio(null);
       setAnuncioForm(emptyAnuncio);
       setError(null);
-      const refreshed = await monserratApi.anuncios();
+      const refreshed = await monserratApi.anunciosAdmin(token);
       setAnuncios(refreshed);
     }, editingAnuncio ? "Anuncio actualizado" : "Anuncio creado");
   };
@@ -161,7 +162,7 @@ export function AnunciosTab({ token, isBusy, runAdminAction }: AnunciosTabProps)
       if (anuncio.attachmentPublicId) {
         await monserratApi.deleteMedia(anuncio.attachmentPublicId, anuncio.attachmentResourceType ?? "raw", token);
       }
-      const refreshed = await monserratApi.anuncios();
+      const refreshed = await monserratApi.anunciosAdmin(token);
       setAnuncios(refreshed);
     }, "Anuncio eliminado");
   };
@@ -187,28 +188,52 @@ export function AnunciosTab({ token, isBusy, runAdminAction }: AnunciosTabProps)
   }, [attachmentFile, anuncioForm.attachmentResourceType, anuncioForm.attachmentUrl]);
 
   const orderedRows = useMemo(
-    () => anuncios.sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0)),
+    () => [...anuncios].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0)),
     [anuncios]
   );
+
+  const toPayload = (a: Anuncio, activo: boolean): Omit<Anuncio, "id"> => ({
+    titulo: a.titulo,
+    mensaje: a.mensaje ?? "",
+    verMasTexto: a.verMasTexto ?? "Ver más",
+    imageUrl: a.imageUrl ?? "",
+    imagePublicId: a.imagePublicId ?? "",
+    imageMimeType: a.imageMimeType ?? "",
+    attachmentUrl: a.attachmentUrl ?? "",
+    attachmentPublicId: a.attachmentPublicId ?? "",
+    attachmentResourceType: a.attachmentResourceType ?? "",
+    attachmentMimeType: a.attachmentMimeType ?? "",
+    expiresAt: a.expiresAt ?? "",
+    mostrarEnPopup: true,
+    activo,
+    orden: a.orden ?? 0,
+  });
+
+  const handleToggle = (anuncio: Anuncio) => {
+    runAdminAction(async () => {
+      await monserratApi.updateAnuncio(anuncio.id, toPayload(anuncio, anuncio.activo === false), token);
+      setAnuncios(await monserratApi.anunciosAdmin(token));
+    }, anuncio.activo === false ? "Anuncio activado" : "Anuncio desactivado");
+  };
+
+  const handleReorder = (ids: number[]) => {
+    setAnuncios((prev) => ids.map((id, i) => ({ ...prev.find((a) => a.id === id)!, orden: i })));
+    runAdminAction(async () => {
+      await monserratApi.reorderAnuncios(ids, token);
+      setAnuncios(await monserratApi.anunciosAdmin(token));
+    }, "Orden actualizado");
+  };
 
   return (
     <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
       <form onSubmit={submitAnuncio} className="grid content-start gap-3 rounded-[18px] border border-monserrat-ink/8 bg-monserrat-cream/40 p-5">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h4 className="font-serif text-[16px] font-black text-monserrat-ink">
-              {editingAnuncio ? "Editar anuncio" : "Nuevo anuncio"}
-            </h4>
-            <p className="text-[12px] text-monserrat-ink/60">
-              Define el texto para el pop-up y adjunta un documento si es necesario.
-            </p>
-          </div>
-          {editingAnuncio && (
+        {editingAnuncio && (
+          <div className="flex justify-end">
             <button type="button" onClick={handleCancel} className="rounded-full border border-monserrat-ink/12 px-3 py-2 text-[12px] font-black text-monserrat-ink/70 hover:border-monserrat-ink/25">
               <X size={16} /> Cancelar
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
         <AdminField label="Título">
           <input
@@ -225,15 +250,6 @@ export function AnunciosTab({ token, isBusy, runAdminAction }: AnunciosTabProps)
             onChange={(e) => setAnuncioForm({ ...anuncioForm, mensaje: e.target.value })}
             className="admin-input resize-y"
             rows={4}
-          />
-        </AdminField>
-
-        <AdminField label="Texto del botón Ver más">
-          <input
-            value={anuncioForm.verMasTexto}
-            onChange={(e) => setAnuncioForm({ ...anuncioForm, verMasTexto: e.target.value })}
-            className="admin-input"
-            required
           />
         </AdminField>
 
@@ -261,52 +277,6 @@ export function AnunciosTab({ token, isBusy, runAdminAction }: AnunciosTabProps)
           </AdminField>
         </div>
 
-        <AdminField label="Fecha de expiración">
-          <input
-            type="date"
-            value={anuncioForm.expiresAt ?? ""}
-            onChange={(e) => setAnuncioForm({ ...anuncioForm, expiresAt: e.target.value })}
-            className="admin-input"
-          />
-        </AdminField>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <AdminField label="Orden">
-            <input
-              type="number"
-              value={anuncioForm.orden}
-              onChange={(e) => setAnuncioForm({ ...anuncioForm, orden: Number(e.target.value) })}
-              className="admin-input"
-            />
-          </AdminField>
-
-          <AdminField label="Mostrar en popup">
-            <label className="inline-flex items-center gap-2 text-[12px] font-bold text-monserrat-ink/70">
-              <input
-                type="checkbox"
-                checked={anuncioForm.mostrarEnPopup ?? true}
-                onChange={(e) => setAnuncioForm({ ...anuncioForm, mostrarEnPopup: e.target.checked })}
-                className="h-4 w-4 rounded border-monserrat-ink/20 text-monserrat-red"
-              />
-              Si
-            </label>
-          </AdminField>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <AdminField label="Activo">
-            <label className="inline-flex items-center gap-2 text-[12px] font-bold text-monserrat-ink/70">
-              <input
-                type="checkbox"
-                checked={anuncioForm.activo ?? true}
-                onChange={(e) => setAnuncioForm({ ...anuncioForm, activo: e.target.checked })}
-                className="h-4 w-4 rounded border-monserrat-ink/20 text-monserrat-red"
-              />
-              Publicado
-            </label>
-          </AdminField>
-        </div>
-
         {error && (
           <p className="rounded-[10px] border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700">
             {error}
@@ -321,19 +291,17 @@ export function AnunciosTab({ token, isBusy, runAdminAction }: AnunciosTabProps)
         </button>
       </form>
 
-      <AdminTable
-        headers={["Título", "Popup", "Activo", "Orden"]}
+      <SortableAdminTable
+        headers={["Título"]}
         rows={orderedRows.map((anuncio) => ({
           id: anuncio.id,
-          values: [
-            anuncio.titulo,
-            anuncio.mostrarEnPopup ? "Sí" : "No",
-            anuncio.activo ? "Sí" : "No",
-            String(anuncio.orden ?? 0),
-          ],
+          values: [anuncio.titulo],
+          activo: anuncio.activo !== false,
+          onToggle: () => handleToggle(anuncio),
           onEdit: () => handleEdit(anuncio),
           onDelete: () => handleDelete(anuncio),
         }))}
+        onReorder={handleReorder}
         className="bg-white shadow-sm"
         bodyClassName="max-h-[70vh]"
       />

@@ -13,7 +13,7 @@ import {
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { monserratApi } from "../../../api/monserrat";
-import type { UsuarioAcademico } from "../../../types";
+import type { AsignacionAcademica, UsuarioAcademico } from "../../../types";
 import { ConfirmForceDeleteModal } from "../../ui/ConfirmForceDeleteModal";
 import { Modal } from "../../ui/Modal";
 import {
@@ -23,14 +23,15 @@ import {
   MediaPicker,
 } from "./adminComponents";
 import {
-  ESTADOS_MATRICULA,
   GRADOS_PRIMARIA,
   GRADOS_SECUNDARIA,
   NIVELES,
   defaultGrado,
+  formatGrado,
+  formatSalon,
+  toUpperName,
   getGradosPorNivelAcademico,
   getGruposPorGrado,
-  GRUPO_LABELS,
   labelFromEnum,
   normalizeGrado,
   normalizeGrupo,
@@ -41,6 +42,7 @@ import {
 
 type AcademicoTabProps = {
   usuariosAcademicos: UsuarioAcademico[];
+  asignacionesAcademicas?: AsignacionAcademica[];
   setUsuariosAcademicos: React.Dispatch<React.SetStateAction<UsuarioAcademico[]>>;
   academicoConfig: AcademicoConfig;
   token: string;
@@ -82,6 +84,7 @@ const emptyUsuarioAcademico: Omit<UsuarioAcademico, "id"> = {
 
 export function AcademicoTab({
   usuariosAcademicos,
+  asignacionesAcademicas = [],
   setUsuariosAcademicos,
   academicoConfig,
   token,
@@ -90,10 +93,7 @@ export function AcademicoTab({
   setStatus,
   setErrorMessage,
   runAdminAction,
-  cursosActivosPorNivel,
-  seccionesActivasPorNivel,
   gradosActivosPorNivel,
-  labelAcademico,
 }: AcademicoTabProps) {
   const [editingUsuarioAcademico, setEditingUsuarioAcademico] =
     useState<UsuarioAcademico | null>(null);
@@ -121,10 +121,41 @@ export function AcademicoTab({
     [usuariosAcademicos]
   );
 
+  // Niveles de cada docente, derivados de sus asignaciones (alumno-aula y matriz de competencias).
+  const nivelesPorDocente = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    const add = (dni: string, nivel?: string) => {
+      if (!dni || !nivel) return;
+      if (!map.has(dni)) map.set(dni, new Set());
+      map.get(dni)!.add(nivel);
+    };
+    asignacionesAcademicas
+      .filter((a) => a.activo !== false)
+      .forEach((a) => add(a.docenteDni, a.nivelEducativo));
+    const nivelDeGrado = (grado: string) =>
+      grado === "INICIAL" ? "INICIAL" : grado.endsWith("_PRIMARIA") ? "PRIMARIA" : grado.endsWith("_SECUNDARIA") ? "SECUNDARIA" : undefined;
+    [
+      academicoConfig.docentesPorCompetencia,
+      academicoConfig.docentesPorCompetenciaSecundaria,
+      academicoConfig.docentesPorCompetenciaInicial,
+    ].forEach((matriz) => {
+      Object.entries(matriz ?? {}).forEach(([key, dnis]) => {
+        const nivel = nivelDeGrado(key.split("||")[0] ?? "");
+        (Array.isArray(dnis) ? dnis : [dnis]).forEach((dni) => add(dni, nivel));
+      });
+    });
+    return map;
+  }, [asignacionesAcademicas, academicoConfig]);
+
+  const nivelesDeUsuario = (u: UsuarioAcademico): string[] =>
+    u.rol === "DOCENTE"
+      ? NIVELES.filter((n) => nivelesPorDocente.get(u.dni)?.has(n))
+      : u.nivelEducativo ? [u.nivelEducativo] : [];
+
   const usuariosFiltrados = useMemo(() => {
     const term = academicoSearch.trim().toLowerCase();
     return usuariosAcademicos
-      .filter((u) => academicoNivelFiltro === "TODOS" || u.nivelEducativo === academicoNivelFiltro)
+      .filter((u) => academicoNivelFiltro === "TODOS" || nivelesDeUsuario(u).includes(academicoNivelFiltro))
       .filter(
         (u) =>
           !term ||
@@ -142,7 +173,7 @@ export function AcademicoTab({
             .filter(Boolean)
             .some((value) => String(value).toLowerCase().includes(term))
       );
-  }, [academicoNivelFiltro, academicoSearch, usuariosAcademicos]);
+  }, [academicoNivelFiltro, academicoSearch, usuariosAcademicos, nivelesPorDocente]);
 
   const eliminarUsuarioAcademico = async (
     usuario: Pick<UsuarioAcademico, "id" | "nombre">,
@@ -180,36 +211,32 @@ export function AcademicoTab({
     runAdminAction(async () => {
       const fotoUrl = await uploadUsuarioAcademicoPhoto();
       
-      // Auto-split nombre into nombres and apellidos
+      // Formato "APELLIDOS NOMBRES" en mayusculas (ej: RUIZ ROJAS JHON ALBERTO):
+      // los dos primeros tokens son apellidos y el resto nombres.
+      const nombreCompleto = toUpperName(usuarioAcademicoForm.nombre);
       let nombres = "";
       let apellidos = "";
-      const nombreCompleto = usuarioAcademicoForm.nombre.trim();
       if (nombreCompleto) {
-        const parts = nombreCompleto.split(/\s+/).filter(Boolean);
-        if (parts.length >= 4) {
-          // e.g. "Juan Eduardo Salazar Torres"
-          nombres = parts.slice(0, parts.length - 2).join(" ");
-          apellidos = parts.slice(parts.length - 2).join(" ");
-        } else if (parts.length === 3) {
-          // e.g. "Juan Salazar Torres"
-          nombres = parts[0];
-          apellidos = parts.slice(1).join(" ");
+        const parts = nombreCompleto.split(" ").filter(Boolean);
+        if (parts.length >= 3) {
+          apellidos = parts.slice(0, 2).join(" ");
+          nombres = parts.slice(2).join(" ");
         } else if (parts.length === 2) {
-          // e.g. "Juan Salazar"
-          nombres = parts[0];
-          apellidos = parts[1];
+          apellidos = parts[0];
+          nombres = parts[1];
         } else {
           nombres = parts[0] || "";
-          apellidos = "";
         }
       }
 
       const payload = {
         ...usuarioAcademicoForm,
         fotoUrl,
-        nombres: nombres || usuarioAcademicoForm.nombres,
-        apellidos: apellidos || usuarioAcademicoForm.apellidos,
+        nombre: nombreCompleto,
+        nombres: nombres || toUpperName(usuarioAcademicoForm.nombres ?? ""),
+        apellidos: apellidos || toUpperName(usuarioAcademicoForm.apellidos ?? ""),
         createdAt: usuarioAcademicoForm.createdAt ? usuarioAcademicoForm.createdAt : undefined,
+        fechaNacimiento: usuarioAcademicoForm.fechaNacimiento ? usuarioAcademicoForm.fechaNacimiento : undefined,
       };
 
       if (payload.rol === "ALUMNO") {
@@ -234,7 +261,6 @@ export function AcademicoTab({
   };
 
   const prepararFormularioAcademico = (rol: "ALUMNO" | "DOCENTE", nivel: string) => {
-    const primerCurso = cursosActivosPorNivel(nivel)[0] ?? "";
     const primerGrado = gradosActivosPorNivel(nivel)[0] ?? defaultGrado(nivel);
     const gruposPrimerGrado = getGruposPorGrado(primerGrado);
     setEditingUsuarioAcademico(null);
@@ -243,11 +269,12 @@ export function AcademicoTab({
     setUsuarioAcademicoForm({
       ...emptyUsuarioAcademico,
       rol,
-      nivelEducativo: nivel,
+      // El docente no tiene nivel propio: sus niveles se derivan de sus asignaciones.
+      nivelEducativo: rol === "ALUMNO" ? nivel : undefined,
       grado: rol === "ALUMNO" ? primerGrado : undefined,
       seccion: rol === "ALUMNO" && gruposPrimerGrado.length > 0 ? gruposPrimerGrado[0] : undefined,
-      materia: rol === "DOCENTE" && nivel === "SECUNDARIA" ? primerCurso : "",
-      especialidad: rol === "DOCENTE" && nivel === "PRIMARIA" ? "Docente de aula" : "",
+      materia: "",
+      especialidad: "",
     });
   };
 
@@ -270,6 +297,7 @@ export function AcademicoTab({
       estadoMatricula: alumno.estadoMatricula ?? "MATRICULADO",
       pensionPagada: alumno.pensionPagada ? "SI" : "NO",
       pensionObservacion: alumno.pensionObservacion ?? "",
+      direccion: alumno.direccion ?? "",
     }));
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(data), "Alumnos");
@@ -285,10 +313,10 @@ export function AcademicoTab({
       { Seccion: "", Detalle: "" },
       { Seccion: "Hoja ESTUDIANTES - columnas", Detalle: "" },
       { Seccion: "DNI (obligatorio)", Detalle: "Numero de documento. Identifica al alumno para no duplicarlo." },
-      { Seccion: "NOMBRE COMPLETO (obligatorio)", Detalle: "Ej: Juan Carlos Perez Gomez (o usa columnas separadas NOMBRES / APELLIDOS)." },
+      { Seccion: "NOMBRE COMPLETO (obligatorio)", Detalle: "Formato APELLIDOS NOMBRES, ej: RUIZ ROJAS JHON ALBERTO (se guarda siempre en mayusculas; o usa columnas separadas NOMBRES / APELLIDOS)." },
       { Seccion: "GRADO (obligatorio)", Detalle: "Ej: '6to Primaria', '1ro Secundaria', '3 Secundaria'. Acepta con o sin tilde/grado (deg.)." },
-      { Seccion: "NIVEL (opcional)", Detalle: "PRIMARIA o SECUNDARIA. Si no esta, se deduce del texto de GRADO." },
-      { Seccion: "GRUPO (obligatorio solo en los grados de la tabla 'Grados con grupo')", Detalle: "Ver la hoja 'Grados con grupo'." },
+      { Seccion: "NIVEL (opcional)", Detalle: "INICIAL, PRIMARIA o SECUNDARIA. Si no esta, se deduce del texto de GRADO." },
+      { Seccion: "GRUPO / SALON (obligatorio solo en los grados de la tabla 'Grados con salon')", Detalle: "Ver la hoja 'Grados con salon'." },
       { Seccion: "SECCION / AULA (opcional)", Detalle: "Para el resto de grados. Si no se indica, se usa 'A'." },
       { Seccion: "CODIGO (opcional)", Detalle: "Codigo interno del alumno, si ya tiene uno." },
       { Seccion: "CORREO (opcional)", Detalle: "Debe contener '@' para tomarse en cuenta." },
@@ -301,7 +329,6 @@ export function AcademicoTab({
       { Seccion: "Columnas", Detalle: "DNI, NOMBRE COMPLETO, CORREO, TELEFONO, CURSO, CODIGO." },
       { Seccion: "", Detalle: "" },
       { Seccion: "Errores comunes", Detalle: "" },
-      { Seccion: "-", Detalle: "'Inicial' no es un grado que maneje este sistema academico: esas filas se omiten automaticamente." },
       { Seccion: "-", Detalle: "Si el DNI ya existe, la fila actualiza ese registro en vez de crear uno duplicado." },
       { Seccion: "-", Detalle: "Un GRADO que no se puede reconocer (texto muy distinto a '1ro/2do/.../6to' + 'Primaria/Secundaria') hace que la fila se omita." },
     ];
@@ -311,20 +338,20 @@ export function AcademicoTab({
 
     const gradosConGrupo = [...GRADOS_PRIMARIA, ...GRADOS_SECUNDARIA]
       .map((grado) => ({ grado, grupos: getGruposPorGrado(grado) }))
-      .filter((g) => g.grupos.length > 0)
+      .filter((g) => g.grupos.length > 0 && g.grado !== "INICIAL")
       .map((g) => ({
-        Grado: labelFromEnum(g.grado),
-        "Valores validos para GRUPO": g.grupos.map((grupo) => GRUPO_LABELS[grupo] ?? grupo).join(", "),
+        Grado: formatGrado(g.grado),
+        "Valores validos para SALON": g.grupos.map((grupo) => formatSalon(g.grado, grupo)).join(", "),
       }));
     const hojaGrupos = XLSX.utils.json_to_sheet(gradosConGrupo);
     hojaGrupos["!cols"] = [{ wch: 20 }, { wch: 40 }];
-    XLSX.utils.book_append_sheet(workbook, hojaGrupos, "Grados con grupo");
+    XLSX.utils.book_append_sheet(workbook, hojaGrupos, "Grados con salon");
 
     const estudiantes = [
       {
         DNI: "71234567",
         CODIGO: "2026001A",
-        "NOMBRE COMPLETO": "Juan Carlos Perez Gomez",
+        "NOMBRE COMPLETO": "PEREZ GOMEZ JUAN CARLOS",
         CORREO: "juan.perez@colegio.edu.pe",
         TELEFONO: "987654321",
         GRADO: "1ro Primaria",
@@ -336,7 +363,7 @@ export function AcademicoTab({
       {
         DNI: "71234568",
         CODIGO: "2026002A",
-        "NOMBRE COMPLETO": "Maria Fernanda Lopez Diaz",
+        "NOMBRE COMPLETO": "LOPEZ DIAZ MARIA FERNANDA",
         CORREO: "maria.lopez@colegio.edu.pe",
         TELEFONO: "987654322",
         GRADO: "1ro Secundaria",
@@ -351,7 +378,7 @@ export function AcademicoTab({
       {
         DNI: "72345001",
         CODIGO: "DOC2026001A",
-        "NOMBRE COMPLETO": "Carlos Alberto Mendoza Ruiz",
+        "NOMBRE COMPLETO": "MENDOZA RUIZ CARLOS ALBERTO",
         CORREO: "carlos.mendoza@colegio.edu.pe",
         TELEFONO: "998700001",
         CURSO: "COMPETENCIAS_TRANSVERSALES",
@@ -362,7 +389,7 @@ export function AcademicoTab({
       {
         DNI: "72345002",
         CODIGO: "DOC2026002A",
-        "NOMBRE COMPLETO": "Ana Maria Lopez Castillo",
+        "NOMBRE COMPLETO": "LOPEZ CASTILLO ANA MARIA",
         CORREO: "ana.lopez@colegio.edu.pe",
         TELEFONO: "998700002",
         CURSO: "MATEMATICA",
@@ -543,7 +570,7 @@ export function AcademicoTab({
             "nro documento",
             "nro.dni",
           ]);
-          const nombreCompleto = findVal([
+          const nombreCompleto = toUpperName(findVal([
             "alumno",
             "nombre completo",
             "nombre_completo",
@@ -553,7 +580,7 @@ export function AcademicoTab({
             "apellido completo",
             "nombres",
             "nombre",
-          ]);
+          ]));
 
           if (!dni && nombreCompleto && isEstudiantes) {
             // Buscar si ya existe un estudiante con ese nombre
@@ -588,8 +615,8 @@ export function AcademicoTab({
 
           const nombres_col = findVal(["nombres"]);
           const apellidos_col = findVal(["apellidos", "apellido", "apellido paterno", "apellido materno"]);
-          let nombres = nombres_col;
-          let apellidos = apellidos_col;
+          let nombres = toUpperName(nombres_col);
+          let apellidos = toUpperName(apellidos_col);
           if (!nombres || !apellidos) {
             const parts = nombreCompleto.split(/\s+/);
             if (parts.length >= 3) {
@@ -668,19 +695,19 @@ export function AcademicoTab({
             let nivelEducativo = normalizeNivel(rawNivel);
             if (!nivelEducativo && rawNivelAcademico) {
               const na = rawNivelAcademico.toLowerCase();
-              if (na.includes("prim") || na.includes("preformativo")) {
+              if (na.includes("inicial")) {
+                nivelEducativo = "INICIAL";
+              } else if (na.includes("prim") || na.includes("preformativo")) {
                 nivelEducativo = "PRIMARIA";
               } else if (na.includes("sec") || na.includes("anual") || na.includes("letras") || na.includes("ciencias")) {
                 nivelEducativo = "SECUNDARIA";
               }
             }
             if (!nivelEducativo) nivelEducativo = normalizeNivel(rawGrado);
+            if (normalizeNivel(rawGrado) === "INICIAL") nivelEducativo = "INICIAL";
             if (!nivelEducativo) nivelEducativo = "PRIMARIA";
 
             let grado = normalizeGrado(rawGrado, nivelEducativo);
-            // "INICIAL" no es un grado académico soportado (el sistema de asignaciones/notas
-            // no cubre inicial); se omite en vez de enviar un valor que el backend rechaza.
-            if (grado === "INICIAL") grado = "";
 
             if (!grado && rawNivelAcademico) {
               const gradosPorNivelAc = getGradosPorNivelAcademico(rawNivelAcademico);
@@ -1044,46 +1071,34 @@ export function AcademicoTab({
                 </button>
               ))}
             </div>
-            <div className={`grid gap-2 ${usuarioAcademicoForm.rol === "DOCENTE" ? "grid-cols-3" : "grid-cols-2"}`}>
-              {NIVELES.map((nivel) => (
-                <button
-                  key={nivel}
-                  type="button"
-                  onClick={() => {
-                    if (editingUsuarioAcademico) {
-                      setUsuarioAcademicoForm({ ...usuarioAcademicoForm, nivelEducativo: nivel });
-                    } else {
-                      prepararFormularioAcademico((usuarioAcademicoForm.rol as "DOCENTE" | "ALUMNO") ?? "ALUMNO", nivel);
-                    }
-                  }}
-                  className={`rounded-[10px] border px-3 py-2 text-[12px] font-black transition ${usuarioAcademicoForm.nivelEducativo === nivel
-                    ? "border-monserrat-ink bg-monserrat-ink text-white"
-                    : "border-monserrat-ink/10 bg-white text-monserrat-ink/60 hover:border-monserrat-ink/25"
-                    }`}
-                >
-                  {labelFromEnum(nivel)}
-                </button>
-              ))}
-              {usuarioAcademicoForm.rol === "DOCENTE" && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setUsuarioAcademicoForm({
-                      ...usuarioAcademicoForm,
-                      nivelEducativo: undefined,
-                      materia: "",
-                      especialidad: ""
-                    });
-                  }}
-                  className={`rounded-[10px] border px-3 py-2 text-[12px] font-black transition ${!usuarioAcademicoForm.nivelEducativo
-                    ? "border-monserrat-ink bg-monserrat-ink text-white"
-                    : "border-monserrat-ink/10 bg-white text-monserrat-ink/60 hover:border-monserrat-ink/25"
-                    }`}
-                >
-                  Ambos
-                </button>
-              )}
-            </div>
+            {usuarioAcademicoForm.rol === "ALUMNO" && (
+              <div className="grid grid-cols-3 gap-2">
+                {NIVELES.map((nivel) => (
+                  <button
+                    key={nivel}
+                    type="button"
+                    onClick={() => {
+                      if (editingUsuarioAcademico) {
+                        setUsuarioAcademicoForm({
+                          ...usuarioAcademicoForm,
+                          nivelEducativo: nivel,
+                          grado: defaultGrado(nivel),
+                          seccion: getGruposPorGrado(defaultGrado(nivel))[0],
+                        });
+                      } else {
+                        prepararFormularioAcademico("ALUMNO", nivel);
+                      }
+                    }}
+                    className={`rounded-[10px] border px-3 py-2 text-[12px] font-black transition ${usuarioAcademicoForm.nivelEducativo === nivel
+                      ? "border-monserrat-ink bg-monserrat-ink text-white"
+                      : "border-monserrat-ink/10 bg-white text-monserrat-ink/60 hover:border-monserrat-ink/25"
+                      }`}
+                  >
+                    {labelFromEnum(nivel)}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="grid gap-1 sm:grid-cols-2">
@@ -1111,11 +1126,16 @@ export function AcademicoTab({
               <input
                 value={usuarioAcademicoForm.nombre}
                 onChange={(e) =>
-                  setUsuarioAcademicoForm({ ...usuarioAcademicoForm, nombre: e.target.value })
+                  setUsuarioAcademicoForm({
+                    ...usuarioAcademicoForm,
+                    nombre: e.target.value.toLocaleUpperCase("es-PE"),
+                  })
                 }
-                className="admin-input"
+                className="admin-input uppercase"
+                placeholder="RUIZ ROJAS JHON ALBERTO"
                 required
               />
+              <span className="text-[10px] font-semibold text-monserrat-ink/45">Apellidos primero, luego nombres.</span>
             </AdminField>
             <AdminField label="Correo">
               <input
@@ -1132,6 +1152,15 @@ export function AcademicoTab({
                 value={usuarioAcademicoForm.telefono ?? ""}
                 onChange={(e) =>
                   setUsuarioAcademicoForm({ ...usuarioAcademicoForm, telefono: e.target.value })
+                }
+                className="admin-input"
+              />
+            </AdminField>
+            <AdminField label="Direccion" className="sm:col-span-2">
+              <input
+                value={usuarioAcademicoForm.direccion ?? ""}
+                onChange={(e) =>
+                  setUsuarioAcademicoForm({ ...usuarioAcademicoForm, direccion: e.target.value })
                 }
                 className="admin-input"
               />
@@ -1167,13 +1196,13 @@ export function AcademicoTab({
                 >
                   {gradosActivosPorNivel(usuarioAcademicoForm.nivelEducativo).map((grado) => (
                     <option key={grado} value={grado}>
-                      {labelAcademico(grado)}
+                      {formatGrado(grado)}
                     </option>
                   ))}
                 </select>
               </AdminField>
-              {getGruposPorGrado(usuarioAcademicoForm.grado).length > 0 && (
-                <AdminField label="Grupo">
+              <AdminField label="Salón">
+                {getGruposPorGrado(usuarioAcademicoForm.grado).length > 0 ? (
                   <select
                     value={usuarioAcademicoForm.seccion ?? getGruposPorGrado(usuarioAcademicoForm.grado)[0]}
                     onChange={(e) =>
@@ -1183,99 +1212,21 @@ export function AcademicoTab({
                   >
                     {getGruposPorGrado(usuarioAcademicoForm.grado).map((grupo) => (
                       <option key={grupo} value={grupo}>
-                        {GRUPO_LABELS[grupo] ?? grupo}
+                        {formatSalon(usuarioAcademicoForm.grado, grupo)}
                       </option>
                     ))}
                   </select>
-                </AdminField>
-              )}
-              <AdminField label="Estado matricula">
-                <select
-                  value={usuarioAcademicoForm.estadoMatricula ?? "MATRICULADO"}
-                  onChange={(e) =>
-                    setUsuarioAcademicoForm({
-                      ...usuarioAcademicoForm,
-                      estadoMatricula: e.target.value,
-                    })
-                  }
-                  className="admin-input"
-                >
-                  {ESTADOS_MATRICULA.map((estado) => (
-                    <option key={estado} value={estado}>
-                      {labelFromEnum(estado)}
-                    </option>
-                  ))}
-                </select>
+                ) : (
+                  <input
+                    value={formatSalon(usuarioAcademicoForm.grado, null)}
+                    className="admin-input"
+                    disabled
+                    readOnly
+                  />
+                )}
               </AdminField>
-              <label className="flex items-center gap-2 rounded-[10px] bg-white px-3 py-2 text-[12px] font-bold text-monserrat-ink/65">
-                <input
-                  type="checkbox"
-                  checked={Boolean(usuarioAcademicoForm.pensionPagada)}
-                  onChange={(e) =>
-                    setUsuarioAcademicoForm({
-                      ...usuarioAcademicoForm,
-                      pensionPagada: e.target.checked,
-                    })
-                  }
-                />
-                Pension pagada
-              </label>
             </div>
           ) : null}
-
-          <details className="rounded-[12px] border border-monserrat-ink/8 bg-monserrat-cream/20 p-3">
-            <summary className="cursor-pointer text-[11px] font-black uppercase tracking-[0.08em] text-monserrat-ink/50">
-              Datos adicionales
-            </summary>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <AdminField label="Nacimiento">
-                <input
-                  type="date"
-                  value={usuarioAcademicoForm.fechaNacimiento ?? ""}
-                  onChange={(e) =>
-                    setUsuarioAcademicoForm({
-                      ...usuarioAcademicoForm,
-                      fechaNacimiento: e.target.value,
-                    })
-                  }
-                  className="admin-input"
-                />
-              </AdminField>
-              <AdminField label="Direccion">
-                <input
-                  value={usuarioAcademicoForm.direccion ?? ""}
-                  onChange={(e) =>
-                    setUsuarioAcademicoForm({ ...usuarioAcademicoForm, direccion: e.target.value })
-                  }
-                  className="admin-input"
-                />
-              </AdminField>
-              <AdminField label="Fecha de ingreso / inicio del periodo">
-                <input
-                  type="datetime-local"
-                  value={usuarioAcademicoForm.createdAt ?? ""}
-                  onChange={(e) =>
-                    setUsuarioAcademicoForm({ ...usuarioAcademicoForm, createdAt: e.target.value })
-                  }
-                  className="admin-input"
-                />
-              </AdminField>
-              {usuarioAcademicoForm.rol === "ALUMNO" && (
-                <AdminField label="Observacion pension" className="sm:col-span-2">
-                  <textarea
-                    value={usuarioAcademicoForm.pensionObservacion ?? ""}
-                    onChange={(e) =>
-                      setUsuarioAcademicoForm({
-                        ...usuarioAcademicoForm,
-                        pensionObservacion: e.target.value,
-                      })
-                    }
-                    className="admin-input"
-                  />
-                </AdminField>
-              )}
-            </div>
-          </details>
 
           <button
             disabled={isBusy}
@@ -1300,12 +1251,17 @@ export function AcademicoTab({
         <div className="flex min-w-0 flex-col gap-5">
 
           {/* Métricas */}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <AdminMetric icon={<Users size={18} />} label="Alumnos" value={String(alumnos.length)} />
             <AdminMetric
               icon={<GraduationCap size={18} />}
               label="Docentes"
               value={String(docentes.length)}
+            />
+            <AdminMetric
+              icon={<School size={18} />}
+              label="Inicial"
+              value={String(alumnos.filter((u) => u.nivelEducativo === "INICIAL").length)}
             />
             <AdminMetric
               icon={<School size={18} />}
@@ -1407,27 +1363,25 @@ export function AcademicoTab({
             </div>
 
             <AdminTable
-              headers={["Codigo", "Nombre", "Rol", "Detalle"]}
-              columnWidths={["w-[12%]", "w-[30%]", "w-[10%]", "w-[40%]"]}
-              rows={usuariosFiltrados.map((u) => ({
-                id: u.id,
-                values: [
-                  u.codigo || u.dni,
-                  u.nombre,
-                  labelFromEnum(u.rol),
-                  u.rol === "DOCENTE"
-                    ? !u.nivelEducativo
-                      ? "Primaria - Secundaria"
-                      : u.nivelEducativo === "PRIMARIA"
-                        ? "Primaria - Aula primaria"
-                        : "Secundaria - Aula secundaria"
-                    : `${labelFromEnum(u.nivelEducativo ?? "")} - ${labelAcademico(
-                      u.grado ?? ""
-                    )} ${GRUPO_LABELS[u.seccion ?? ""] ?? u.seccion ?? ""}`.trim(),
-                ],
-                onEdit: () => handleEditClick(u),
-                onDelete: () => void eliminarUsuarioAcademico(u),
-              }))}
+              headers={["Codigo", "Nombre", "Rol", "Nivel", "GRADO", "SALÓN"]}
+              columnWidths={["w-[11%]", "w-[27%]", "w-[9%]", "w-[19%]", "w-[14%]", "w-[20%]"]}
+              rows={usuariosFiltrados.map((u) => {
+                const niveles = nivelesDeUsuario(u);
+                const esDocente = u.rol === "DOCENTE";
+                return {
+                  id: u.id,
+                  values: [
+                    u.codigo || u.dni,
+                    u.nombre,
+                    labelFromEnum(u.rol),
+                    niveles.length > 0 ? niveles.map((n) => labelFromEnum(n)).join(", ") : "-",
+                    esDocente ? "-" : formatGrado(u.grado) || "-",
+                    esDocente ? "-" : formatSalon(u.grado, u.seccion) || "-",
+                  ],
+                  onEdit: () => handleEditClick(u),
+                  onDelete: () => void eliminarUsuarioAcademico(u),
+                };
+              })}
               className="bg-white shadow-sm"
               bodyClassName="max-h-[70vh]"
             />

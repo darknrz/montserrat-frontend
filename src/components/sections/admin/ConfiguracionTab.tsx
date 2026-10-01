@@ -1,13 +1,25 @@
 import { BookOpen, GraduationCap, School, ShieldCheck, Users } from "lucide-react";
 import { useEffect, useState } from "react";
-import { ConfigPanel, SalonConfigPanel, AdminMetric, CompetenciasPanel } from "./adminComponents";
+import { ConfigPanel, GradosConfigPanel, SalonesOficialesPanel, AdminMetric, CompetenciasPanel } from "./adminComponents";
 import { monserratApi } from "../../../api/monserrat";
 import type { PeriodoBimestre } from "../../../types";
 import {
   type AcademicoConfig,
   type ConfigView,
+  type CatalogItem,
   type SalonItem,
+  SALONES,
 } from "./adminShared";
+
+type NivelKey = "inicial" | "primaria" | "secundaria";
+const NIVEL_SECCIONES: { key: NivelKey; title: string }[] = [
+  { key: "inicial", title: "Inicial" },
+  { key: "primaria", title: "Primaria" },
+  { key: "secundaria", title: "Secundaria" },
+];
+const CURSOS_KEY = { inicial: "cursosInicial", primaria: "cursosPrimaria", secundaria: "cursosSecundaria" } as const;
+const COMPETENCIAS_KEY = { inicial: "competenciasInicial", primaria: "competenciasPrimaria", secundaria: "competenciasSecundaria" } as const;
+const GRADOS_KEY = { inicial: "gradosInicial", primaria: "gradosPrimaria", secundaria: "gradosSecundaria" } as const;
 
 
 type ConfiguracionTabProps = {
@@ -30,20 +42,19 @@ type ConfiguracionTabProps = {
 export function ConfiguracionTab({
   academicoConfig,
   saveAcademicoConfig,
-  updateSalonConfig,
-  addSalonConfig,
-  deleteSalonConfig,
-  gradosActivosPorNivel,
-  seccionesActivasPorNivel,
-  labelAcademico,
-  cursosPrimariaActivos,
-  cursosSecundariaActivos,
   token,
   runAdminAction,
   setStatus,
   setErrorMessage,
 }: ConfiguracionTabProps) {
-  const [configView, setConfigView] = useState<ConfigView>("primaria-cursos");
+  const [configView, setConfigView] = useState<ConfigView>("inicial-cursos");
+  const getCursos = (n: NivelKey): CatalogItem[] => academicoConfig[CURSOS_KEY[n]] ?? [];
+  const getCompetencias = (n: NivelKey): CatalogItem[] => academicoConfig[COMPETENCIAS_KEY[n]] ?? [];
+  const getGrados = (n: NivelKey): CatalogItem[] => academicoConfig[GRADOS_KEY[n]] ?? [];
+  const vistaMatch = /^(inicial|primaria|secundaria)-(cursos|competencias|grados|salones)$/.exec(configView);
+  const vistaActual = vistaMatch
+    ? { nivel: vistaMatch[1] as NivelKey, seccion: vistaMatch[2] as "cursos" | "competencias" | "grados" | "salones" }
+    : null;
   const [anioPeriodo, setAnioPeriodo] = useState<number>(new Date().getFullYear());
   const [periodoRows, setPeriodoRows] = useState<PeriodoBimestre[]>(
     [1, 2, 3, 4].map((numeroBimestre) => ({
@@ -138,176 +149,68 @@ export function ConfiguracionTab({
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="grid gap-3 md:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-3">
         <AdminMetric
           icon={<BookOpen size={18} />}
-          label="Áreas curriculares"
-          value={String(cursosPrimariaActivos.length)}
+          label="Áreas curriculares inicial"
+          value={String((academicoConfig.cursosInicial ?? []).filter((c) => c.active).length)}
         />
         <AdminMetric
           icon={<School size={18} />}
-          label="Grados primaria"
-          value={String(gradosActivosPorNivel("PRIMARIA").length)}
+          label="Áreas curriculares primaria"
+          value={String(academicoConfig.cursosPrimaria.filter((c) => c.active).length)}
         />
         <AdminMetric
           icon={<GraduationCap size={18} />}
-          label="Cursos secundaria"
-          value={String(cursosSecundariaActivos.length)}
-        />
-        <AdminMetric
-          icon={<Users size={18} />}
-          label="Grados secundaria"
-          value={String(gradosActivosPorNivel("SECUNDARIA").length)}
+          label="Áreas curriculares secundaria"
+          value={String(academicoConfig.cursosSecundaria.filter((c) => c.active).length)}
         />
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
         <div className="grid content-start gap-1.5 rounded-[12px] border border-black/10 bg-white p-2 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto">
-          <p className="px-2 pt-1 text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">
-            Primaria
-          </p>
-          {[
-            {
-              id: "primaria-cursos" as const,
-              icon: <BookOpen size={16} />,
-              title: "Áreas curriculares",
-              count: academicoConfig.cursosPrimaria.length,
-            },
-            {
-              id: "primaria-competencias" as const,
-              icon: <ShieldCheck size={16} />,
-              title: "Competencias",
-              count: academicoConfig.competenciasPrimaria.length,
-            },
-            {
-              id: "primaria-grados" as const,
-              icon: <School size={16} />,
-              title: "Grados",
-              count: academicoConfig.gradosPrimaria.length,
-            },
-            {
-              id: "primaria-salones" as const,
-              icon: <ShieldCheck size={16} />,
-              title: "Salones",
-              count: academicoConfig.salones.filter((salon) => salon.nivel === "PRIMARIA").length,
-            },
-          ].map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setConfigView(item.id)}
-              className={`flex items-center justify-between gap-3 rounded-[12px] px-3 py-3 text-left transition ${
-                configView === item.id
-                  ? "bg-[#e3e3e1] text-monserrat-ink"
-                  : "text-monserrat-ink/58 hover:bg-[#eeeeec]"
-              }`}
-            >
-              <span className="flex min-w-0 items-center gap-2">
-                {item.icon}
-                <span className="truncate text-[13px] font-black">{item.title}</span>
-              </span>
-              <span
-                className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
-                  configView === item.id ? "bg-white" : "bg-[#e7e7e5]"
-                }`}
-              >
-                {item.count}
-              </span>
-            </button>
-          ))}
-          <p className="px-2 pt-3 text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">
-            Secundaria
-          </p>
-          {[
-            {
-              id: "secundaria-cursos" as const,
-              icon: <BookOpen size={16} />,
-              title: "Cursos",
-              count: academicoConfig.cursosSecundaria.length,
-            },
-            {
-              id: "secundaria-competencias" as const,
-              icon: <ShieldCheck size={16} />,
-              title: "Competencias",
-              count: academicoConfig.competenciasSecundaria.length,
-            },
-            {
-              id: "secundaria-grados" as const,
-              icon: <GraduationCap size={16} />,
-              title: "Grados",
-              count: academicoConfig.gradosSecundaria.length,
-            },
-            {
-              id: "secundaria-salones" as const,
-              icon: <ShieldCheck size={16} />,
-              title: "Salones",
-              count: academicoConfig.salones.filter((salon) => salon.nivel === "SECUNDARIA").length,
-            },
-          ].map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setConfigView(item.id)}
-              className={`flex items-center justify-between gap-3 rounded-[12px] px-3 py-3 text-left transition ${
-                configView === item.id
-                  ? "bg-[#e3e3e1] text-monserrat-ink"
-                  : "text-monserrat-ink/58 hover:bg-[#eeeeec]"
-              }`}
-            >
-              <span className="flex min-w-0 items-center gap-2">
-                {item.icon}
-                <span className="truncate text-[13px] font-black">{item.title}</span>
-              </span>
-              <span
-                className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
-                  configView === item.id ? "bg-white" : "bg-[#e7e7e5]"
-                }`}
-              >
-                {item.count}
-              </span>
-            </button>
+          {NIVEL_SECCIONES.map((nivel) => (
+            <div key={nivel.key} className="grid gap-1.5">
+              <p className="px-2 pt-3 text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40 first:pt-1">
+                {nivel.title}
+              </p>
+              {[
+                { id: `${nivel.key}-cursos` as ConfigView, icon: <BookOpen size={16} />, title: "Áreas curriculares", count: getCursos(nivel.key).length },
+                { id: `${nivel.key}-competencias` as ConfigView, icon: <ShieldCheck size={16} />, title: "Competencias", count: getCompetencias(nivel.key).length },
+                { id: `${nivel.key}-grados` as ConfigView, icon: <School size={16} />, title: "Grados", count: getGrados(nivel.key).length },
+                { id: `${nivel.key}-salones` as ConfigView, icon: <Users size={16} />, title: "Salones", count: SALONES.length },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setConfigView(item.id)}
+                  className={`flex items-center justify-between gap-3 rounded-[12px] px-3 py-3 text-left transition ${
+                    configView === item.id
+                      ? "bg-[#e3e3e1] text-monserrat-ink"
+                      : "text-monserrat-ink/58 hover:bg-[#eeeeec]"
+                  }`}
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    {item.icon}
+                    <span className="truncate text-[13px] font-black">{item.title}</span>
+                  </span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
+                      configView === item.id ? "bg-white" : "bg-[#e7e7e5]"
+                    }`}
+                  >
+                    {item.count}
+                  </span>
+                </button>
+              ))}
+            </div>
           ))}
           <p className="px-2 pt-3 text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">
             Ajustes generales
           </p>
           <button
             type="button"
-            onClick={() => setConfigView("ajustes-generales" as any)}
-            className={`flex items-center justify-between gap-3 rounded-[12px] px-3 py-3 text-left transition ${
-              (configView as string) === "ajustes-generales"
-                ? "bg-[#e3e3e1] text-monserrat-ink"
-                : "text-monserrat-ink/58 hover:bg-[#eeeeec]"
-            }`}
-          >
-            <span className="flex min-w-0 items-center gap-2">
-              <ShieldCheck size={16} />
-              <span className="truncate text-[13px] font-black">Asistencia mínima</span>
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setConfigView("niveles-academicos" as any)}
-            className={`flex items-center justify-between gap-3 rounded-[12px] px-3 py-3 text-left transition ${
-              (configView as string) === "niveles-academicos"
-                ? "bg-[#e3e3e1] text-monserrat-ink"
-                : "text-monserrat-ink/58 hover:bg-[#eeeeec]"
-            }`}
-          >
-            <span className="flex min-w-0 items-center gap-2">
-              <GraduationCap size={16} />
-              <span className="truncate text-[13px] font-black">Niveles académicos</span>
-            </span>
-            <span
-              className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
-                (configView as string) === "niveles-academicos" ? "bg-white" : "bg-[#e7e7e5]"
-              }`}
-            >
-              {academicoConfig.nivelesAcademicos?.length ?? 0}
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setConfigView("periodos-bimestres" as any)}
+            onClick={() => setConfigView("periodos-bimestres")}
             className={`flex items-center justify-between gap-3 rounded-[12px] px-3 py-3 text-left transition ${
               configView === "periodos-bimestres"
                 ? "bg-[#e3e3e1] text-monserrat-ink"
@@ -329,74 +232,27 @@ export function ConfiguracionTab({
         </div>
 
         <div className="min-w-0">
-          {configView === "primaria-cursos" && (
+          {vistaActual && vistaActual.seccion === "cursos" && (
             <ConfigPanel
               title="Áreas curriculares"
-              items={academicoConfig.cursosPrimaria}
-              onChange={(items) => saveAcademicoConfig({ ...academicoConfig, cursosPrimaria: items })}
+              items={getCursos(vistaActual.nivel)}
+              onChange={(items) => saveAcademicoConfig({ ...academicoConfig, [CURSOS_KEY[vistaActual.nivel]]: items })}
             />
           )}
-          {configView === "primaria-competencias" && (
-  <CompetenciasPanel
-    items={academicoConfig.competenciasPrimaria}
-    onChange={(items) => saveAcademicoConfig({ ...academicoConfig, competenciasPrimaria: items })}
-  />
-)}
-          {configView === "primaria-grados" && (
-            <ConfigPanel
-              title="Grados de primaria"
-              items={academicoConfig.gradosPrimaria}
-              onChange={(items) => saveAcademicoConfig({ ...academicoConfig, gradosPrimaria: items })}
-            />
-          )}
-          {configView === "secundaria-cursos" && (
-            <ConfigPanel
-              title="Cursos de secundaria"
-              items={academicoConfig.cursosSecundaria}
-              onChange={(items) =>
-                saveAcademicoConfig({ ...academicoConfig, cursosSecundaria: items })
-              }
-            />
-          )}
-          {configView === "secundaria-competencias" && (
+          {vistaActual && vistaActual.seccion === "competencias" && (
             <CompetenciasPanel
-              items={academicoConfig.competenciasSecundaria}
-              onChange={(items) => saveAcademicoConfig({ ...academicoConfig, competenciasSecundaria: items })}
+              items={getCompetencias(vistaActual.nivel)}
+              onChange={(items) => saveAcademicoConfig({ ...academicoConfig, [COMPETENCIAS_KEY[vistaActual.nivel]]: items })}
             />
           )}
-          {configView === "secundaria-grados" && (
-            <ConfigPanel
-              title="Grados de secundaria"
-              items={academicoConfig.gradosSecundaria}
-              onChange={(items) =>
-                saveAcademicoConfig({ ...academicoConfig, gradosSecundaria: items })
-              }
+          {vistaActual && vistaActual.seccion === "grados" && (
+            <GradosConfigPanel
+              title="Grados"
+              items={getGrados(vistaActual.nivel)}
+              onChange={(items) => saveAcademicoConfig({ ...academicoConfig, [GRADOS_KEY[vistaActual.nivel]]: items })}
             />
           )}
-          {(configView === "primaria-salones" || configView === "secundaria-salones") && (
-            <SalonConfigPanel
-              nivel={configView === "secundaria-salones" ? "SECUNDARIA" : "PRIMARIA"}
-              salones={academicoConfig.salones.filter(
-                (salon) =>
-                  salon.nivel === (configView === "secundaria-salones" ? "SECUNDARIA" : "PRIMARIA")
-              )}
-              addSalon={(grado, seccion, aula) =>
-                addSalonConfig(
-                  configView === "secundaria-salones" ? "SECUNDARIA" : "PRIMARIA",
-                  grado,
-                  seccion,
-                  aula
-                )
-              }
-              updateSalon={updateSalonConfig}
-              deleteSalon={deleteSalonConfig}
-              gradosActivosPorNivel={gradosActivosPorNivel}
-              seccionesActivas={seccionesActivasPorNivel(
-                configView === "secundaria-salones" ? "SECUNDARIA" : "PRIMARIA"
-              )}
-              labelAcademico={labelAcademico}
-            />
-          )}
+          {vistaActual && vistaActual.seccion === "salones" && <SalonesOficialesPanel />}
           {configView === "periodos-bimestres" && (
             <div className="grid gap-5 rounded-[12px] border border-black/10 bg-white p-5">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -494,55 +350,6 @@ export function ConfiguracionTab({
                 ))}
               </div>
             </div>
-          )}
-          {configView === ("ajustes-generales" as any) && (
-            <div className="grid max-w-md gap-4 rounded-[12px] border border-black/10 bg-white p-5">
-              <div>
-                <h3 className="font-serif text-lg font-black text-monserrat-ink">Configuración de asistencias</h3>
-                <p className="text-[12px] font-semibold text-monserrat-ink/40 mt-1">
-                  Establece el límite mínimo de asistencia requerido para evitar la inhabilitación del estudiante.
-                </p>
-              </div>
-
-              <label className="grid gap-1.5 text-[11px] font-black uppercase tracking-[0.08em] text-monserrat-ink/50">
-                Porcentaje mínimo requerido (%)
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={academicoConfig.minAsistenciaPorcentaje ?? 70}
-                  onChange={(e) => {
-                    const val = Math.min(100, Math.max(0, Number(e.target.value)));
-                    saveAcademicoConfig({ ...academicoConfig, minAsistenciaPorcentaje: val });
-                  }}
-                  className="admin-input"
-                />
-              </label>
-
-              <label className="grid gap-1.5 text-[11px] font-black uppercase tracking-[0.08em] text-monserrat-ink/50">
-                Modelo de Ingresantes
-                <select
-                  value={academicoConfig.ingresantesModelo ?? "card-grid"}
-                  onChange={(e) => saveAcademicoConfig({ ...academicoConfig, ingresantesModelo: e.target.value })}
-                  className="admin-input"
-                >
-                  <option value="card-grid">Tabla (grid)</option>
-                  <option value="card-featured">Tarjetas destacadas</option>
-                </select>
-              </label>
-              <div className="rounded-[10px] border border-black/10 bg-black/[0.025] p-3.5 text-[11px] font-semibold leading-relaxed text-monserrat-ink/50">
-                Este porcentaje se utilizará en el portal de los alumnos para mostrar alertas sobre su asistencia general.
-              </div>
-            </div>
-          )}
-          {configView === ("niveles-academicos" as any) && (
-            <ConfigPanel
-              title="Niveles académicos"
-              items={academicoConfig.nivelesAcademicos ?? []}
-              onChange={(items) =>
-                saveAcademicoConfig({ ...academicoConfig, nivelesAcademicos: items })
-              }
-            />
           )}
         </div>
       </div>

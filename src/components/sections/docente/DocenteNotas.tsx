@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, Plus, Search, Sparkles, X } from "lucide-react";
 import { SectionHeader } from "../../ui/SectionHeader";
 import { monserratApi } from "../../../api/monserrat";
 import type { AsignacionAcademica, UsuarioAcademico, NotaAcademica, LoginResponse } from "../../../types";
-import { getGruposPorGrado, GRUPO_LABELS, normalizeDocentesPorCompetencia, tieneAccesoCompetencia, type AcademicoConfig, type CatalogItem } from "../admin/adminShared";
+import { competenciaConAbreviatura, formatGrado, GRUPO_LABELS, normalizeDocentesPorCompetencia, normalizeGrupo, tieneAccesoCompetencia, type AcademicoConfig, type CatalogItem } from "../admin/adminShared";
 
 const BIMESTRES = ["BIMESTRE_1", "BIMESTRE_2", "BIMESTRE_3", "BIMESTRE_4"] as const;
 const PERIODOS = [...BIMESTRES, "GENERAL"] as const;
@@ -96,14 +96,33 @@ const valorDesdeNivel = (nivel: string) => {
   return 0;
 };
 
+// Salón = grupo (Ciclado I/II, Anual, Ciencias, Letras) si el alumno lo tiene; si no, su grado.
+const SALON_ORDER = [
+  "PRIMERO_PRIMARIA", "SEGUNDO_PRIMARIA", "TERCERO_PRIMARIA", "CUARTO_PRIMARIA", "QUINTO_PRIMARIA",
+  "CICLADO_I", "CICLADO_II", "ANUAL", "CIENCIAS", "LETRAS"
+];
+
+function salonKey(grado?: string | null, seccion?: string | null) {
+  const g = normalizeGrupo(seccion);
+  if (g) return g;
+  return String(grado ?? "").toUpperCase();
+}
+
+function salonLabel(key: string) {
+  if (key === "QUINTO_PRIMARIA") return "Preformativo";
+  return GRUPO_LABELS[key] ?? formatGrado(key);
+}
+
+const MAX_PARCIALES = 4;
+const EMPTY_PARCIALES: ParcialNota[] = [];
+
 export function DocenteNotas({ token }: { token: string }) {
   const [alumnos, setAlumnos] = useState<UsuarioAcademico[]>([]);
   const [asignaciones, setAsignaciones] = useState<AsignacionAcademica[]>([]);
   const [notas, setNotas] = useState<NotaAcademica[]>([]);
   const [academicoConfig, setAcademicoConfig] = useState<AcademicoConfig | null>(null);
   const [selectedCurso, setSelectedCurso] = useState("");
-  const [selectedGradoAcademico, setSelectedGradoAcademico] = useState("");
-  const [selectedGrupo, setSelectedGrupo] = useState("");
+  const [selectedSalon, setSelectedSalon] = useState("");
   const [selectedAlumnoDni, setSelectedAlumnoDni] = useState("");
   const [alumnoQuery, setAlumnoQuery] = useState("");
   const [activePeriodo, setActivePeriodo] = useState<Periodo>(BIMESTRES[0]);
@@ -155,46 +174,37 @@ export function DocenteNotas({ token }: { token: string }) {
 
   const cursosDisponibles = useMemo(() => Array.from(new Set(asignaciones.map((a) => a.curso))).filter(Boolean), [asignaciones]);
 
-  // Grados donde el docente realmente tiene asignaciones para el curso elegido
-  // (sin pasar por el catalogo decorativo de "nivel academico").
-  const gradosDelCurso = useMemo(() => {
+  // Salones donde el docente realmente enseña el curso elegido (según sus asignaciones).
+  const salonesDelCurso = useMemo(() => {
     if (!selectedCurso) return [] as string[];
-    return Array.from(
-      new Set(asignaciones.filter((a) => a.curso === selectedCurso && a.grado).map((a) => a.grado as string))
-    );
+    const keys = new Set<string>();
+    asignaciones.forEach((a) => {
+      if (a.curso !== selectedCurso) return;
+      const k = salonKey(a.grado, a.seccion);
+      if (k) keys.add(k);
+    });
+    const ordenados = SALON_ORDER.filter((k) => keys.has(k));
+    const extras = Array.from(keys).filter((k) => !SALON_ORDER.includes(k));
+    return [...ordenados, ...extras];
   }, [selectedCurso, asignaciones]);
 
   useEffect(() => {
-    if (gradosDelCurso.length > 0) {
-      const stillValid = gradosDelCurso.includes(selectedGradoAcademico);
-      if (!stillValid) setSelectedGradoAcademico(gradosDelCurso[0]);
-    } else {
-      setSelectedGradoAcademico("");
+    if (salonesDelCurso.length === 0) {
+      if (selectedSalon !== "") setSelectedSalon("");
+    } else if (!salonesDelCurso.includes(selectedSalon)) {
+      setSelectedSalon(salonesDelCurso[0]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gradosDelCurso]);
-
-  // Grupo (Ciclado I/II, Anual, Letras, Ciencias): solo aplica a los grados que
-  // realmente lo tienen; para el resto no se muestra ningun selector adicional.
-  const gruposDelGrado = useMemo(() => getGruposPorGrado(selectedGradoAcademico), [selectedGradoAcademico]);
-
-  useEffect(() => {
-    if (gruposDelGrado.length === 0) {
-      if (selectedGrupo !== "") setSelectedGrupo("");
-      return;
-    }
-    if (!gruposDelGrado.includes(selectedGrupo)) setSelectedGrupo(gruposDelGrado[0]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gruposDelGrado]);
+  }, [salonesDelCurso]);
 
   const alumnosFiltrados = useMemo(() => {
-    if (!selectedCurso || !selectedGradoAcademico) return [] as UsuarioAcademico[];
-    return alumnos.filter(
-      (al) =>
-        (gruposDelGrado.length === 0 || al.seccion === selectedGrupo) &&
-        asignaciones.some((a) => a.alumnoDni === al.dni && a.curso === selectedCurso && a.grado === selectedGradoAcademico)
-    );
-  }, [selectedCurso, selectedGradoAcademico, gruposDelGrado, selectedGrupo, alumnos, asignaciones]);
+    if (!selectedCurso || !selectedSalon) return [] as UsuarioAcademico[];
+    const dnis = new Set<string>();
+    asignaciones.forEach((a) => {
+      if (a.curso === selectedCurso && salonKey(a.grado, a.seccion) === selectedSalon) dnis.add(a.alumnoDni);
+    });
+    return alumnos.filter((al) => dnis.has(al.dni));
+  }, [selectedCurso, selectedSalon, alumnos, asignaciones]);
 
   const alumnosVisibles = useMemo(() => {
     const query = alumnoQuery.trim().toLowerCase();
@@ -217,117 +227,60 @@ export function DocenteNotas({ token }: { token: string }) {
     return sessionStr ? (JSON.parse(sessionStr) as LoginResponse).username : "";
   }, []);
 
-  const competenciasDelCurso = useMemo(() => {
-    if (!selectedCurso || !selectedGradoAcademico || !academicoConfig) return [] as CatalogItem[];
-    const map = new Map<string, CatalogItem>();
-    const alumnosBase = alumnosFiltrados.length > 0 ? alumnosFiltrados : alumnos;
+  const mappingPrimaria = useMemo(() => normalizeDocentesPorCompetencia(academicoConfig?.docentesPorCompetencia as any), [academicoConfig]);
+  const mappingSecundaria = useMemo(() => normalizeDocentesPorCompetencia(academicoConfig?.docentesPorCompetenciaSecundaria as any), [academicoConfig]);
 
-    alumnosBase.forEach((alumno) => {
+  // Competencias (con abreviatura C1, C2... según el orden de la boleta) que el docente
+  // realmente dicta en este curso y salón, más el set de celdas habilitadas por alumno.
+  const { competenciasDelCurso, habilitadas } = useMemo(() => {
+    const habil = new Set<string>();
+    const found = new Map<string, { item: CatalogItem; index: number }>();
+    if (!selectedCurso || !selectedSalon || !academicoConfig) {
+      return { competenciasDelCurso: [] as CatalogItem[], habilitadas: habil };
+    }
+    alumnosFiltrados.forEach((alumno) => {
       const esSecundaria = alumno.nivelEducativo === "SECUNDARIA" || (alumno.grado ?? "").endsWith("_SECUNDARIA");
-      const competenciasPorCurso = esSecundaria
-        ? academicoConfig.competenciasPorCursoSecundaria ?? {}
-        : academicoConfig.competenciasPorCursoPrimaria ?? {};
-      const competenciasDisponibles = esSecundaria
-        ? academicoConfig.competenciasSecundaria ?? []
-        : academicoConfig.competenciasPrimaria ?? [];
-      const mappingRaw = esSecundaria
-        ? academicoConfig.docentesPorCompetenciaSecundaria
-        : academicoConfig.docentesPorCompetencia;
-      const mapping = normalizeDocentesPorCompetencia(mappingRaw as any);
-      const ids = competenciasPorCurso[selectedCurso] ?? [];
-
-      competenciasDisponibles
-        .filter((competencia) => ids.includes(competencia.id))
-        .filter((competencia) =>
-          tieneAccesoCompetencia(mapping, alumno.grado, alumno.seccion, selectedCurso, competencia.id, docenteDni)
-        )
-        .forEach((competencia) => map.set(competencia.id, competencia));
+      const ids = (esSecundaria ? academicoConfig.competenciasPorCursoSecundaria : academicoConfig.competenciasPorCursoPrimaria)?.[selectedCurso] ?? [];
+      const catalogo = esSecundaria ? academicoConfig.competenciasSecundaria ?? [] : academicoConfig.competenciasPrimaria ?? [];
+      const mapping = esSecundaria ? mappingSecundaria : mappingPrimaria;
+      ids.forEach((id, index) => {
+        if (!tieneAccesoCompetencia(mapping, alumno.grado, alumno.seccion, selectedCurso, id, docenteDni)) return;
+        habil.add(`${alumno.dni}||${id}`);
+        if (!found.has(id)) {
+          const item = catalogo.find((c) => c.id === id);
+          if (item) found.set(id, { item, index });
+        }
+      });
     });
-
-    return Array.from(map.values());
-  }, [academicoConfig, selectedCurso, selectedGradoAcademico, alumnosFiltrados, alumnos, docenteDni]);
-
-  const numeroCompetencia = (competenciaId: string) => {
-    if (!selectedCurso || !academicoConfig) return competenciasDelCurso.findIndex((c) => c.id === competenciaId) + 1;
-    const alumnoBase = alumnosFiltrados[0] ?? alumnos[0];
-    const esSecundaria = alumnoBase?.nivelEducativo === "SECUNDARIA" || (alumnoBase?.grado ?? "").endsWith("_SECUNDARIA");
-    const competenciasPorCurso = esSecundaria
-      ? academicoConfig.competenciasPorCursoSecundaria ?? {}
-      : academicoConfig.competenciasPorCursoPrimaria ?? {};
-    const ids = competenciasPorCurso[selectedCurso] ?? [];
-    const index = ids.indexOf(competenciaId);
-    return index >= 0 ? index + 1 : competenciasDelCurso.findIndex((c) => c.id === competenciaId) + 1;
-  };
-
-  const puedeCalificarCompetenciaAlumno = (alumno: UsuarioAcademico, competenciaId: string) => {
-    if (!selectedCurso || !academicoConfig) return false;
-    const esSecundaria = alumno.nivelEducativo === "SECUNDARIA" || (alumno.grado ?? "").endsWith("_SECUNDARIA");
-    const competenciasPorCurso = esSecundaria
-      ? academicoConfig.competenciasPorCursoSecundaria ?? {}
-      : academicoConfig.competenciasPorCursoPrimaria ?? {};
-    const ids = competenciasPorCurso[selectedCurso] ?? [];
-    if (!ids.includes(competenciaId)) return false;
-
-    const mappingRaw = esSecundaria
-      ? academicoConfig.docentesPorCompetenciaSecundaria
-      : academicoConfig.docentesPorCompetencia;
-    const mapping = normalizeDocentesPorCompetencia(mappingRaw as any);
-    return tieneAccesoCompetencia(mapping, alumno.grado, alumno.seccion, selectedCurso, competenciaId, docenteDni);
-  };
+    const lista = Array.from(found.values())
+      .sort((a, b) => a.index - b.index)
+      .map(({ item, index }) => ({ ...item, label: competenciaConAbreviatura(item.label, index) }));
+    return { competenciasDelCurso: lista, habilitadas: habil };
+  }, [academicoConfig, selectedCurso, selectedSalon, alumnosFiltrados, docenteDni, mappingPrimaria, mappingSecundaria]);
 
   const periodoActivo = activePeriodo;
+
+  // Índice O(1) de notas guardadas (con la observación ya decodificada) del curso actual.
+  const notasIndex = useMemo(() => {
+    const map = new Map<string, { nota: NotaAcademica; decoded: { parciales: ParcialNota[]; comentario: string } }>();
+    notas.forEach((n) => {
+      if (n.curso !== selectedCurso) return;
+      map.set(`${n.alumnoDni}||${n.curso}||${n.periodo}||${n.competenciaId}`, { nota: n, decoded: decodeObservacion(n.observacion) });
+    });
+    return map;
+  }, [notas, selectedCurso]);
 
   // Promedio de las notas finales de bimestre YA GUARDADAS para una competencia,
   // usado como sugerencia de la nota "General".
   const promedioBimestral = (competenciaId: string, alumnoDni = selectedAlumnoDni) => {
-    const relevantes = notas.filter(
-      (n) => (BIMESTRES as readonly string[]).includes(n.periodo) && n.competenciaId === competenciaId && n.valor
-        && n.alumnoDni === alumnoDni && n.curso === selectedCurso
+    const relevantes = BIMESTRES.map((b) => notasIndex.get(`${alumnoDni}||${selectedCurso}||${b}||${competenciaId}`)?.nota).filter(
+      (n): n is NotaAcademica => Boolean(n && n.valor)
     );
     if (relevantes.length === 0) return { nivel: "", detalle: [] as { periodo: string; nivel: string }[] };
-    const detalle = relevantes
-      .slice()
-      .sort((a, b) => BIMESTRES.indexOf(a.periodo as (typeof BIMESTRES)[number]) - BIMESTRES.indexOf(b.periodo as (typeof BIMESTRES)[number]))
-      .map((n) => ({ periodo: n.periodo, nivel: nivelDesdeValor(n.valor) }));
+    const detalle = relevantes.map((n) => ({ periodo: n.periodo, nivel: nivelDesdeValor(n.valor) }));
     const promedio = relevantes.reduce((sum, n) => sum + n.valor, 0) / relevantes.length;
     return { nivel: nivelDesdeValor(Math.round(promedio)), detalle };
   };
-
-  // Progreso general del alumno: 4 bimestres + la nota final del período lectivo, por competencia.
-  const progresoPorAlumno = useMemo(() => {
-    const map = new Map<string, { done: number; total: number }>();
-    if (!selectedCurso || !academicoConfig) return map;
-
-    alumnosFiltrados.forEach((al) => {
-      const esSec = al.nivelEducativo === "SECUNDARIA" || (al.grado ?? "").endsWith("_SECUNDARIA");
-      const compsPorCurso = esSec
-        ? academicoConfig.competenciasPorCursoSecundaria ?? {}
-        : academicoConfig.competenciasPorCursoPrimaria ?? {};
-      const compsDisponibles = esSec
-        ? academicoConfig.competenciasSecundaria ?? []
-        : academicoConfig.competenciasPrimaria ?? [];
-      const mappingRaw = esSec
-        ? academicoConfig.docentesPorCompetenciaSecundaria
-        : academicoConfig.docentesPorCompetencia;
-      const mapping = normalizeDocentesPorCompetencia(mappingRaw as any);
-      const ids = compsPorCurso[selectedCurso] ?? [];
-      const compsDelAlumno = compsDisponibles.filter(
-        (c) => ids.includes(c.id) && tieneAccesoCompetencia(mapping, al.grado, al.seccion, selectedCurso, c.id, docenteDni)
-      );
-
-      const total = compsDelAlumno.length * PERIODOS.length;
-      const done = total === 0 ? 0 : notas.filter(
-        (n) =>
-          n.alumnoDni === al.dni &&
-          n.curso === selectedCurso &&
-          (PERIODOS as readonly string[]).includes(n.periodo) &&
-          compsDelAlumno.some((c) => c.id === n.competenciaId) &&
-          n.valor
-      ).length;
-      map.set(al.dni, { done, total });
-    });
-    return map;
-  }, [alumnosFiltrados, notas, selectedCurso, academicoConfig, docenteDni]);
 
   const getNotaKey = (periodo: string, competenciaId: string, alumnoDni = selectedAlumnoDni) =>
     `${alumnoDni}||${selectedCurso}||${periodo}||${competenciaId}`;
@@ -335,20 +288,18 @@ export function DocenteNotas({ token }: { token: string }) {
   // Única fuente de verdad para leer el estado "efectivo" (borrador > guardado > sugerido)
   // de una competencia+periodo, usada tanto para pintar la UI como para guardar.
   const resolveDraft = (periodo: string, competenciaId: string, alumnoDni = selectedAlumnoDni) => {
-    const existing = notas.find(
-      (nota) => nota.alumnoDni === alumnoDni && nota.curso === selectedCurso && nota.periodo === periodo && nota.competenciaId === competenciaId
-    );
-    const decoded = decodeObservacion(existing?.observacion);
     const key = getNotaKey(periodo, competenciaId, alumnoDni);
+    const entry = notasIndex.get(key);
+    const decoded = entry?.decoded;
     const draft = drafts[key];
 
     const sugerencia = periodo === "GENERAL" ? promedioBimestral(competenciaId, alumnoDni) : { nivel: "", detalle: [] as { periodo: string; nivel: string }[] };
-    const nivelGuardado = nivelDesdeValor(existing?.valor);
+    const nivelGuardado = nivelDesdeValor(entry?.nota.valor);
 
     return {
       nivel: draft?.nivel || nivelGuardado || sugerencia.nivel,
-      descripcion: draft?.descripcion ?? decoded.comentario,
-      parciales: draft?.parciales ?? decoded.parciales,
+      descripcion: draft?.descripcion ?? decoded?.comentario ?? "",
+      parciales: draft?.parciales ?? decoded?.parciales ?? EMPTY_PARCIALES,
       isSugerido: periodo === "GENERAL" && !draft?.nivel && !nivelGuardado && Boolean(sugerencia.nivel),
       sugerenciaDetalle: sugerencia.detalle
     };
@@ -435,6 +386,7 @@ export function DocenteNotas({ token }: { token: string }) {
   const addParcial = (periodo: string, competenciaId: string, alumnoDni = selectedAlumnoDni) => {
     const key = getNotaKey(periodo, competenciaId, alumnoDni);
     const actuales = resolveDraft(periodo, competenciaId, alumnoDni).parciales;
+    if (actuales.length >= MAX_PARCIALES) return;
     const next = [...actuales, { id: makeParcialId(), label: `Nota parcial ${actuales.length + 1}`, nivel: "" }];
     const nextDraft = { ...(drafts[key] ?? {}), parciales: next };
     setDrafts((current) => ({ ...current, [key]: nextDraft }));
@@ -490,7 +442,24 @@ export function DocenteNotas({ token }: { token: string }) {
     }
   };
 
-  const puedeCalificar = Boolean(selectedCurso && selectedGradoAcademico && alumnosVisibles.length > 0 && competenciasDelCurso.length > 0);
+  // Primaria y secundaria tienen ids distintos para la misma competencia: una sola columna por nombre.
+  const columnas = useMemo(() => {
+    const map = new Map<string, { label: string; ids: string[] }>();
+    competenciasDelCurso.forEach((c) => {
+      const k = c.label.trim().toLowerCase();
+      const g = map.get(k);
+      if (g) g.ids.push(c.id);
+      else map.set(k, { label: c.label, ids: [c.id] });
+    });
+    return Array.from(map.values());
+  }, [competenciasDelCurso]);
+
+  const puedeCalificar = Boolean(selectedCurso && selectedSalon && alumnosVisibles.length > 0 && competenciasDelCurso.length > 0);
+
+  const abrirModal = useCallback((alumnoDni: string, competenciaId: string) => {
+    setSelectedAlumnoDni(alumnoDni);
+    setModalCtx({ alumnoDni, competenciaId });
+  }, []);
 
   const modalAlumno = modalCtx ? alumnos.find((al) => al.dni === modalCtx.alumnoDni) : undefined;
   const modalCompetencia = modalCtx ? competenciasDelCurso.find((c) => c.id === modalCtx.competenciaId) : undefined;
@@ -515,39 +484,25 @@ export function DocenteNotas({ token }: { token: string }) {
       />
 
       <div className="grid gap-3 rounded-[10px] border border-[#9ebfe1] bg-white p-3">
-        <div className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_260px]">
+        <div className="grid gap-3 md:grid-cols-[1fr_1fr_260px]">
           <label className="grid gap-1 text-[11px] font-black uppercase text-monserrat-ink/55">
             Curso
             <AcademicoSelect
               value={selectedCurso}
-              onChange={(value) => {
-                setSelectedCurso(value);
-                setSelectedGradoAcademico("");
-              }}
+              onChange={setSelectedCurso}
               placeholder="Seleccionar curso"
               options={cursosDisponibles.map((curso) => ({ value: curso, label: labelFromEnum(curso) }))}
             />
           </label>
 
           <label className="grid gap-1 text-[11px] font-black uppercase text-monserrat-ink/55">
-            Grado
+            Salón
             <AcademicoSelect
-              value={selectedGradoAcademico}
-              onChange={setSelectedGradoAcademico}
-              placeholder="Seleccionar grado"
-              disabled={!selectedCurso || gradosDelCurso.length <= 1}
-              options={gradosDelCurso.map((grado) => ({ value: grado, label: labelFromEnum(grado) }))}
-            />
-          </label>
-
-          <label className="grid gap-1 text-[11px] font-black uppercase text-monserrat-ink/55">
-            Grupo
-            <AcademicoSelect
-              value={selectedGrupo}
-              onChange={setSelectedGrupo}
-              placeholder={gruposDelGrado.length > 0 ? "Seleccionar grupo" : "No aplica"}
-              disabled={gruposDelGrado.length === 0}
-              options={gruposDelGrado.map((grupo) => ({ value: grupo, label: GRUPO_LABELS[grupo] ?? grupo }))}
+              value={selectedSalon}
+              onChange={setSelectedSalon}
+              placeholder="Seleccionar salón"
+              disabled={!selectedCurso || salonesDelCurso.length === 0}
+              options={salonesDelCurso.map((k) => ({ value: k, label: salonLabel(k) }))}
             />
           </label>
 
@@ -612,24 +567,13 @@ export function DocenteNotas({ token }: { token: string }) {
                 <table className="min-w-full border-collapse text-[11px] leading-tight text-monserrat-ink">
                   <thead>
                     <tr>
-                      <th rowSpan={2} className="sticky left-0 z-30 w-10 border border-[#9ebfe1] bg-[#dcebfa] px-2 py-2 font-semibold">N</th>
-                      <th rowSpan={2} className="sticky left-10 z-30 w-20 border border-[#9ebfe1] bg-[#dcebfa] px-2 py-2 font-semibold">Nivel</th>
-                      <th rowSpan={2} className="sticky left-[120px] z-30 w-32 border border-[#9ebfe1] bg-[#dcebfa] px-2 py-2 font-semibold">Grado</th>
-                      <th rowSpan={2} className="sticky left-[248px] z-30 w-56 border border-[#9ebfe1] bg-[#dcebfa] px-2 py-2 font-semibold">Apellidos y Nombres</th>
-                      {competenciasDelCurso.map((competencia) => (
+                      <th className="sticky left-0 z-30 w-10 border border-[#9ebfe1] bg-[#dcebfa] px-2 py-2 font-semibold">N</th>
+                      <th className="sticky left-10 z-30 w-20 border border-[#9ebfe1] bg-[#dcebfa] px-2 py-2 font-semibold">Grado</th>
+                      <th className="sticky left-[120px] z-30 w-56 border border-[#9ebfe1] bg-[#dcebfa] px-2 py-2 font-semibold">Apellidos y Nombres</th>
+                      {columnas.map((competencia) => (
                         <th
-                          key={competencia.id}
-                          className="w-44 border border-[#9ebfe1] bg-[#dcebfa] px-2 py-1.5 text-center font-black uppercase text-[#2f7fce]"
-                        >
-                          Competencia {numeroCompetencia(competencia.id)}
-                        </th>
-                      ))}
-                    </tr>
-                    <tr>
-                      {competenciasDelCurso.map((competencia) => (
-                        <th
-                          key={competencia.id}
-                          className="w-44 whitespace-normal border border-[#9ebfe1] bg-[#f6fbff] px-2 py-1.5 text-[10px] font-semibold normal-case leading-snug text-monserrat-ink/70"
+                          key={competencia.ids[0]}
+                          className="min-w-[200px] whitespace-normal border border-[#9ebfe1] bg-[#dcebfa] px-2 py-1.5 text-center text-[10px] font-black normal-case leading-snug text-[#2f7fce]"
                         >
                           {competencia.label}
                         </th>
@@ -643,12 +587,9 @@ export function DocenteNotas({ token }: { token: string }) {
                         <tr key={alumno.dni} className={activeRow ? "bg-[#f7fbff]" : "odd:bg-white even:bg-[#fbfdff]"}>
                           <td className="sticky left-0 z-20 border border-[#b7d0ea] bg-inherit px-2 py-1 text-center text-[#4c6074]">{rowIndex + 1}</td>
                           <td className="sticky left-10 z-20 border border-[#b7d0ea] bg-inherit px-2 py-1 text-center text-[#4c6074]">
-                            {labelFromEnum(alumno.nivelEducativo)}
+                            {formatGrado(alumno.grado)}
                           </td>
-                          <td className="sticky left-[120px] z-20 border border-[#b7d0ea] bg-inherit px-2 py-1 text-center text-[#4c6074]">
-                            {labelFromEnum(alumno.grado ?? "")}
-                          </td>
-                          <td className="sticky left-[248px] z-20 border border-[#b7d0ea] bg-inherit px-2 py-1">
+                          <td className="sticky left-[120px] z-20 border border-[#b7d0ea] bg-inherit px-2 py-1">
                             <button
                               type="button"
                               onClick={() => setSelectedAlumnoDni(alumno.dni)}
@@ -658,12 +599,12 @@ export function DocenteNotas({ token }: { token: string }) {
                               {alumno.nombre}
                             </button>
                           </td>
-                          {competenciasDelCurso.map((competencia) => {
-                            const habilitada = puedeCalificarCompetenciaAlumno(alumno, competencia.id);
-                            if (!habilitada) {
+                          {columnas.map((columna) => {
+                            const competenciaId = columna.ids.find((id) => habilitadas.has(`${alumno.dni}||${id}`));
+                            if (!competenciaId) {
                               return (
                                 <td
-                                  key={competencia.id}
+                                  key={columna.ids[0]}
                                   className="border border-[#b7d0ea] bg-[#f6f8fa] px-2 py-2 text-center text-[10px] font-semibold text-monserrat-ink/35"
                                 >
                                   No asignada
@@ -671,66 +612,24 @@ export function DocenteNotas({ token }: { token: string }) {
                               );
                             }
 
-                            const resolved = resolveDraft(periodoActivo, competencia.id, alumno.dni);
-                            const info = nivelInfo(resolved.nivel);
-                            const key = getNotaKey(periodoActivo, competencia.id, alumno.dni);
-
-                            const tieneNota = Boolean(resolved.nivel);
+                            const resolved = resolveDraft(periodoActivo, competenciaId, alumno.dni);
+                            const key = getNotaKey(periodoActivo, competenciaId, alumno.dni);
+                            // En "Nota final" las 4 cajas chicas son los bimestres; en un bimestre, las notas parciales.
+                            const subNotas =
+                              periodoActivo === "GENERAL"
+                                ? BIMESTRES.map((b) => nivelDesdeValor(notasIndex.get(`${alumno.dni}||${selectedCurso}||${b}||${competenciaId}`)?.nota.valor))
+                                : resolved.parciales.slice(0, MAX_PARCIALES).map((p) => p.nivel);
 
                             return (
-                              <td key={competencia.id} className="border border-[#b7d0ea] px-1.5 py-1.5 text-center align-top">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedAlumnoDni(alumno.dni);
-                                    setModalCtx({ alumnoDni: alumno.dni, competenciaId: competencia.id });
-                                  }}
-                                  className={`group relative flex w-full cursor-pointer flex-col items-center gap-0.5 rounded-[8px] px-2 py-1.5 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md ${
-                                    tieneNota ? "border-2" : "border-2 border-dashed"
-                                  }`}
-                                  style={{
-                                    borderColor: info ? info.color : "#b7cfe8",
-                                    backgroundColor: info ? info.soft : "#f7fbff"
-                                  }}
-                                >
-                                  {tieneNota ? (
-                                    <span className="text-base font-black" style={{ color: info?.color }}>
-                                      {resolved.nivel}
-                                    </span>
-                                  ) : (
-                                    <Plus size={14} className="text-[#8fb2da] transition-colors group-hover:text-[#2f7fce]" />
-                                  )}
-                                  {periodoActivo !== "GENERAL" && (resolved.parciales.length > 0 || autoSaveState[key] === "saving") && (
-                                    <span className="flex h-3 items-center gap-1 text-[9px] font-bold text-monserrat-ink/40">
-                                      {resolved.parciales.length > 0 && <span>{resolved.parciales.length}p</span>}
-                                      {autoSaveState[key] === "saving" && <span>guardando</span>}
-                                    </span>
-                                  )}
-                                  {resolved.descripcion && (
-                                    <span
-                                      className={`w-full text-[9px] font-semibold normal-case leading-snug text-monserrat-ink/55 ${
-                                        periodoActivo === "GENERAL" ? "" : "line-clamp-2"
-                                      }`}
-                                      title={resolved.descripcion}
-                                    >
-                                      {periodoActivo === "GENERAL" ? truncar(resolved.descripcion, 30) : resolved.descripcion}
-                                    </span>
-                                  )}
-
-                                  {/* Tooltip: en Nota final, en vez de 4 columnas fijas por bimestre,
-                                      el desglose aparece al pasar el cursor. */}
-                                  {periodoActivo === "GENERAL" && resolved.sugerenciaDetalle.length > 0 && (
-                                    <span className="pointer-events-none absolute bottom-full left-1/2 z-40 mb-1.5 hidden -translate-x-1/2 gap-2 whitespace-nowrap rounded-[6px] border border-[#e2ecf7] bg-white px-2 py-1 text-[10px] font-bold text-monserrat-ink shadow-lg group-hover:flex">
-                                      {resolved.sugerenciaDetalle.map((d) => (
-                                        <span key={d.periodo}>
-                                          {labelFromEnum(d.periodo).replace("Bimestre ", "B")}:{" "}
-                                          <span style={{ color: nivelInfo(d.nivel)?.color }}>{d.nivel || "-"}</span>
-                                        </span>
-                                      ))}
-                                    </span>
-                                  )}
-                                </button>
-                              </td>
+                              <NotaCell
+                                key={columna.ids[0]}
+                                alumnoDni={alumno.dni}
+                                competenciaId={competenciaId}
+                                nivel={resolved.nivel}
+                                subNotas={subNotas.join(",")}
+                                saving={autoSaveState[key] === "saving"}
+                                onOpen={abrirModal}
+                              />
                             );
                           })}
                         </tr>
@@ -744,11 +643,10 @@ export function DocenteNotas({ token }: { token: string }) {
             <>
               {!selectedCurso && cursosDisponibles.length > 0 && <EmptyHint text="Elige un curso para empezar." />}
               {cursosDisponibles.length === 0 && <EmptyHint text="Aun no tienes cursos asignados." />}
-              {selectedCurso && !selectedGradoAcademico && <EmptyHint text="Elige un grado para ver a tus alumnos." />}
-              {selectedCurso && selectedGradoAcademico && gruposDelGrado.length > 0 && !selectedGrupo && <EmptyHint text="Elige un grupo para evitar mezclar competencias de distintos grupos." />}
-              {selectedCurso && selectedGradoAcademico && (gruposDelGrado.length === 0 || selectedGrupo) && alumnosVisibles.length === 0 && <EmptyHint text="No se encontraron alumnos para los filtros seleccionados." />}
-              {selectedCurso && selectedGradoAcademico && (gruposDelGrado.length === 0 || selectedGrupo) && alumnosVisibles.length > 0 && competenciasDelCurso.length === 0 && (
-                <EmptyHint text="Este curso todavía no tiene competencias vinculadas por el área académica." />
+              {selectedCurso && !selectedSalon && <EmptyHint text="Elige un salón para ver a tus alumnos." />}
+              {selectedCurso && selectedSalon && alumnosVisibles.length === 0 && <EmptyHint text="No se encontraron alumnos para los filtros seleccionados." />}
+              {selectedCurso && selectedSalon && alumnosVisibles.length > 0 && competenciasDelCurso.length === 0 && (
+                <EmptyHint text="No tienes competencias asignadas en este curso y salón." />
               )}
             </>
           )}
@@ -795,6 +693,67 @@ export function DocenteNotas({ token }: { token: string }) {
     </div>
   );
 }
+
+// Celda memoizada: solo se vuelve a renderizar si cambia su propia nota (evita el lag
+// al escribir/cambiar de pestaña en grillas grandes de primaria).
+const NotaCell = memo(function NotaCell({
+  alumnoDni,
+  competenciaId,
+  nivel,
+  subNotas,
+  saving,
+  onOpen
+}: {
+  alumnoDni: string;
+  competenciaId: string;
+  nivel: string;
+  subNotas: string;
+  saving: boolean;
+  onOpen: (alumnoDni: string, competenciaId: string) => void;
+}) {
+  const info = nivelInfo(nivel);
+  const subs = subNotas ? subNotas.split(",") : [];
+  const cajas = Array.from({ length: MAX_PARCIALES }, (_, i) => subs[i] ?? "");
+  return (
+    <td className="border border-[#b7d0ea] px-1.5 py-1.5 text-center align-middle">
+      <button
+        type="button"
+        onClick={() => onOpen(alumnoDni, competenciaId)}
+        className="flex w-full cursor-pointer items-center justify-center gap-1 rounded-[6px] px-1 py-1 transition-colors hover:bg-[#eaf3fc]"
+        title="Editar notas"
+      >
+        <span className="flex gap-0.5">
+          {cajas.map((n, i) => {
+            const si = nivelInfo(n);
+            return (
+              <span
+                key={i}
+                className="flex h-5 w-5 items-center justify-center rounded-[3px] border text-[9px] font-black"
+                style={{
+                  borderColor: si ? si.color : "#c9d9ea",
+                  backgroundColor: si ? si.soft : "#f7fbff",
+                  color: si?.color
+                }}
+              >
+                {n}
+              </span>
+            );
+          })}
+        </span>
+        <span
+          className={`flex h-8 w-9 items-center justify-center rounded-[5px] text-sm font-black ${nivel ? "border-2" : "border-2 border-dashed"}`}
+          style={{
+            borderColor: info ? info.color : "#b7cfe8",
+            backgroundColor: info ? info.soft : "#f7fbff",
+            color: info?.color
+          }}
+        >
+          {saving ? "…" : nivel || <Plus size={13} className="text-[#8fb2da]" />}
+        </span>
+      </button>
+    </td>
+  );
+});
 
 function EmptyHint({ text }: { text: string }) {
   return (
@@ -1028,9 +987,10 @@ function NotaModal({
               <button
                 type="button"
                 onClick={onAddParcial}
-                className="inline-flex items-center justify-center gap-1 border border-dashed border-[#9ebfe1] bg-[#f7fbff] px-2 py-1.5 text-[11px] font-black text-[#2f7fce] hover:bg-[#eef6fc]"
+                disabled={resolved.parciales.length >= MAX_PARCIALES}
+                className="inline-flex items-center justify-center gap-1 border border-dashed border-[#9ebfe1] bg-[#f7fbff] px-2 py-1.5 text-[11px] font-black text-[#2f7fce] hover:bg-[#eef6fc] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <Plus size={12} /> Agregar nota parcial
+                <Plus size={12} /> Agregar nota parcial ({resolved.parciales.length}/{MAX_PARCIALES})
               </button>
             </div>
           </div>
