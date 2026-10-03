@@ -12,15 +12,15 @@ export function ConfirmForceDeleteModal({ isOpen, title, message, onClose, onFor
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/60 px-4 py-8 backdrop-blur-sm" role="dialog" aria-modal="true">
-      <div className="w-full max-w-lg overflow-hidden rounded-[18px] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
-        <div className="flex items-start justify-between gap-4 border-b border-monserrat-ink/8 bg-amber-50 px-5 py-4">
+    <div className="fixed inset-0 z-[95] flex items-center justify-center bg-monserrat-ink/55 px-4 py-8 backdrop-blur-sm" role="dialog" aria-modal="true">
+      <div className="w-full max-w-lg overflow-hidden rounded-[20px] bg-[#fffdf8] shadow-[0_24px_80px_rgba(31,27,24,0.3)]">
+        <div className="flex items-start justify-between gap-4 border-b border-monserrat-gold/30 bg-[#fbf0d6] px-5 py-4">
           <div className="flex items-start gap-3">
-            <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-amber-500 text-white">
+            <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-monserrat-gold text-white">
               <AlertTriangle size={18} />
             </div>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-amber-700">Dependencias detectadas</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-goldDark">Dependencias detectadas</p>
               <h3 className="mt-1 text-lg font-black text-monserrat-ink">{title}</h3>
             </div>
           </div>
@@ -39,14 +39,14 @@ export function ConfirmForceDeleteModal({ isOpen, title, message, onClose, onFor
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex items-center justify-center rounded-[12px] border border-monserrat-ink/12 px-4 py-2.5 text-sm font-black text-monserrat-ink/60 transition hover:border-monserrat-ink/25 hover:text-monserrat-ink"
+              className="pro-btn-soft"
             >
               Entendido
             </button>
             <button
               type="button"
               onClick={onForceDelete}
-              className="inline-flex items-center justify-center gap-2 rounded-[12px] bg-monserrat-red px-4 py-2.5 text-sm font-black text-white transition hover:bg-monserrat-red/85"
+              className="pro-btn"
             >
               <Trash2 size={16} />
               Eliminar de todas maneras

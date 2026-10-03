@@ -1,9 +1,9 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, Plus, Search, Sparkles, X } from "lucide-react";
-import { SectionHeader } from "../../ui/SectionHeader";
 import { monserratApi } from "../../../api/monserrat";
 import type { AsignacionAcademica, UsuarioAcademico, NotaAcademica, LoginResponse } from "../../../types";
-import { competenciaConAbreviatura, formatGrado, GRUPO_LABELS, normalizeDocentesPorCompetencia, normalizeGrupo, tieneAccesoCompetencia, type AcademicoConfig, type CatalogItem } from "../admin/adminShared";
+import { competenciaConAbreviatura, formatGrado, normalizeDocentesPorCompetencia, tieneAccesoCompetencia, type AcademicoConfig, type CatalogItem } from "../admin/adminShared";
+import { ordenarSalones, salonKey, salonLabel } from "./salones";
 
 const BIMESTRES = ["BIMESTRE_1", "BIMESTRE_2", "BIMESTRE_3", "BIMESTRE_4"] as const;
 const PERIODOS = [...BIMESTRES, "GENERAL"] as const;
@@ -96,23 +96,6 @@ const valorDesdeNivel = (nivel: string) => {
   return 0;
 };
 
-// Salón = grupo (Ciclado I/II, Anual, Ciencias, Letras) si el alumno lo tiene; si no, su grado.
-const SALON_ORDER = [
-  "PRIMERO_PRIMARIA", "SEGUNDO_PRIMARIA", "TERCERO_PRIMARIA", "CUARTO_PRIMARIA", "QUINTO_PRIMARIA",
-  "CICLADO_I", "CICLADO_II", "ANUAL", "CIENCIAS", "LETRAS"
-];
-
-function salonKey(grado?: string | null, seccion?: string | null) {
-  const g = normalizeGrupo(seccion);
-  if (g) return g;
-  return String(grado ?? "").toUpperCase();
-}
-
-function salonLabel(key: string) {
-  if (key === "QUINTO_PRIMARIA") return "Preformativo";
-  return GRUPO_LABELS[key] ?? formatGrado(key);
-}
-
 const MAX_PARCIALES = 4;
 const EMPTY_PARCIALES: ParcialNota[] = [];
 
@@ -183,9 +166,7 @@ export function DocenteNotas({ token }: { token: string }) {
       const k = salonKey(a.grado, a.seccion);
       if (k) keys.add(k);
     });
-    const ordenados = SALON_ORDER.filter((k) => keys.has(k));
-    const extras = Array.from(keys).filter((k) => !SALON_ORDER.includes(k));
-    return [...ordenados, ...extras];
+    return ordenarSalones(keys);
   }, [selectedCurso, asignaciones]);
 
   useEffect(() => {
@@ -234,9 +215,11 @@ export function DocenteNotas({ token }: { token: string }) {
   // realmente dicta en este curso y salón, más el set de celdas habilitadas por alumno.
   const { competenciasDelCurso, habilitadas } = useMemo(() => {
     const habil = new Set<string>();
+    // Una competencia es una POSICIÓN (C1, C2...): primaria y secundaria usan ids distintos para la
+    // misma posición, así que se agrupa por índice y cada alumno conserva su id real.
     const found = new Map<string, { item: CatalogItem; index: number }>();
     if (!selectedCurso || !selectedSalon || !academicoConfig) {
-      return { competenciasDelCurso: [] as CatalogItem[], habilitadas: habil };
+      return { competenciasDelCurso: [] as (CatalogItem & { index: number })[], habilitadas: habil };
     }
     alumnosFiltrados.forEach((alumno) => {
       const esSecundaria = alumno.nivelEducativo === "SECUNDARIA" || (alumno.grado ?? "").endsWith("_SECUNDARIA");
@@ -254,7 +237,7 @@ export function DocenteNotas({ token }: { token: string }) {
     });
     const lista = Array.from(found.values())
       .sort((a, b) => a.index - b.index)
-      .map(({ item, index }) => ({ ...item, label: competenciaConAbreviatura(item.label, index) }));
+      .map(({ item, index }) => ({ ...item, index, label: competenciaConAbreviatura(item.label, index) }));
     return { competenciasDelCurso: lista, habilitadas: habil };
   }, [academicoConfig, selectedCurso, selectedSalon, alumnosFiltrados, docenteDni, mappingPrimaria, mappingSecundaria]);
 
@@ -442,16 +425,15 @@ export function DocenteNotas({ token }: { token: string }) {
     }
   };
 
-  // Primaria y secundaria tienen ids distintos para la misma competencia: una sola columna por nombre.
+  // Una sola columna por posición de competencia (C1, C2...), con los ids de primaria y secundaria.
   const columnas = useMemo(() => {
-    const map = new Map<string, { label: string; ids: string[] }>();
+    const map = new Map<number, { label: string; ids: string[] }>();
     competenciasDelCurso.forEach((c) => {
-      const k = c.label.trim().toLowerCase();
-      const g = map.get(k);
+      const g = map.get(c.index);
       if (g) g.ids.push(c.id);
-      else map.set(k, { label: c.label, ids: [c.id] });
+      else map.set(c.index, { label: c.label, ids: [c.id] });
     });
-    return Array.from(map.values());
+    return Array.from(map.entries()).sort((a, b) => a[0] - b[0]).map(([, v]) => v);
   }, [competenciasDelCurso]);
 
   const puedeCalificar = Boolean(selectedCurso && selectedSalon && alumnosVisibles.length > 0 && competenciasDelCurso.length > 0);
@@ -477,13 +459,9 @@ export function DocenteNotas({ token }: { token: string }) {
 
   return (
     <div className="grid gap-4">
-      <SectionHeader
-        title="Notas del docente"
-        description="Registra notas por competencias según los bimestres del año escolar y una nota general por estudiante."
-        align="left"
-      />
+      <p className="mb-1 text-sm font-semibold text-monserrat-ink/60">Registra notas por competencias según los bimestres del año escolar y una nota general por estudiante.</p>
 
-      <div className="grid gap-3 rounded-[10px] border border-[#9ebfe1] bg-white p-3">
+      <div className="grid gap-3 pro-card pro-rise p-3">
         <div className="grid gap-3 md:grid-cols-[1fr_1fr_260px]">
           <label className="grid gap-1 text-[11px] font-black uppercase text-monserrat-ink/55">
             Curso
@@ -514,7 +492,7 @@ export function DocenteNotas({ token }: { token: string }) {
                 value={alumnoQuery}
                 onChange={(e) => setAlumnoQuery(e.target.value)}
                 placeholder="Buscar nombre o DNI"
-                className="w-full rounded-[8px] border border-[#d6e4f2] bg-white py-2 pl-8 pr-3 text-sm font-semibold normal-case text-monserrat-ink shadow-sm outline-none transition-all duration-150 hover:border-[#9ebfe1] focus:border-[#2f7fce] focus:shadow-md focus:ring-2 focus:ring-[#2f7fce]/15"
+                className="w-full rounded-[8px] border border-[#efe3c6] bg-white py-2 pl-8 pr-3 text-sm font-semibold normal-case text-monserrat-ink shadow-sm outline-none transition-all duration-150 hover:border-[#e0c78a] focus:border-[#9f171b] focus:shadow-md focus:ring-2 focus:ring-[#9f171b]/15"
               />
             </span>
           </label>
@@ -523,32 +501,32 @@ export function DocenteNotas({ token }: { token: string }) {
 
       <div className="grid gap-4">
           {puedeCalificar ? (
-            <div className="grid gap-3 rounded-[10px] border border-[#9ebfe1] bg-white p-3">
+            <div className="pro-panel grid gap-3 p-3">
               <div className="">
 
                 <div className="grid gap-1 text-center text-sm text-monserrat-ink sm:grid-cols-3">
                 </div>
               </div>
 
-              <div className="flex items-stretch gap-1 overflow-x-auto rounded-[4px] border border-[#b7d0ea] bg-[#e7f0fa] p-1">
+              <div className="flex items-stretch gap-1 overflow-x-auto rounded-xl border border-[#ecdcb4] bg-[#f6ecd4] p-1">
                 {BIMESTRES.map((periodo) => (
                   <button
                     key={periodo}
                     type="button"
                     onClick={() => setActivePeriodo(periodo)}
-                    className={`flex-1 whitespace-nowrap rounded-[3px] px-3 py-1.5 text-[11px] font-black transition-all ${
-                      activePeriodo === periodo ? "bg-white text-[#2f7fce]" : "text-monserrat-ink/60 hover:bg-white/60"
+                    className={`flex-1 whitespace-nowrap rounded-lg px-3 py-1.5 text-[12px] font-black transition-all ${
+                      activePeriodo === periodo ? "bg-[#9f171b] text-white shadow-sm" : "text-monserrat-ink/65 hover:bg-white/70"
                     }`}
                   >
                     {labelFromEnum(periodo)}
                   </button>
                 ))}
-                <div className="w-px flex-none self-stretch bg-[#b7d0ea]" />
+                <div className="w-px flex-none self-stretch bg-[#ecdcb4]" />
                 <button
                   type="button"
                   onClick={() => setActivePeriodo("GENERAL")}
-                  className={`flex-1 whitespace-nowrap rounded-[3px] px-3 py-1.5 text-[11px] font-black transition-all ${
-                    activePeriodo === "GENERAL" ? "bg-[#8fbe7b] text-white" : "text-[#4f7d3f] hover:bg-white/60"
+                  className={`flex-1 whitespace-nowrap rounded-lg px-3 py-1.5 text-[12px] font-black transition-all ${
+                    activePeriodo === "GENERAL" ? "bg-[#d8a842] text-white" : "text-[#8a6a14] hover:bg-white/60"
                   }`}
                 >
                   Nota final
@@ -563,17 +541,17 @@ export function DocenteNotas({ token }: { token: string }) {
                   nivel + indicadores, y el detalle completo vive en el modal. Esto
                   evita el scroll horizontal interminable que había con 3-5 columnas
                   por competencia. */}
-              <div className="admin-table-scroll overflow-auto rounded-[6px] border border-[#9ebfe1] bg-white">
+              <div className="admin-table-scroll overflow-auto rounded-xl border border-[#e0c78a] bg-white">
                 <table className="min-w-full border-collapse text-[11px] leading-tight text-monserrat-ink">
                   <thead>
                     <tr>
-                      <th className="sticky left-0 z-30 w-10 border border-[#9ebfe1] bg-[#dcebfa] px-2 py-2 font-semibold">N</th>
-                      <th className="sticky left-10 z-30 w-20 border border-[#9ebfe1] bg-[#dcebfa] px-2 py-2 font-semibold">Grado</th>
-                      <th className="sticky left-[120px] z-30 w-56 border border-[#9ebfe1] bg-[#dcebfa] px-2 py-2 font-semibold">Apellidos y Nombres</th>
+                      <th className="sticky left-0 z-30 w-10 border border-[#e0c78a] bg-[#f4ead2] px-2 py-2 font-semibold">N</th>
+                      <th className="sticky left-10 z-30 w-20 border border-[#e0c78a] bg-[#f4ead2] px-2 py-2 font-semibold">Grado</th>
+                      <th className="sticky left-[120px] z-30 w-56 border border-[#e0c78a] bg-[#f4ead2] px-2 py-2 font-semibold">Apellidos y Nombres</th>
                       {columnas.map((competencia) => (
                         <th
                           key={competencia.ids[0]}
-                          className="min-w-[200px] whitespace-normal border border-[#9ebfe1] bg-[#dcebfa] px-2 py-1.5 text-center text-[10px] font-black normal-case leading-snug text-[#2f7fce]"
+                          className="min-w-[200px] whitespace-normal border border-[#e0c78a] bg-[#f4ead2] px-2 py-1.5 text-center text-[10px] font-black normal-case leading-snug text-[#9f171b]"
                         >
                           {competencia.label}
                         </th>
@@ -584,16 +562,16 @@ export function DocenteNotas({ token }: { token: string }) {
                     {alumnosVisibles.map((alumno, rowIndex) => {
                       const activeRow = alumno.dni === selectedAlumnoDni;
                       return (
-                        <tr key={alumno.dni} className={activeRow ? "bg-[#f7fbff]" : "odd:bg-white even:bg-[#fbfdff]"}>
-                          <td className="sticky left-0 z-20 border border-[#b7d0ea] bg-inherit px-2 py-1 text-center text-[#4c6074]">{rowIndex + 1}</td>
-                          <td className="sticky left-10 z-20 border border-[#b7d0ea] bg-inherit px-2 py-1 text-center text-[#4c6074]">
+                        <tr key={alumno.dni} className={activeRow ? "bg-[#fdf8ec]" : "odd:bg-white even:bg-[#fffaf0]"}>
+                          <td className="sticky left-0 z-20 border border-[#ecdcb4] bg-inherit px-2 py-1 text-center text-[#6b5a46]">{rowIndex + 1}</td>
+                          <td className="sticky left-10 z-20 border border-[#ecdcb4] bg-inherit px-2 py-1 text-center text-[#6b5a46]">
                             {formatGrado(alumno.grado)}
                           </td>
-                          <td className="sticky left-[120px] z-20 border border-[#b7d0ea] bg-inherit px-2 py-1">
+                          <td className="sticky left-[120px] z-20 border border-[#ecdcb4] bg-inherit px-2 py-1">
                             <button
                               type="button"
                               onClick={() => setSelectedAlumnoDni(alumno.dni)}
-                              className="block w-full truncate text-left font-semibold uppercase text-[#4c6074] hover:text-[#2f7fce]"
+                              className="block w-full truncate text-left font-semibold uppercase text-[#6b5a46] hover:text-[#9f171b]"
                               title={alumno.nombre}
                             >
                               {alumno.nombre}
@@ -605,7 +583,7 @@ export function DocenteNotas({ token }: { token: string }) {
                               return (
                                 <td
                                   key={columna.ids[0]}
-                                  className="border border-[#b7d0ea] bg-[#f6f8fa] px-2 py-2 text-center text-[10px] font-semibold text-monserrat-ink/35"
+                                  className="border border-[#ecdcb4] bg-[#f6f1e4] px-2 py-2 text-center text-[10px] font-semibold text-monserrat-ink/35"
                                 >
                                   No asignada
                                 </td>
@@ -682,8 +660,8 @@ export function DocenteNotas({ token }: { token: string }) {
 
       {toast && (
         <div
-          className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-[12px] border border-black/12 px-4 py-3 text-sm font-black text-monserrat-ink ${
-            toast.kind === "ok" ? "bg-[#e3e3e1]" : "bg-[#e9e9e8]"
+          className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-[14px] border border-monserrat-gold/40 px-4 py-3 text-sm font-black text-monserrat-ink shadow-lg ${
+            toast.kind === "ok" ? "bg-[#fbf0d6]" : "bg-[#fbe9e9]"
           }`}
         >
           {toast.kind === "ok" ? <Sparkles size={15} /> : <ChevronRight size={15} />}
@@ -715,11 +693,11 @@ const NotaCell = memo(function NotaCell({
   const subs = subNotas ? subNotas.split(",") : [];
   const cajas = Array.from({ length: MAX_PARCIALES }, (_, i) => subs[i] ?? "");
   return (
-    <td className="border border-[#b7d0ea] px-1.5 py-1.5 text-center align-middle">
+    <td className="border border-[#ecdcb4] px-1.5 py-1.5 text-center align-middle">
       <button
         type="button"
         onClick={() => onOpen(alumnoDni, competenciaId)}
-        className="flex w-full cursor-pointer items-center justify-center gap-1 rounded-[6px] px-1 py-1 transition-colors hover:bg-[#eaf3fc]"
+        className="flex w-full cursor-pointer items-center justify-center gap-1 rounded-[6px] px-1 py-1 transition-colors hover:bg-[#fbf0d6]"
         title="Editar notas"
       >
         <span className="flex gap-0.5">
@@ -731,7 +709,7 @@ const NotaCell = memo(function NotaCell({
                 className="flex h-5 w-5 items-center justify-center rounded-[3px] border text-[9px] font-black"
                 style={{
                   borderColor: si ? si.color : "#c9d9ea",
-                  backgroundColor: si ? si.soft : "#f7fbff",
+                  backgroundColor: si ? si.soft : "#fdf8ec",
                   color: si?.color
                 }}
               >
@@ -744,11 +722,11 @@ const NotaCell = memo(function NotaCell({
           className={`flex h-8 w-9 items-center justify-center rounded-[5px] text-sm font-black ${nivel ? "border-2" : "border-2 border-dashed"}`}
           style={{
             borderColor: info ? info.color : "#b7cfe8",
-            backgroundColor: info ? info.soft : "#f7fbff",
+            backgroundColor: info ? info.soft : "#fdf8ec",
             color: info?.color
           }}
         >
-          {saving ? "…" : nivel || <Plus size={13} className="text-[#8fb2da]" />}
+          {saving ? "…" : nivel || <Plus size={13} className="text-[#c9a86a]" />}
         </span>
       </button>
     </td>
@@ -808,10 +786,10 @@ function AcademicoSelect({
         onClick={() => setOpen((o) => !o)}
         className={`flex w-full items-center justify-between gap-2 rounded-[8px] border bg-white px-3 py-2 text-sm font-semibold normal-case text-monserrat-ink shadow-sm transition-all duration-150 ${
           disabled
-            ? "cursor-not-allowed border-[#e2e8f0] bg-[#f2f2f1] text-monserrat-ink/40"
+            ? "cursor-not-allowed border-[#efe3c6] bg-[#f6f1e4] text-monserrat-ink/40"
             : open
-            ? "border-[#2f7fce] shadow-md ring-2 ring-[#2f7fce]/15"
-            : "border-[#d6e4f2] hover:border-[#9ebfe1] hover:shadow-md"
+            ? "border-[#9f171b] shadow-md ring-2 ring-[#9f171b]/15"
+            : "border-[#efe3c6] hover:border-[#e0c78a] hover:shadow-md"
         }`}
       >
         <span className={selected ? "" : "text-monserrat-ink/40"}>{selected ? selected.label : placeholder}</span>
@@ -822,7 +800,7 @@ function AcademicoSelect({
       </button>
 
       {open && !disabled && (
-        <div className="absolute left-0 right-0 z-40 mt-1.5 max-h-64 overflow-y-auto rounded-[10px] border border-[#e2ecf7] bg-white p-1.5 shadow-lg">
+        <div className="absolute left-0 right-0 z-40 mt-1.5 max-h-64 overflow-y-auto rounded-[10px] border border-[#f0e6cd] bg-white p-1.5 shadow-lg">
           {options.length === 0 && (
             <p className="px-3 py-2 text-xs font-semibold text-monserrat-ink/40">Sin opciones</p>
           )}
@@ -838,8 +816,8 @@ function AcademicoSelect({
                 }}
                 className={`block w-full rounded-[6px] border-l-[3px] px-2.5 py-1.5 text-left text-sm font-semibold normal-case transition-colors ${
                   active
-                    ? "border-l-[#2f7fce] bg-[#eaf3fc] text-[#2f7fce]"
-                    : "border-l-transparent text-monserrat-ink/75 hover:bg-[#f2f8fd] hover:text-[#2f7fce]"
+                    ? "border-l-[#9f171b] bg-[#fbf0d6] text-[#9f171b]"
+                    : "border-l-transparent text-monserrat-ink/75 hover:bg-[#fcf4e0] hover:text-[#9f171b]"
                 }`}
               >
                 {option.label}
@@ -873,7 +851,7 @@ function NivelPicker({
             onClick={() => onChange(nivel.value)}
             className={`border text-center font-black transition-all ${compact ? "px-1 py-0.5 text-[10px]" : "px-1.5 py-1 text-[11px]"}`}
             style={{
-              borderColor: active ? nivel.color : "#b7d0ea",
+              borderColor: active ? nivel.color : "#ecdcb4",
               backgroundColor: active ? nivel.soft : "#ffffff",
               color: active ? nivel.color : "rgb(31 27 24 / 0.42)"
             }}
@@ -919,7 +897,7 @@ function NotaModal({
   onEliminar?: () => void | Promise<void>;
   onClose: () => void;
 }) {
-  const nivelColor = nivelInfo(resolved.nivel)?.color ?? "#9ebfe1";
+  const nivelColor = nivelInfo(resolved.nivel)?.color ?? "#e0c78a";
   const [isEliminando, setIsEliminando] = useState(false);
 
   return (
@@ -929,11 +907,11 @@ function NotaModal({
         style={{ borderTopColor: nivelColor }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-3 border-b border-[#e2ecf7] pb-3">
+        <div className="flex items-start justify-between gap-3 border-b border-[#f0e6cd] pb-3">
           <div>
             <p className="text-[10px] font-black uppercase text-monserrat-ink/45">{labelFromEnum(periodo)}</p>
             <h4 className="text-sm font-black uppercase text-monserrat-ink">{alumno.nombre}</h4>
-            <p className="text-xs font-semibold text-[#2f7fce]">{competencia.label}</p>
+            <p className="text-xs font-semibold text-[#9f171b]">{competencia.label}</p>
           </div>
           <button type="button" onClick={onClose} className="text-monserrat-ink/40 hover:text-monserrat-ink" aria-label="Cerrar">
             <X size={18} />
@@ -948,7 +926,7 @@ function NotaModal({
         </div>
 
         {periodo === "GENERAL" && resolved.sugerenciaDetalle.length > 0 && (
-          <div className="grid gap-1 rounded-[8px] border border-[#e2ecf7] bg-[#f7fbff] p-2">
+          <div className="grid gap-1 rounded-[8px] border border-[#f0e6cd] bg-[#fdf8ec] p-2">
             <p className="text-[10px] font-black uppercase text-monserrat-ink/45">Bimestres registrados</p>
             <div className="flex flex-wrap gap-3">
               {resolved.sugerenciaDetalle.map((d) => (
@@ -966,11 +944,11 @@ function NotaModal({
             <p className="mb-1 text-[10px] font-black uppercase text-monserrat-ink/50">Notas parciales</p>
             <div className="grid gap-2">
               {resolved.parciales.map((parcial) => (
-                <div key={parcial.id} className="flex items-center gap-2 rounded-[6px] border border-[#e2ecf7] p-2">
+                <div key={parcial.id} className="flex items-center gap-2 rounded-[6px] border border-[#f0e6cd] p-2">
                   <input
                     value={parcial.label}
                     onChange={(e) => onUpdateParcial(parcial.id, "label", e.target.value)}
-                    className="min-w-0 flex-1 border-b border-[#d9e7f5] bg-transparent px-1 text-xs font-semibold outline-none focus:border-[#2f7fce]"
+                    className="min-w-0 flex-1 border-b border-[#ead9b0] bg-transparent px-1 text-xs font-semibold outline-none focus:border-[#9f171b]"
                     placeholder="Criterio"
                   />
                   <NivelPicker value={parcial.nivel} compact onChange={(nivel) => onUpdateParcial(parcial.id, "nivel", nivel)} />
@@ -988,7 +966,7 @@ function NotaModal({
                 type="button"
                 onClick={onAddParcial}
                 disabled={resolved.parciales.length >= MAX_PARCIALES}
-                className="inline-flex items-center justify-center gap-1 border border-dashed border-[#9ebfe1] bg-[#f7fbff] px-2 py-1.5 text-[11px] font-black text-[#2f7fce] hover:bg-[#eef6fc] disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-1 border border-dashed border-[#e0c78a] bg-[#fdf8ec] px-2 py-1.5 text-[11px] font-black text-[#9f171b] hover:bg-[#fbf0d6] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Plus size={12} /> Agregar nota parcial ({resolved.parciales.length}/{MAX_PARCIALES})
               </button>
@@ -1001,12 +979,12 @@ function NotaModal({
           <textarea
             value={resolved.descripcion}
             onChange={(e) => onDescripcion(e.target.value)}
-            className="h-20 w-full resize-y rounded-[6px] border border-[#e2ecf7] bg-white px-2 py-1.5 text-xs font-semibold outline-none focus:border-[#2f7fce]"
+            className="h-20 w-full resize-y rounded-[6px] border border-[#f0e6cd] bg-white px-2 py-1.5 text-xs font-semibold outline-none focus:border-[#9f171b]"
             placeholder="Conclusion descriptiva"
           />
         </div>
 
-        <div className="flex items-center justify-between gap-3 border-t border-[#e2ecf7] pt-3">
+        <div className="flex items-center justify-between gap-3 border-t border-[#f0e6cd] pt-3">
           <span className="text-[10px] font-bold text-monserrat-ink/40">
             {autoSaveStatus === "saving"
               ? "Guardando..."
@@ -1035,7 +1013,7 @@ function NotaModal({
               type="button"
               onClick={onGuardar}
               disabled={!resolved.nivel || autoSaveStatus === "saving"}
-              className="rounded-[6px] bg-[#2f7fce] px-5 py-1.5 text-xs font-black text-white transition-colors hover:bg-[#2568ac] disabled:cursor-not-allowed disabled:bg-[#b7d0ea]"
+              className="rounded-[6px] bg-[#9f171b] px-5 py-1.5 text-xs font-black text-white transition-colors hover:bg-[#4f090c] disabled:cursor-not-allowed disabled:bg-[#ecdcb4]"
             >
               {autoSaveStatus === "saving" ? "Guardando..." : "Guardar"}
             </button>

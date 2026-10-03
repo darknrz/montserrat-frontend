@@ -1,4 +1,5 @@
 import { Download } from "lucide-react";
+import { useAnioActivo } from "../../../hooks/useAnioActivo";
 import { useEffect, useMemo, useState } from "react";
 import { monserratApi } from "../../../api/monserrat";
 import type { PensionMensual, UsuarioAcademico } from "../../../types";
@@ -24,7 +25,8 @@ export function PensionesTab({
   labelAcademico,
 }: PensionesTabProps) {
   const [pensiones, setPensiones] = useState<PensionMensual[]>([]);
-  const [pensionYear, setPensionYear] = useState(new Date().getFullYear());
+  const anioActivo = useAnioActivo(token);
+  const [pensionYear, setPensionYear] = useState(anioActivo);
   const [pensionSearch, setPensionSearch] = useState("");
   const [pensionNivelFiltro, setPensionNivelFiltro] = useState("");
   const [pensionGradoFiltro, setPensionGradoFiltro] = useState("");
@@ -47,7 +49,8 @@ export function PensionesTab({
     return `nom-${alumno.nombre}`;
   };
 
-  const CURRENT_YEAR = new Date().getFullYear();
+  const CURRENT_YEAR = anioActivo;
+  useEffect(() => setPensionYear(anioActivo), [anioActivo]);
   const START_YEAR = 2021;
   const endYear = Math.max(CURRENT_YEAR, START_YEAR);
   const YEARS = Array.from({ length: endYear - START_YEAR + 1 }, (_, i) => String(endYear - i));
@@ -230,7 +233,7 @@ export function PensionesTab({
     <div className="flex min-w-0 flex-col gap-3">
       {/* Panel superior: anillo de cumplimiento + tendencia mensual */}
       <div className="grid gap-3 sm:grid-cols-[auto_1fr]">
-        <div className="flex items-center gap-4 rounded-[14px] border border-monserrat-ink/8 bg-white px-5 py-4 shadow-sm">
+        <div className="flex items-center gap-4 pro-card pro-rise px-5 py-4 shadow-sm">
           <svg viewBox="0 0 72 72" width="64" height="64" className="shrink-0">
             <circle cx="36" cy="36" r={RADIO} fill="none" stroke="#1c1a1710" strokeWidth="7" />
             <circle
@@ -261,7 +264,7 @@ export function PensionesTab({
           </div>
         </div>
 
-        <div className="rounded-[14px] border border-monserrat-ink/8 bg-white px-5 py-4 shadow-sm">
+        <div className="pro-card pro-rise px-5 py-4 shadow-sm">
           <p className="mb-2 text-[10px] font-black uppercase tracking-wide text-monserrat-ink/40">
             Cobranza por mes
           </p>
@@ -282,7 +285,7 @@ export function PensionesTab({
       </div>
 
       {/* Filtros */}
-      <div className="rounded-[14px] border border-monserrat-ink/8 bg-white p-3 shadow-sm">
+      <div className="pro-card pro-rise p-3 shadow-sm">
         <div className="grid gap-3 sm:grid-cols-[1fr_150px_150px_auto]">
           <div className="relative">
             <svg
@@ -349,7 +352,7 @@ export function PensionesTab({
               setPensionEstadoFiltro("all");
               setPensionPagina(1);
             }}
-            className="inline-flex items-center gap-1.5 rounded-[10px] border border-monserrat-ink/12 px-3 py-2 text-[12px] font-black text-monserrat-ink/50 hover:bg-monserrat-cream/40"
+            className="inline-flex items-center gap-1.5 rounded-[10px] border border-[#d8a842]/35 px-3 py-2 text-[12px] font-black text-monserrat-ink/50 hover:bg-monserrat-cream/40"
           >
             ↺ Limpiar
           </button>
@@ -361,11 +364,11 @@ export function PensionesTab({
             const active = pensionEstadoFiltro === s;
             const cls = active
               ? s === "all"
-                ? "bg-monserrat-ink text-white border-monserrat-ink/20"
+                ? "bg-monserrat-red text-white border-monserrat-ink/20"
                 : s === "paid"
                   ? "bg-emerald-100 text-emerald-700 border-emerald-300"
                   : "bg-amber-100 text-amber-700 border-amber-300"
-              : "bg-transparent text-monserrat-ink/40 border-monserrat-ink/10 hover:bg-monserrat-cream/40";
+              : "bg-transparent text-monserrat-ink/40 border-[#d8a842]/30 hover:bg-monserrat-cream/40";
             return (
               <button
                 key={s}
@@ -400,7 +403,7 @@ export function PensionesTab({
             <button
               type="button"
               onClick={() => void exportarPensionesExcel()}
-              className="inline-flex items-center gap-1.5 rounded-[10px] bg-monserrat-ink px-3 py-1.5 text-[11px] font-black text-white hover:bg-monserrat-ink/85"
+              className="inline-flex items-center gap-1.5 rounded-[10px] bg-monserrat-red px-3 py-1.5 text-[11px] font-black text-white hover:bg-monserrat-redDark"
             >
               <Download size={13} /> Exportar
             </button>
@@ -410,7 +413,7 @@ export function PensionesTab({
 
       {/* Tabla tipo hoja de cálculo */}
       {filtradosFinal.length === 0 ? (
-        <div className="rounded-[12px] border border-monserrat-ink/8 bg-white py-12 text-center">
+        <div className="pro-card pro-rise py-12 text-center">
           <p className="text-[13px] font-semibold text-monserrat-ink/30">Sin alumnos con esos filtros</p>
           <button
             type="button"
@@ -426,7 +429,7 @@ export function PensionesTab({
           </button>
         </div>
       ) : (
-        <div className="flex min-w-0 flex-col overflow-hidden rounded-[14px] border border-monserrat-ink/8 bg-white shadow-sm">
+        <div className="flex min-w-0 flex-col overflow-hidden pro-card pro-rise shadow-sm">
           <div className="flex flex-wrap items-center gap-4 border-b border-monserrat-ink/6 px-4 py-2">
             <span className="flex items-center gap-1.5 text-[10px] font-bold text-monserrat-ink/40">
               <span className="h-2.5 w-2.5 rounded-[3px] bg-emerald-500" /> Pagado
@@ -574,7 +577,7 @@ export function PensionesTab({
       )}
 
       {filtradosFinal.length > 0 && (
-        <div className="flex items-center justify-between rounded-[12px] border border-monserrat-ink/8 bg-white px-4 py-3">
+        <div className="flex items-center justify-between pro-card pro-rise px-4 py-3">
           <p className="text-[12px] font-semibold text-monserrat-ink/45">
             <span className="font-black text-monserrat-ink">
               {(currentPage - 1) * 10 + 1}–{Math.min(currentPage * 10, filtradosFinal.length)}
@@ -587,7 +590,7 @@ export function PensionesTab({
               type="button"
               disabled={currentPage === 1}
               onClick={() => setPensionPagina((p) => p - 1)}
-              className="flex h-8 w-8 items-center justify-center rounded-[8px] border border-monserrat-ink/10 text-monserrat-ink/50 transition hover:border-monserrat-ink/25 hover:text-monserrat-ink disabled:opacity-30"
+              className="flex h-8 w-8 items-center justify-center rounded-[8px] border border-[#d8a842]/30 text-monserrat-ink/50 transition hover:border-monserrat-ink/25 hover:text-monserrat-ink disabled:opacity-30"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="m15 18-6-6 6-6" />
@@ -613,8 +616,8 @@ export function PensionesTab({
                     onClick={() => setPensionPagina(p as number)}
                     className={`h-8 min-w-[32px] rounded-[8px] px-2 text-[12px] font-black transition ${
                       currentPage === p
-                        ? "bg-monserrat-ink text-white"
-                        : "border border-monserrat-ink/10 text-monserrat-ink/50 hover:border-monserrat-ink/25 hover:text-monserrat-ink"
+                        ? "bg-monserrat-red text-white"
+                        : "border border-[#d8a842]/30 text-monserrat-ink/50 hover:border-monserrat-ink/25 hover:text-monserrat-ink"
                     }`}
                   >
                     {p}
@@ -626,7 +629,7 @@ export function PensionesTab({
               type="button"
               disabled={currentPage === totalPaginas}
               onClick={() => setPensionPagina((p) => Math.min(totalPaginas, p + 1))}
-              className="flex h-8 w-8 items-center justify-center rounded-[8px] border border-monserrat-ink/10 text-monserrat-ink/50 transition hover:border-monserrat-ink/25 hover:text-monserrat-ink disabled:opacity-30"
+              className="flex h-8 w-8 items-center justify-center rounded-[8px] border border-[#d8a842]/30 text-monserrat-ink/50 transition hover:border-monserrat-ink/25 hover:text-monserrat-ink disabled:opacity-30"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="m9 18 6-6-6-6" />

@@ -95,6 +95,11 @@ export function AnunciosTab({ token, isBusy, runAdminAction }: AnunciosTabProps)
 
   const submitAnuncio = (e: FormEvent) => {
     e.preventDefault();
+    if (!imageFile && !anuncioForm.imageUrl) {
+      setError("La imagen del anuncio es obligatoria. El documento adjunto es opcional.");
+      return;
+    }
+    setError(null);
     runAdminAction(async () => {
       const image = await uploadImage();
       const attachment = await uploadAttachment();
@@ -226,10 +231,10 @@ export function AnunciosTab({ token, isBusy, runAdminAction }: AnunciosTabProps)
 
   return (
     <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
-      <form onSubmit={submitAnuncio} className="grid content-start gap-3 rounded-[18px] border border-monserrat-ink/8 bg-monserrat-cream/40 p-5">
+      <form onSubmit={submitAnuncio} className="pro-card pro-rise grid content-start gap-3 p-5">
         {editingAnuncio && (
           <div className="flex justify-end">
-            <button type="button" onClick={handleCancel} className="rounded-full border border-monserrat-ink/12 px-3 py-2 text-[12px] font-black text-monserrat-ink/70 hover:border-monserrat-ink/25">
+            <button type="button" onClick={handleCancel} className="pro-btn-soft">
               <X size={16} /> Cancelar
             </button>
           </div>
@@ -254,7 +259,7 @@ export function AnunciosTab({ token, isBusy, runAdminAction }: AnunciosTabProps)
         </AdminField>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <AdminField label="Imagen del anuncio">
+          <AdminField label="Imagen del anuncio (obligatoria)">
             <MediaPicker
               label="Seleccionar imagen"
               accept="image/*"
@@ -266,7 +271,7 @@ export function AnunciosTab({ token, isBusy, runAdminAction }: AnunciosTabProps)
             />
           </AdminField>
 
-          <AdminField label="Documento adjunto">
+          <AdminField label="Documento adjunto (opcional)">
             <MediaPicker
               label="Seleccionar documento"
               accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/*,video/*"
@@ -285,7 +290,7 @@ export function AnunciosTab({ token, isBusy, runAdminAction }: AnunciosTabProps)
 
         <button
           disabled={isBusy}
-          className="flex items-center justify-center gap-2 rounded-[10px] bg-monserrat-red py-2.5 text-[12px] font-black text-white transition hover:bg-monserrat-red/85 disabled:opacity-60"
+          className="pro-btn"
         >
           <Save size={14} /> {editingAnuncio ? "Actualizar anuncio" : "Crear anuncio"}
         </button>
@@ -302,7 +307,7 @@ export function AnunciosTab({ token, isBusy, runAdminAction }: AnunciosTabProps)
           onDelete: () => handleDelete(anuncio),
         }))}
         onReorder={handleReorder}
-        className="bg-white shadow-sm"
+        className="pro-rise bg-[#fffdf8] shadow-sm"
         bodyClassName="max-h-[70vh]"
       />
     </div>

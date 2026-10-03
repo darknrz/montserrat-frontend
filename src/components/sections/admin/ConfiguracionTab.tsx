@@ -1,14 +1,15 @@
 import { BookOpen, GraduationCap, School, ShieldCheck, Users } from "lucide-react";
 import { useEffect, useState } from "react";
-import { ConfigPanel, GradosConfigPanel, SalonesOficialesPanel, AdminMetric, CompetenciasPanel } from "./adminComponents";
+import { ConfigPanel, GradosConfigPanel, AdminMetric, CompetenciasPanel } from "./adminComponents";
 import { monserratApi } from "../../../api/monserrat";
+import { useAnioActivo } from "../../../hooks/useAnioActivo";
+import { MigracionAnioPanel } from "./MigracionAnioPanel";
 import type { PeriodoBimestre } from "../../../types";
 import {
   type AcademicoConfig,
   type ConfigView,
   type CatalogItem,
   type SalonItem,
-  SALONES,
 } from "./adminShared";
 
 type NivelKey = "inicial" | "primaria" | "secundaria";
@@ -34,6 +35,7 @@ type ConfiguracionTabProps = {
   cursosPrimariaActivos: string[];
   cursosSecundariaActivos: string[];
   token: string;
+  rol?: string;
   runAdminAction: (action: () => Promise<void>, successMessage: string) => void;
   setStatus: (status: string | null) => void;
   setErrorMessage: (msg: string | null) => void;
@@ -43,6 +45,7 @@ export function ConfiguracionTab({
   academicoConfig,
   saveAcademicoConfig,
   token,
+  rol,
   runAdminAction,
   setStatus,
   setErrorMessage,
@@ -51,11 +54,12 @@ export function ConfiguracionTab({
   const getCursos = (n: NivelKey): CatalogItem[] => academicoConfig[CURSOS_KEY[n]] ?? [];
   const getCompetencias = (n: NivelKey): CatalogItem[] => academicoConfig[COMPETENCIAS_KEY[n]] ?? [];
   const getGrados = (n: NivelKey): CatalogItem[] => academicoConfig[GRADOS_KEY[n]] ?? [];
-  const vistaMatch = /^(inicial|primaria|secundaria)-(cursos|competencias|grados|salones)$/.exec(configView);
+  const vistaMatch = /^(inicial|primaria|secundaria)-(cursos|competencias|grados)$/.exec(configView);
   const vistaActual = vistaMatch
-    ? { nivel: vistaMatch[1] as NivelKey, seccion: vistaMatch[2] as "cursos" | "competencias" | "grados" | "salones" }
+    ? { nivel: vistaMatch[1] as NivelKey, seccion: vistaMatch[2] as "cursos" | "competencias" | "grados" }
     : null;
-  const [anioPeriodo, setAnioPeriodo] = useState<number>(new Date().getFullYear());
+  const anioActivoCfg = useAnioActivo(token);
+  const [anioPeriodo, setAnioPeriodo] = useState<number>(anioActivoCfg);
   const [periodoRows, setPeriodoRows] = useState<PeriodoBimestre[]>(
     [1, 2, 3, 4].map((numeroBimestre) => ({
       id: undefined,
@@ -65,6 +69,7 @@ export function ConfiguracionTab({
       fechaFin: "",
     }))
   );
+  useEffect(() => setAnioPeriodo(anioActivoCfg), [anioActivoCfg]);
   const [loadingPeriodos, setLoadingPeriodos] = useState(false);
   const [savingPeriodo, setSavingPeriodo] = useState<number | null>(null);
 
@@ -168,7 +173,7 @@ export function ConfiguracionTab({
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
-        <div className="grid content-start gap-1.5 rounded-[12px] border border-black/10 bg-white p-2 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto">
+        <div className="pro-card grid content-start gap-1.5 p-2 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto">
           {NIVEL_SECCIONES.map((nivel) => (
             <div key={nivel.key} className="grid gap-1.5">
               <p className="px-2 pt-3 text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40 first:pt-1">
@@ -178,7 +183,6 @@ export function ConfiguracionTab({
                 { id: `${nivel.key}-cursos` as ConfigView, icon: <BookOpen size={16} />, title: "Áreas curriculares", count: getCursos(nivel.key).length },
                 { id: `${nivel.key}-competencias` as ConfigView, icon: <ShieldCheck size={16} />, title: "Competencias", count: getCompetencias(nivel.key).length },
                 { id: `${nivel.key}-grados` as ConfigView, icon: <School size={16} />, title: "Grados", count: getGrados(nivel.key).length },
-                { id: `${nivel.key}-salones` as ConfigView, icon: <Users size={16} />, title: "Salones", count: SALONES.length },
               ].map((item) => (
                 <button
                   key={item.id}
@@ -186,8 +190,8 @@ export function ConfiguracionTab({
                   onClick={() => setConfigView(item.id)}
                   className={`flex items-center justify-between gap-3 rounded-[12px] px-3 py-3 text-left transition ${
                     configView === item.id
-                      ? "bg-[#e3e3e1] text-monserrat-ink"
-                      : "text-monserrat-ink/58 hover:bg-[#eeeeec]"
+                      ? "pro-nav-active"
+                      : "text-monserrat-ink/58 hover:bg-[#f7efd9]"
                   }`}
                 >
                   <span className="flex min-w-0 items-center gap-2">
@@ -196,7 +200,7 @@ export function ConfiguracionTab({
                   </span>
                   <span
                     className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
-                      configView === item.id ? "bg-white" : "bg-[#e7e7e5]"
+                      configView === item.id ? "bg-white" : "bg-[#f4ead2]"
                     }`}
                   >
                     {item.count}
@@ -210,11 +214,32 @@ export function ConfiguracionTab({
           </p>
           <button
             type="button"
+            onClick={() => setConfigView("salones-institucion")}
+            className={`flex items-center justify-between gap-3 rounded-[12px] px-3 py-3 text-left transition ${
+              configView === "salones-institucion"
+                ? "pro-nav-active"
+                : "text-monserrat-ink/58 hover:bg-[#f7efd9]"
+            }`}
+          >
+            <span className="flex min-w-0 items-center gap-2">
+              <Users size={16} />
+              <span className="truncate text-[13px] font-black">Salones</span>
+            </span>
+            <span
+              className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
+                configView === "salones-institucion" ? "bg-white" : "bg-[#f4ead2]"
+              }`}
+            >
+              {(academicoConfig.nivelesAcademicos ?? []).length}
+            </span>
+          </button>
+          <button
+            type="button"
             onClick={() => setConfigView("periodos-bimestres")}
             className={`flex items-center justify-between gap-3 rounded-[12px] px-3 py-3 text-left transition ${
               configView === "periodos-bimestres"
-                ? "bg-[#e3e3e1] text-monserrat-ink"
-                : "text-monserrat-ink/58 hover:bg-[#eeeeec]"
+                ? "pro-nav-active"
+                : "text-monserrat-ink/58 hover:bg-[#f7efd9]"
             }`}
           >
             <span className="flex min-w-0 items-center gap-2">
@@ -223,12 +248,28 @@ export function ConfiguracionTab({
             </span>
             <span
               className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
-                configView === "periodos-bimestres" ? "bg-white" : "bg-[#e7e7e5]"
+                configView === "periodos-bimestres" ? "bg-white" : "bg-[#f4ead2]"
               }`}
             >
               4
             </span>
           </button>
+          {rol === "SUPER_ADMIN" && (
+            <button
+              type="button"
+              onClick={() => setConfigView("migracion-anio")}
+              className={`flex items-center justify-between gap-3 rounded-[12px] px-3 py-3 text-left transition ${
+                configView === "migracion-anio"
+                  ? "pro-nav-active"
+                  : "text-monserrat-ink/58 hover:bg-[#f7efd9]"
+              }`}
+            >
+              <span className="flex min-w-0 items-center gap-2">
+                <GraduationCap size={16} />
+                <span className="truncate text-[13px] font-black">Migrar año escolar</span>
+              </span>
+            </button>
+          )}
         </div>
 
         <div className="min-w-0">
@@ -252,9 +293,18 @@ export function ConfiguracionTab({
               onChange={(items) => saveAcademicoConfig({ ...academicoConfig, [GRADOS_KEY[vistaActual.nivel]]: items })}
             />
           )}
-          {vistaActual && vistaActual.seccion === "salones" && <SalonesOficialesPanel />}
+          {configView === "salones-institucion" && (
+            <ConfigPanel
+              title="Salones"
+              items={academicoConfig.nivelesAcademicos ?? []}
+              onChange={(items) => saveAcademicoConfig({ ...academicoConfig, nivelesAcademicos: items })}
+            />
+          )}
+          {configView === "migracion-anio" && rol === "SUPER_ADMIN" && (
+            <MigracionAnioPanel token={token} setErrorMessage={setErrorMessage} />
+          )}
           {configView === "periodos-bimestres" && (
-            <div className="grid gap-5 rounded-[12px] border border-black/10 bg-white p-5">
+            <div className="grid gap-5 pro-card pro-rise p-5">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h3 className="font-serif text-lg font-black text-monserrat-ink">Períodos bimestrales</h3>
@@ -274,7 +324,7 @@ export function ConfiguracionTab({
                       className="admin-input"
                     />
                   </label>
-                  <span className="inline-flex items-center rounded-[9px] bg-black/[0.04] px-3 py-2 text-[12px] font-semibold text-monserrat-ink/70">
+                  <span className="inline-flex items-center rounded-[9px] bg-[#f4ead2] px-3 py-2 text-[12px] font-semibold text-monserrat-ink/70">
                     {loadingPeriodos ? "Cargando..." : "Datos actualizados"}
                   </span>
                 </div>
@@ -282,7 +332,7 @@ export function ConfiguracionTab({
 
               <div className="grid gap-4">
                 {periodoRows.map((row) => (
-                  <div key={row.numeroBimestre} className="rounded-[12px] border border-black/10 bg-white p-4">
+                  <div key={row.numeroBimestre} className="pro-panel p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">Bimestre {row.numeroBimestre}</p>
@@ -295,7 +345,7 @@ export function ConfiguracionTab({
                           type="button"
                           onClick={() => handleUpdatePeriodo(row)}
                           disabled={savingPeriodo === row.numeroBimestre}
-                          className="inline-flex items-center justify-center rounded-[9px] bg-monserrat-ink px-4 py-2 text-[12px] font-black text-white transition hover:bg-monserrat-ink/85 disabled:opacity-50"
+                          className="inline-flex items-center justify-center rounded-[9px] bg-monserrat-red px-4 py-2 text-[12px] font-black text-white transition hover:bg-monserrat-redDark disabled:opacity-50"
                         >
                           Guardar
                         </button>
@@ -304,7 +354,7 @@ export function ConfiguracionTab({
                             type="button"
                             onClick={() => handleDeletePeriodo(row)}
                             disabled={savingPeriodo === row.numeroBimestre}
-                            className="inline-flex items-center justify-center rounded-[9px] border border-black/10 bg-white px-4 py-2 text-[12px] font-black text-monserrat-ink transition hover:bg-black/[0.035] disabled:opacity-50"
+                            className="inline-flex items-center justify-center rounded-[9px] border border-[#d8a842]/30 bg-white px-4 py-2 text-[12px] font-black text-monserrat-ink transition hover:bg-[#f7efd9] disabled:opacity-50"
                           >
                             Eliminar
                           </button>

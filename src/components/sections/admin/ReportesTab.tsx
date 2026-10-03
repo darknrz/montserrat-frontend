@@ -1,4 +1,5 @@
 import { Download, X, User, Users, GraduationCap, Building2, FileText, CheckCircle2, Search, ArrowRight } from "lucide-react";
+import { getAnioActivoCache } from "../../../hooks/useAnioActivo";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { NotaAcademica, UsuarioAcademico } from "../../../types";
 import { monserratApi } from "../../../api/monserrat";
@@ -365,9 +366,9 @@ export function ReportesTab({
 
   return (
     <div className="space-y-5">
-      <div className="rounded-xl border border-monserrat-ink/10 bg-white shadow-sm">
+      <div className="pro-card pro-rise">
         {/* Encabezado */}
-        <div className="flex items-center gap-3 border-b border-monserrat-ink/10 px-6 py-5">
+        <div className="flex items-center gap-3 border-b border-monserrat-gold/30 px-6 py-5">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-monserrat-red/10">
             <FileText size={17} className="text-monserrat-red" />
           </div>
@@ -378,8 +379,8 @@ export function ReportesTab({
         </div>
 
         {/* Selector de tipo: control segmentado */}
-        <div className="border-b border-monserrat-ink/10 px-6 py-4">
-          <div className="inline-flex flex-wrap gap-1 rounded-lg bg-monserrat-ink/[0.04] p-1">
+        <div className="border-b border-monserrat-gold/30 px-6 py-4">
+          <div className="inline-flex flex-wrap gap-1 rounded-xl bg-[#f4ead2] p-1">
             {REPORT_OPTIONS.map((option) => {
               const Icon = option.icon;
               const isSelected = reportType === option.value;
@@ -390,10 +391,10 @@ export function ReportesTab({
                     setReportType(option.value);
                     resetSelecciones();
                   }}
-                  className={`${filaInteractiva} flex items-center gap-1.5 rounded-md px-3.5 py-2 text-[13px] font-semibold ${
+                  className={`${filaInteractiva} flex items-center gap-1.5 rounded-[10px] px-3.5 py-2 text-[13px] font-bold ${
                     isSelected
-                      ? "bg-white text-monserrat-red shadow-sm"
-                      : "text-monserrat-ink/50 hover:bg-white/60 hover:text-monserrat-ink"
+                      ? "pro-nav-active"
+                      : "text-monserrat-ink/60 hover:bg-white/70 hover:text-monserrat-red"
                   }`}
                 >
                   <Icon size={14} />
@@ -405,7 +406,7 @@ export function ReportesTab({
         </div>
 
         {/* Cuerpo: selección (izq) + resumen y acción (der) */}
-        <div className="grid lg:grid-cols-[1fr_300px] lg:divide-x lg:divide-monserrat-ink/10">
+        <div className="grid lg:grid-cols-[1fr_300px] lg:divide-x lg:divide-monserrat-gold/30">
           <div className="p-6">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-sm font-bold text-monserrat-ink">
@@ -516,7 +517,7 @@ export function ReportesTab({
                         className={`${filaInteractiva} flex items-center justify-between rounded-lg border px-4 py-3 text-left ${
                           isSelected
                             ? "border-monserrat-red/30 bg-monserrat-red/[0.05]"
-                            : "border-monserrat-ink/10 hover:border-monserrat-ink/20 hover:bg-monserrat-ink/[0.02]"
+                            : "border-monserrat-gold/30 bg-[#fffdf8] hover:border-monserrat-red/30 hover:bg-[#fbf4e2]"
                         }`}
                       >
                         <span className={`text-sm font-semibold ${isSelected ? "text-monserrat-red" : "text-monserrat-ink"}`}>
@@ -546,7 +547,7 @@ export function ReportesTab({
                         className={`${filaInteractiva} flex items-center justify-between rounded-lg border px-4 py-3.5 text-left ${
                           isSelected
                             ? "border-monserrat-red/30 bg-monserrat-red/[0.05]"
-                            : "border-monserrat-ink/10 hover:border-monserrat-ink/20 hover:bg-monserrat-ink/[0.02]"
+                            : "border-monserrat-gold/30 bg-[#fffdf8] hover:border-monserrat-red/30 hover:bg-[#fbf4e2]"
                         }`}
                       >
                         <div>
@@ -573,7 +574,7 @@ export function ReportesTab({
                         className={`${filaInteractiva} flex items-center justify-between rounded-lg border px-4 py-3 text-left ${
                           isSelected
                             ? "border-monserrat-red/30 bg-monserrat-red/[0.05]"
-                            : "border-monserrat-ink/10 hover:border-monserrat-ink/20 hover:bg-monserrat-ink/[0.02]"
+                            : "border-monserrat-gold/30 bg-[#fffdf8] hover:border-monserrat-red/30 hover:bg-[#fbf4e2]"
                         }`}
                       >
                         <span className={`text-sm font-semibold ${isSelected ? "text-monserrat-red" : "text-monserrat-ink"}`}>
@@ -609,13 +610,13 @@ export function ReportesTab({
           </div>
 
           {/* Resumen y acción */}
-          <div className="rounded-b-xl bg-monserrat-ink/[0.02] p-6 lg:rounded-bl-none lg:rounded-br-xl lg:sticky lg:top-4 lg:self-start">
+          <div className="rounded-b-[18px] bg-[#fbf4e2] p-6 lg:rounded-bl-none lg:rounded-br-[18px] lg:sticky lg:top-4 lg:self-start">
             <div className="mb-4 flex items-center gap-2 text-monserrat-ink/50">
               <opcionActual.icon size={14} />
               <span className="text-[11px] font-bold uppercase tracking-wide">{opcionActual.label}</span>
             </div>
 
-            <div className="mb-5 rounded-lg border border-monserrat-ink/10 bg-white px-4 py-3">
+            <div className="mb-5 rounded-xl border border-monserrat-gold/30 bg-white px-4 py-3">
               <div className="text-[10px] font-semibold uppercase tracking-wide text-monserrat-ink/40">Alcance</div>
               <div className="mt-0.5 truncate text-sm font-bold text-monserrat-ink">
                 {resumenAlcance && !necesitaSeleccion ? resumenAlcance : "Pendiente de elegir"}
@@ -630,7 +631,7 @@ export function ReportesTab({
             <button
               onClick={generarPDF}
               disabled={isGenerating || necesitaSeleccion || cantidadAlumnos === 0}
-              className={`${filaInteractiva} inline-flex w-full items-center justify-center gap-2 rounded-lg bg-monserrat-red px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-monserrat-red/90 hover:shadow disabled:cursor-not-allowed disabled:bg-monserrat-ink/10 disabled:text-monserrat-ink/35 disabled:shadow-none`}
+              className={`${filaInteractiva} pro-btn w-full !min-h-[46px] disabled:cursor-not-allowed disabled:!bg-monserrat-ink/10 disabled:!text-monserrat-ink/35 disabled:!shadow-none`}
             >
               {isGenerating ? (
                 <>
@@ -653,8 +654,8 @@ export function ReportesTab({
 
       {previewUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="flex h-[90vh] w-full max-w-4xl flex-col rounded-xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-monserrat-ink/10 p-4">
+          <div className="pro-rise flex h-[90vh] w-full max-w-4xl flex-col rounded-[18px] border border-monserrat-gold/30 bg-[#fffdf8] shadow-xl">
+            <div className="flex items-center justify-between border-b border-monserrat-gold/30 p-4">
               <div className="flex items-center gap-2">
                 <FileText size={15} className="text-monserrat-red" />
                 <h3 className="text-sm font-bold text-monserrat-ink">Vista previa del reporte</h3>
@@ -670,16 +671,16 @@ export function ReportesTab({
 
             <iframe src={previewUrl} className="w-full flex-1" title="Vista previa del PDF" />
 
-            <div className="flex justify-end gap-2 border-t border-monserrat-ink/10 p-4">
+            <div className="flex justify-end gap-2 border-t border-monserrat-gold/30 p-4">
               <button
                 onClick={cerrarPreview}
-                className={`${filaInteractiva} rounded-lg border border-monserrat-ink/20 px-4 py-2 text-sm font-semibold text-monserrat-ink hover:bg-monserrat-ink/5`}
+                className={`${filaInteractiva} pro-btn-soft`}
               >
                 Cancelar
               </button>
               <button
                 onClick={confirmarDescarga}
-                className={`${filaInteractiva} inline-flex items-center gap-2 rounded-lg bg-monserrat-red px-4 py-2 text-sm font-bold text-white hover:bg-monserrat-red/90`}
+                className={`${filaInteractiva} pro-btn`}
               >
                 <Download size={16} />
                 Descargar PDF
@@ -746,7 +747,7 @@ function dibujarReporte(
       (n) => n.curso === cursoId && n.competenciaId === competenciaId && n.periodo === periodo
     );
 
-  const anioLectivo = new Date().getFullYear();
+  const anioLectivo = getAnioActivoCache();
   const gradoTexto = gradoOrdinal(alumno.grado);
   const nivelTexto = alumno.nivelEducativo ?? (esSecundaria ? "SECUNDARIA" : esInicial ? "INICIAL" : "PRIMARIA");
 

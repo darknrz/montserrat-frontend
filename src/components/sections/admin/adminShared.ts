@@ -48,7 +48,9 @@ export type ConfigView =
   | "secundaria-salones"
   | "ajustes-generales"
   | "niveles-academicos"
-  | "periodos-bimestres";
+  | "periodos-bimestres"
+  | "salones-institucion"
+  | "migracion-anio";
 
 export type AcademicoConfig = {
   cursosPrimaria: CatalogItem[];
@@ -770,6 +772,7 @@ export function getGradosPorNivelAcademico(nivelAcademicoId: string): string[] {
 export const GRUPOS_POR_GRADO: Record<string, string[]> = {
   SEXTO_PRIMARIA: ["CICLADO_I", "CICLADO_II"],
   PRIMERO_SECUNDARIA: ["CICLADO_I", "CICLADO_II", "ANUAL"],
+  SEGUNDO_SECUNDARIA: ["ANUAL"],
   TERCERO_SECUNDARIA: ["ANUAL", "LETRAS", "CIENCIAS"],
   CUARTO_SECUNDARIA: ["LETRAS", "CIENCIAS"],
   QUINTO_SECUNDARIA: ["LETRAS", "CIENCIAS"]

@@ -1,4 +1,4 @@
-import type { Anuncio, AsignacionAcademica, AsistenciaAcademica, ChatbotConversationResponse, ChatbotMessageDTO, Ingresante, Institution, LoginResponse, Matricula, MediaUploadResponse, NotaAcademica, PensionEstado, PensionMensual, PeriodoBimestre, PerfilAcademico, RedSocial, Taller, TallerCatalogo, UsuarioAcademico, Video } from "../types";
+import type { AnioEscolar, MigracionPreview, MigracionRequest, MigracionResultado, Anuncio, AsignacionAcademica, AsistenciaAcademica, ChatbotConversationResponse, ChatbotMessageDTO, Ingresante, Institution, LoginResponse, Matricula, MediaUploadResponse, NotaAcademica, PensionEstado, PensionMensual, PeriodoBimestre, PerfilAcademico, RedSocial, Taller, TallerCatalogo, UsuarioAcademico, Video } from "../types";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -241,5 +241,13 @@ export const monserratApi = {
   actualizarPeriodoBimestre: (id: number, data: Omit<PeriodoBimestre, 'id' | 'createdAt' | 'updatedAt'>, token: string) =>
     sendJson<PeriodoBimestre>(`/academico/periodos-bimestres/${id}`, "PUT", data, token),
   eliminarPeriodoBimestre: (id: number, token: string) =>
-    deleteRequest(`/academico/periodos-bimestres/${id}`, token)
+    deleteRequest(`/academico/periodos-bimestres/${id}`, token),
+
+  // Años escolares y migración
+  aniosEscolares: (token: string) => getJsonAuth<AnioEscolar[]>("/academico/anios-escolares", token),
+  anioEscolarActivo: (token: string) => getJsonAuth<{ anio: number }>("/academico/anios-escolares/activo", token),
+  migracionVistaPrevia: (data: MigracionRequest, token: string) =>
+    sendJson<MigracionPreview>("/academico/anios-escolares/migracion/vista-previa", "POST", data, token),
+  migracionEjecutar: (data: MigracionRequest, token: string) =>
+    sendJson<MigracionResultado>("/academico/anios-escolares/migracion/ejecutar", "POST", data, token)
 };

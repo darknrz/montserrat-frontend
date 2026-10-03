@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Award, BookOpen, ClipboardList, MessageSquare, Sparkles } from "lucide-react";
-import { SectionHeader } from "../../ui/SectionHeader";
 import { monserratApi } from "../../../api/monserrat";
 import type { NotaAcademica, AsignacionAcademica } from "../../../types";
 import type { AcademicoConfig, CatalogItem } from "../admin/adminShared";
+import { accentFor, rise } from "./kidTheme";
 
 const BIMESTRES = ["BIMESTRE_1", "BIMESTRE_2", "BIMESTRE_3", "BIMESTRE_4"] as const;
 
@@ -65,10 +65,10 @@ function labelFromEnum(value: string) {
 // Círculo compacto con el nivel (C/B/A/AD), coloreado; "—" gris si aún no hay nota.
 function NivelDot({ nivel, size = "md" }: { nivel?: string | null; size?: "sm" | "md" | "lg" }) {
   const info = nivelInfo(nivel ?? undefined);
-  const dims = size === "lg" ? "h-12 w-12 text-base" : size === "sm" ? "h-8 w-8 text-[11px]" : "h-9 w-9 text-xs";
+  const dims = size === "lg" ? "h-14 w-14 text-lg" : size === "sm" ? "h-10 w-10 text-[13px]" : "h-11 w-11 text-sm";
   return (
     <span
-      className={`flex flex-none items-center justify-center rounded-full border-2 font-black ${dims}`}
+      className={`flex flex-none items-center justify-center rounded-full border-[3px] font-black ${dims}`}
       style={{
         borderColor: info ? info.color : "rgb(31 27 24 / 0.14)",
         backgroundColor: info ? info.soft : "white",
@@ -156,53 +156,63 @@ export function AlumnoNotas({ token }: { token: string }) {
 
   return (
     <div className="grid gap-4">
-      <SectionHeader title="Mis notas" description="Visualiza tu libreta académica y tus promedios." align="left" />
-      {status && <div className="rounded-[16px] border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{status}</div>}
+      <div className="kid-rise">
+        <h2 className="text-[26px] font-black text-monserrat-ink">Tus notas</h2>
+        <p className="text-[15px] font-semibold text-monserrat-ink/65">Mira cómo vas en cada curso. ¡Tú puedes!</p>
+      </div>
+      {status && (
+        <div role="alert" className="rounded-[18px] border-2 border-[#e9b3b4] bg-[#fbe9e9] px-4 py-3 text-[14px] font-bold text-[#9f171b]">
+          {status}
+        </div>
+      )}
 
-      {/* Resumen general: de un vistazo, cuántos cursos, el promedio global
-          (con su nivel de color) y cuántos registros hay en total. */}
+      {/* Resumen general: cuántos cursos, el promedio global (con su nivel) y cuántos registros hay. */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="flex items-center gap-3 rounded-[18px] border border-monserrat-ink/10 bg-white p-5 ">
-          <span className="flex h-11 w-11 flex-none items-center justify-center rounded-[12px] bg-[#e9e9e8] text-monserrat-ink">
-            <BookOpen size={20} />
+        <div className="kid-card kid-rise flex items-center gap-3 p-4" style={rise(0)}>
+          <span className="kid-icon-badge" style={{ backgroundColor: "#fbe9e9", color: "#9f171b" }}>
+            <BookOpen size={26} />
           </span>
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">Cursos</p>
-            <p className="text-2xl font-black text-monserrat-ink">{cursosAlumno.length}</p>
+            <p className="text-[12px] font-extrabold uppercase tracking-[0.1em] text-monserrat-ink/55">Cursos</p>
+            <p className="text-3xl font-black text-monserrat-ink">{cursosAlumno.length}</p>
           </div>
         </div>
-        <div className="flex items-center gap-3 rounded-[18px] border border-monserrat-ink/10 bg-white p-5 ">
-          <span className="flex h-11 w-11 flex-none items-center justify-center rounded-[12px] bg-monserrat-gold/15 text-monserrat-goldDark">
-            <Award size={20} />
+        <div className="kid-card kid-rise flex items-center gap-3 p-4" style={rise(1)}>
+          <span className="kid-icon-badge" style={{ backgroundColor: "#fbf0d6", color: "#8a6a14" }}>
+            <Award size={26} />
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">Promedio general</p>
-              <p className="text-2xl font-black text-monserrat-ink">{promedioGeneral ? promedioGeneral.promedio.toFixed(1) : "—"}</p>
+              <p className="text-[12px] font-extrabold uppercase tracking-[0.1em] text-monserrat-ink/55">Promedio general</p>
+              <p className="text-3xl font-black text-monserrat-ink">{promedioGeneral ? promedioGeneral.promedio.toFixed(1) : "—"}</p>
             </div>
             {promedioGeneral && <NivelDot nivel={promedioGeneral.nivel} size="sm" />}
           </div>
         </div>
-        <div className="flex items-center gap-3 rounded-[18px] border border-monserrat-ink/10 bg-white p-5 ">
-          <span className="flex h-11 w-11 flex-none items-center justify-center rounded-[12px] bg-[#e3e3e1]/8 text-monserrat-ink/60">
-            <ClipboardList size={20} />
+        <div className="kid-card kid-rise flex items-center gap-3 p-4" style={rise(2)}>
+          <span className="kid-icon-badge" style={{ backgroundColor: "#e4eefa", color: "#2c5d8f" }}>
+            <ClipboardList size={26} />
           </span>
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">Registros totales</p>
-            <p className="text-2xl font-black text-monserrat-ink">{notas.length}</p>
+            <p className="text-[12px] font-extrabold uppercase tracking-[0.1em] text-monserrat-ink/55">Registros totales</p>
+            <p className="text-3xl font-black text-monserrat-ink">{notas.length}</p>
           </div>
         </div>
       </div>
 
       {promedioPorCurso.length === 0 ? (
-        <div className="rounded-[18px] border border-dashed border-monserrat-ink/15 bg-white p-6 text-center text-sm font-semibold text-monserrat-ink/50">
-          No hay notas registradas aún.
+        <div className="kid-card kid-rise grid place-items-center gap-3 border-dashed p-10 text-center">
+          <span className="kid-icon-badge kid-bob" style={{ backgroundColor: "#fbf0d6", color: "#8a6a14" }}>
+            <Sparkles size={28} />
+          </span>
+          <p className="text-[16px] font-extrabold text-monserrat-ink">Aún no tienes notas registradas</p>
+          <p className="text-[14px] font-semibold text-monserrat-ink/60">Cuando tus profes las registren, las verás aquí.</p>
         </div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-[260px_1fr] lg:items-start">
           {/* Selector de curso: chips con el nivel promedio como referencia rápida */}
-          <div className="grid gap-2 rounded-[18px] border border-monserrat-ink/10 bg-white p-4  lg:sticky lg:top-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">Mis cursos</p>
+          <div className="kid-card kid-rise grid gap-2 p-4 lg:sticky lg:top-4">
+            <p className="text-[12px] font-extrabold uppercase tracking-[0.1em] text-monserrat-ink/55">Elige un curso</p>
             <div className="grid gap-1.5">
               {promedioPorCurso.map((c) => {
                 const active = c.curso === selectedCurso;
@@ -211,14 +221,15 @@ export function AlumnoNotas({ token }: { token: string }) {
                     key={c.curso}
                     type="button"
                     onClick={() => setSelectedCurso(c.curso)}
-                    className={`flex items-center gap-2.5 rounded-[12px] border px-3 py-2.5 text-left transition-all ${
-                      active ? "border-black/25/40 bg-[#e9e9e8]" : "border-monserrat-ink/8 bg-white hover:bg-[#f2f2f1]"
+                    aria-pressed={active}
+                    className={`flex min-h-[56px] items-center gap-3 rounded-[16px] border-2 px-3 py-2.5 text-left transition-all ${
+                      active ? "border-monserrat-red bg-[#fbe9e9] shadow-sm" : "border-transparent bg-[#fbf6ea] hover:border-monserrat-gold/50 hover:bg-[#fbf0d6]"
                     }`}
                   >
                     <NivelDot nivel={c.nivel} size="sm" />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-black text-monserrat-ink">{labelFromEnum(c.curso)}</span>
-                      <span className="block text-[11px] font-semibold text-monserrat-ink/45">{c.conteo} nota(s)</span>
+                      <span className="block truncate text-[15px] font-black text-monserrat-ink">{labelFromEnum(c.curso)}</span>
+                      <span className="block text-[12px] font-bold text-monserrat-ink/55">{c.conteo} nota(s)</span>
                     </span>
                   </button>
                 );
@@ -229,16 +240,16 @@ export function AlumnoNotas({ token }: { token: string }) {
           {/* Detalle del curso seleccionado */}
           <div className="grid gap-3">
             {cursoActualDatos && (
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-monserrat-ink/10 bg-white p-5 ">
+              <div className="kid-card kid-rise flex flex-wrap items-center justify-between gap-3 p-5" style={{ borderColor: accentFor(cursoActualDatos.curso).ring }}>
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.14em] text-monserrat-ink/40">{labelFromEnum(cursoActualDatos.curso)}</p>
-                  <p className="mt-1 text-2xl font-black text-monserrat-ink">
+                  <p className="text-[13px] font-extrabold uppercase tracking-[0.1em]" style={{ color: accentFor(cursoActualDatos.curso).fg }}>{labelFromEnum(cursoActualDatos.curso)}</p>
+                  <p className="mt-1 text-3xl font-black text-monserrat-ink">
                     Promedio {cursoActualDatos.conteo ? cursoActualDatos.promedio.toFixed(1) : "—"}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
                   <NivelDot nivel={cursoActualDatos.nivel} size="lg" />
-                  <div className="rounded-full bg-[#f2f2f1]/60 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-monserrat-ink">
+                  <div className="kid-chip bg-[#fbf0d6] text-[#6f4b14]">
                     {cursoActualDatos.conteo} notas
                   </div>
                 </div>
@@ -246,10 +257,10 @@ export function AlumnoNotas({ token }: { token: string }) {
             )}
 
             {/* Leyenda de niveles, para que quede claro qué significa cada letra/color */}
-            <div className="flex flex-wrap items-center gap-3 rounded-[14px] border border-monserrat-ink/8 bg-[#f2f2f1] px-4 py-2.5">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[18px] border-2 border-monserrat-gold/25 bg-[#fbf6ea] px-4 py-3">
               {NIVELES.map((nivel) => (
-                <span key={nivel.value} className="flex items-center gap-1.5 text-[11px] font-bold text-monserrat-ink/60">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: nivel.color }} />
+                <span key={nivel.value} className="flex items-center gap-2 text-[13px] font-bold text-monserrat-ink/75">
+                  <span className="h-3.5 w-3.5 rounded-full" style={{ backgroundColor: nivel.color }} />
                   {nivel.value} · {nivel.description}
                 </span>
               ))}
@@ -258,7 +269,7 @@ export function AlumnoNotas({ token }: { token: string }) {
             {/* Una competencia por fila: línea de tiempo de bimestres -> nota final,
                 para verla de un vistazo en vez de bloques largos apilados. */}
             <div className="grid gap-3">
-              {competenciasDelCursoActual.map((compId) => {
+              {competenciasDelCursoActual.map((compId, ci) => {
                 const notasComp = notasCursoActual.filter((n) => (n.competenciaId || "GENERAL") === compId);
                 const notaFinal = notasComp.find((n) => n.periodo === "GENERAL");
                 const sugerencia = promedioBimestralParaCompetencia(notasCursoActual, compId);
@@ -269,10 +280,10 @@ export function AlumnoNotas({ token }: { token: string }) {
                 return (
                   <div
                     key={compId}
-                    className="rounded-[16px] border border-monserrat-ink/10 bg-white p-4 "
-                    style={{ borderLeft: `4px solid ${infoFinal ? infoFinal.color : "rgb(31 27 24 / 0.12)"}` }}
+                    className="kid-card kid-rise p-5"
+                    style={{ ...rise(ci + 1), borderLeft: `8px solid ${infoFinal ? infoFinal.color : "rgb(31 27 24 / 0.12)"}` }}
                   >
-                    <p className="text-sm font-black text-monserrat-ink">{nombreCompetencia(compId)}</p>
+                    <p className="text-[15px] font-black text-monserrat-ink">{nombreCompetencia(compId)}</p>
 
                     {/* Línea de tiempo: B1 — B2 — B3 — B4 — Final, conectados */}
                     <div className="mt-4 flex items-center">
@@ -288,19 +299,19 @@ export function AlumnoNotas({ token }: { token: string }) {
                               type="button"
                               disabled={!hasDetail}
                               onClick={() => toggleExpand(key)}
-                              className="relative flex flex-none flex-col items-center gap-1 disabled:cursor-default"
+                              className="relative flex min-h-[44px] flex-none flex-col items-center gap-1 rounded-xl disabled:cursor-default"
                             >
                               <NivelDot nivel={nivel} size="md" />
                               {hasDetail && (
-                                <span className="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#e3e3e1] text-monserrat-ink">
-                                  <MessageSquare size={8} />
+                                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-monserrat-gold text-white">
+                                  <MessageSquare size={11} />
                                 </span>
                               )}
-                              <span className="text-[9px] font-black uppercase tracking-wide text-monserrat-ink/40">
+                              <span className="text-[12px] font-extrabold uppercase tracking-wide text-monserrat-ink/55">
                                 {labelFromEnum(periodo).replace("Bimestre ", "B")}
                               </span>
                             </button>
-                            <span className="mb-4 h-0.5 flex-1 bg-[#e3e3e1]/10" />
+                            <span className="mb-5 h-1 flex-1 rounded-full bg-monserrat-gold/25" />
                           </React.Fragment>
                         );
                       })}
@@ -308,10 +319,10 @@ export function AlumnoNotas({ token }: { token: string }) {
                         type="button"
                         disabled={!decodedFinal.comentario}
                         onClick={() => toggleExpand(`${selectedCurso}||${compId}||GENERAL`)}
-                        className="flex flex-none flex-col items-center gap-1 disabled:cursor-default"
+                        className="flex min-h-[44px] flex-none flex-col items-center gap-1 rounded-xl disabled:cursor-default"
                       >
                         <NivelDot nivel={nivelFinal} size="lg" />
-                        <span className="text-[9px] font-black uppercase tracking-wide text-monserrat-goldDark">
+                        <span className="text-[12px] font-extrabold uppercase tracking-wide text-monserrat-goldDark">
                           {notaFinal ? "Final" : sugerencia ? "Final (sug.)" : "Final"}
                         </span>
                       </button>
@@ -324,33 +335,33 @@ export function AlumnoNotas({ token }: { token: string }) {
                       const key = `${selectedCurso}||${compId}||${periodo}`;
                       if (!expanded[key] || (decoded.parciales.length === 0 && !decoded.comentario)) return null;
                       return (
-                        <div key={periodo} className="mt-3 rounded-[12px] bg-[#f2f2f1] p-3">
-                          <p className="text-[11px] font-black uppercase tracking-wide text-monserrat-ink/45">{labelFromEnum(periodo)}</p>
+                        <div key={periodo} className="kid-rise mt-3 rounded-[16px] bg-[#fbf6ea] p-4">
+                          <p className="text-[12px] font-extrabold uppercase tracking-wide text-monserrat-ink/60">{labelFromEnum(periodo)}</p>
                           {decoded.parciales.length > 0 && (
                             <div className="mt-2 grid gap-1.5">
                               {decoded.parciales.map((p, idx) => (
-                                <div key={idx} className="flex items-center justify-between rounded-[8px] bg-white px-2.5 py-1.5">
-                                  <span className="text-xs font-semibold text-monserrat-ink">{p.label}</span>
+                                <div key={idx} className="flex items-center justify-between rounded-[12px] bg-white px-3 py-2">
+                                  <span className="text-[14px] font-semibold text-monserrat-ink">{p.label}</span>
                                   <NivelDot nivel={p.nivel} size="sm" />
                                 </div>
                               ))}
                             </div>
                           )}
-                          {decoded.comentario && <p className="mt-2 text-sm text-monserrat-ink/70">{decoded.comentario}</p>}
+                          {decoded.comentario && <p className="mt-2 text-[14px] font-medium text-monserrat-ink/75">{decoded.comentario}</p>}
                         </div>
                       );
                     })}
 
                     {expanded[`${selectedCurso}||${compId}||GENERAL`] && decodedFinal.comentario && (
-                      <div className="mt-3 rounded-[12px] border border-monserrat-gold/25 bg-monserrat-gold/8 p-3">
-                        <p className="text-[11px] font-black uppercase tracking-wide text-monserrat-goldDark">Nota final</p>
-                        <p className="mt-1 text-sm text-monserrat-ink/70">{decodedFinal.comentario}</p>
+                      <div className="kid-rise mt-3 rounded-[16px] border-2 border-monserrat-gold/35 bg-[#fbf0d6] p-4">
+                        <p className="text-[12px] font-extrabold uppercase tracking-wide text-monserrat-goldDark">Nota final</p>
+                        <p className="mt-1 text-[14px] font-medium text-monserrat-ink/75">{decodedFinal.comentario}</p>
                       </div>
                     )}
 
                     {!notaFinal && sugerencia && (
-                      <p className="mt-3 flex items-center gap-1.5 text-[11px] font-semibold text-monserrat-ink/45">
-                        <Sparkles size={12} />
+                      <p className="mt-3 flex items-center gap-1.5 text-[13px] font-semibold text-monserrat-ink/60">
+                        <Sparkles size={14} />
                         Nota final sugerida a partir del promedio de bimestres ({sugerencia.promedio.toFixed(2)})
                       </p>
                     )}

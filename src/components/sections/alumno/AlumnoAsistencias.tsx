@@ -1,15 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { CalendarX2, Flame, Sparkles, Trophy, UserCheck, UserX } from "lucide-react";
-import { SectionHeader } from "../../ui/SectionHeader";
+import { CalendarCheck, CalendarX2, Flame, PartyPopper, Trophy, UserCheck, UserX } from "lucide-react";
 import { monserratApi } from "../../../api/monserrat";
 import type { AsistenciaAcademica, PeriodoBimestre } from "../../../types";
 import type { AcademicoConfig } from "../admin/adminShared";
+import { STATUS_ACCENT, rise } from "./kidTheme";
 
-// Misma paleta que el resto de la libreta académica (niveles C/B/A/AD),
-// reutilizada aquí para que "presente/ausente" se sienta parte del mismo sistema.
-const COLOR_PRESENTE = "#00FF00";
-const COLOR_AUSENTE = "#FF0000";
-const COLOR_ALERTA = "#d8a842";
+// Semáforo suave (mismos tonos que el resto del portal del alumno).
+const COLOR_PRESENTE = STATUS_ACCENT.ok.fg;
+const COLOR_AUSENTE = STATUS_ACCENT.bad.fg;
+const COLOR_ALERTA = STATUS_ACCENT.warn.fg;
 
 const DIAS_SEMANA = ["D", "L", "M", "X", "J", "V", "S"];
 
@@ -69,9 +68,14 @@ function Gauge({
       : COLOR_PRESENTE;
 
   return (
-    <div className="relative mx-auto flex-none" style={{ height: size, width: size }}>
+    <div
+      className="relative mx-auto flex-none"
+      style={{ height: size, width: size }}
+      role="img"
+      aria-label={porcentaje === null ? "Sin datos de asistencia" : `Asistencia ${porcentaje} por ciento`}
+    >
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="rgb(31 27 24 / 0.08)" strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="rgb(216 168 66 / 0.22)" strokeWidth={stroke} />
         {porcentaje !== null && (
           <circle
             cx={size / 2}
@@ -82,32 +86,41 @@ function Gauge({
             strokeWidth={stroke}
             strokeLinecap="round"
             strokeDasharray={`${dash} ${circumference}`}
-            style={{ transition: "stroke-dasharray 0.7s ease" }}
+            style={{ transition: "stroke-dasharray 0.9s cubic-bezier(0.22, 1, 0.36, 1)" }}
           />
         )}
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-black" style={{ color: porcentaje === null ? "#1f1b18" : color, fontSize: size / 4.6 }}>
+        <span className="font-black" style={{ color: porcentaje === null ? "#1f1b18" : color, fontSize: size / 4.2 }}>
           {porcentaje === null ? "—" : `${porcentaje}%`}
         </span>
-        {showLabel && <span className="text-[9px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">Asistencia</span>}
+        {showLabel && <span className="text-[11px] font-black uppercase tracking-[0.12em] text-monserrat-ink/50">Asistencia</span>}
       </div>
     </div>
   );
 }
 
-function StatChip({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: string | number; tone: string }) {
+function StatCard({
+  icon,
+  label,
+  value,
+  accent,
+  index
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string | number;
+  accent: { bg: string; fg: string; ring: string };
+  index: number;
+}) {
   return (
-    <div className="flex items-center gap-3 rounded-[14px] border border-monserrat-ink/8 bg-[#f2f2f1] px-4 py-3">
-      <span
-        className="flex h-9 w-9 flex-none items-center justify-center rounded-[10px]"
-        style={{ backgroundColor: `${tone}18`, color: tone }}
-      >
+    <div className="kid-card kid-rise flex items-center gap-3 px-4 py-3" style={rise(index)}>
+      <span className="kid-icon-badge !h-11 !w-11 !rounded-[14px]" style={{ backgroundColor: accent.bg, color: accent.fg }}>
         {icon}
       </span>
       <div className="min-w-0">
-        <p className="text-lg font-black leading-tight text-monserrat-ink">{value}</p>
-        <p className="truncate text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">{label}</p>
+        <p className="text-2xl font-black leading-tight text-monserrat-ink">{value}</p>
+        <p className="truncate text-[13px] font-bold text-monserrat-ink/60">{label}</p>
       </div>
     </div>
   );
@@ -214,38 +227,79 @@ export function AlumnoAsistencias({ token }: { token: string }) {
   );
 
   const sinDatos = totalRegistros === 0;
+  const lograMinimo = porcentajeGeneral !== null && porcentajeGeneral >= minAsistencia;
 
   return (
-    <div className="grid gap-4">
-      <SectionHeader title="Mis asistencias" description="Tu asistencia de un vistazo: racha, avance por bimestre y calendario." align="left" />
-      {status && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{status}</div>}
+    <div className="grid gap-5">
+      <div className="kid-rise">
+        <h3 className="text-2xl font-black text-monserrat-ink">Mis asistencias</h3>
+        <p className="mt-1 text-[15px] font-semibold text-monserrat-ink/60">
+          Mira cuántos días viniste, tu racha y el calendario de cada mes.
+        </p>
+      </div>
+
+      {status && (
+        <div role="alert" className="rounded-2xl border-2 border-[#e9b3b4] bg-[#fbe9e9] px-4 py-3 text-sm font-bold text-[#9f171b]">
+          {status}
+        </div>
+      )}
 
       {sinDatos ? (
-        <div className="grid place-items-center gap-2 rounded-[20px] border border-dashed border-monserrat-ink/15 bg-white p-10 text-center">
-          <CalendarX2 size={28} className="text-monserrat-ink/30" />
-          <p className="text-sm font-semibold text-monserrat-ink/50">Aún no tienes asistencias registradas.</p>
+        <div className="kid-card kid-rise grid place-items-center gap-3 p-10 text-center">
+          <span className="kid-icon-badge kid-bob" style={{ backgroundColor: STATUS_ACCENT.warn.bg, color: STATUS_ACCENT.warn.fg }}>
+            <CalendarX2 size={26} />
+          </span>
+          <p className="text-lg font-black text-monserrat-ink">Todavía no hay asistencias</p>
+          <p className="max-w-sm text-[15px] font-semibold text-monserrat-ink/60">
+            Cuando tus profesores tomen lista, aquí verás tu avance día a día.
+          </p>
         </div>
       ) : (
         <>
-          {/* Hero: el aro grande responde de inmediato a "¿cómo voy?", y los chips
-              a su lado explican el porqué (racha, mejor racha, conteos). */}
-        
+          {/* Resumen grande: responde de inmediato a "¿cómo voy?" y los datos a su
+              lado explican el porqué (racha, mejor racha, conteos). */}
+          <div className="kid-card kid-rise grid gap-5 p-5 sm:p-6 md:grid-cols-[auto_1fr] md:items-center">
+            <Gauge porcentaje={porcentajeGeneral} minRequerido={minAsistencia} />
+            <div className="grid gap-3">
+              <div>
+                <p className="text-2xl font-black text-monserrat-ink sm:text-3xl">
+                  Asististe <span style={{ color: COLOR_PRESENTE }}>{presentes}</span> de {totalRegistros} días
+                </p>
+                <p className="mt-1 flex items-center gap-2 text-[15px] font-bold" style={{ color: lograMinimo ? COLOR_PRESENTE : COLOR_ALERTA }}>
+                  {lograMinimo ? <PartyPopper size={18} /> : <CalendarCheck size={18} />}
+                  {lograMinimo
+                    ? "¡Muy bien! Estás por encima de la asistencia mínima."
+                    : `Necesitas llegar a ${minAsistencia}% de asistencia. ¡Tú puedes!`}
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <StatCard index={1} icon={<Flame size={20} />} label="Racha actual (días seguidos)" value={rachaActual} accent={STATUS_ACCENT.warn} />
+                <StatCard index={2} icon={<Trophy size={20} />} label="Tu mejor racha" value={mejorRacha} accent={STATUS_ACCENT.info} />
+                <StatCard index={3} icon={<UserCheck size={20} />} label="Días presente" value={presentes} accent={STATUS_ACCENT.ok} />
+                <StatCard index={4} icon={<UserX size={20} />} label="Días ausente" value={ausentes} accent={STATUS_ACCENT.bad} />
+              </div>
+            </div>
+          </div>
 
           {/* Por bimestre: mismo aro en miniatura, para leer los cuatro períodos
               con el mismo lenguaje visual que el resumen general. */}
           {periodos.length > 0 && (
-            <div className="rounded-[20px] border border-monserrat-ink/10 bg-white p-5 ">
-              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">Por bimestre</p>
+            <div className="kid-card kid-rise p-5" style={rise(2)}>
+              <p className="text-lg font-black text-monserrat-ink">Por bimestre</p>
               <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {periodos.map((p, i) => {
                   const stats = porcentajeEnPeriodo(p);
                   return (
-                    <div key={p.id ?? i} className="flex items-center gap-3 rounded-[14px] border border-monserrat-ink/8 bg-[#f2f2f1] p-3">
-                      <Gauge porcentaje={stats.porcentaje} minRequerido={minAsistencia} size={64} stroke={7} showLabel={false} />
+                    <div
+                      key={p.id ?? i}
+                      className="kid-pop flex items-center gap-3 rounded-[20px] border-2 border-[#d8a842]/30 bg-[#fbf3e1] p-3"
+                      style={rise(i)}
+                    >
+                      <Gauge porcentaje={stats.porcentaje} minRequerido={minAsistencia} size={68} stroke={8} showLabel={false} />
                       <div className="min-w-0">
-                        <p className="text-[11px] font-black uppercase tracking-wide text-monserrat-ink/45">Bimestre {p.numeroBimestre}</p>
-                        <p className="text-xs font-semibold text-monserrat-ink/60">
-                          {stats.present}/{stats.total} presencias
+                        <p className="text-sm font-black text-monserrat-ink">Bimestre {p.numeroBimestre}</p>
+                        <p className="text-[13px] font-semibold text-monserrat-ink/65">
+                          {stats.present} de {stats.total} días
                         </p>
                       </div>
                     </div>
@@ -255,46 +309,51 @@ export function AlumnoAsistencias({ token }: { token: string }) {
             </div>
           )}
 
-          {/* Calendario tipo "heatmap": el patrón de faltas se ve de un vistazo,
-              algo que ni la tabla ni los números sueltos comunican bien. */}
-          <div className="rounded-[20px] border border-monserrat-ink/10 bg-white p-5 ">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">Calendario de asistencia</p>
-              <div className="flex items-center gap-3 text-[10px] font-bold text-monserrat-ink/50">
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-[4px]" style={{ backgroundColor: COLOR_PRESENTE }} /> Presente
+          {/* Calendario: el patrón de faltas se ve de un vistazo con colores de semáforo suave. */}
+          <div className="kid-card kid-rise p-5" style={rise(3)}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-lg font-black text-monserrat-ink">Calendario de asistencia</p>
+              <div className="flex flex-wrap items-center gap-2 text-[13px] font-bold text-monserrat-ink/70" aria-label="Leyenda de colores">
+                <span className="kid-chip" style={{ backgroundColor: STATUS_ACCENT.ok.bg, color: STATUS_ACCENT.ok.fg }}>
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: COLOR_PRESENTE }} /> Presente
                 </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-[4px]" style={{ backgroundColor: COLOR_AUSENTE }} /> Ausente
+                <span className="kid-chip" style={{ backgroundColor: STATUS_ACCENT.bad.bg, color: STATUS_ACCENT.bad.fg }}>
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: COLOR_AUSENTE }} /> Ausente
                 </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-[4px] bg-[#e3e3e1]/10" /> Sin registro
+                <span className="kid-chip bg-[#f1ecdf] text-monserrat-ink/60">
+                  <span className="h-2.5 w-2.5 rounded-full bg-monserrat-ink/25" /> Sin registro
                 </span>
               </div>
             </div>
             <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {mesesConDatos.map(({ year, month }) => {
+              {mesesConDatos.map(({ year, month }, mi) => {
                 const cells = buildMonthCells(year, month, registrosPorFecha);
                 return (
-                  <div key={`${year}-${month}`} className="rounded-[16px] border border-monserrat-ink/8 bg-[#f2f2f1] p-4">
-                    <p className="text-xs font-black capitalize text-monserrat-ink">{monthLabel(year, month)}</p>
+                  <div
+                    key={`${year}-${month}`}
+                    className="kid-pop rounded-[20px] border-2 border-[#d8a842]/25 bg-[#fffaf0] p-4"
+                    style={rise(mi)}
+                  >
+                    <p className="text-[15px] font-black capitalize text-monserrat-ink">{monthLabel(year, month)}</p>
                     <div className="mt-3 grid grid-cols-7 gap-1.5">
                       {DIAS_SEMANA.map((d, i) => (
-                        <span key={i} className="text-center text-[9px] font-black uppercase text-monserrat-ink/35">
+                        <span key={i} className="text-center text-[11px] font-black uppercase text-monserrat-ink/45">
                           {d}
                         </span>
                       ))}
                       {cells.map((cell, i) => {
                         if (cell.day === null) return <span key={i} />;
-                        const color = cell.estado === "PRESENTE" ? COLOR_PRESENTE : cell.estado === "AUSENTE" ? COLOR_AUSENTE : undefined;
+                        const tone =
+                          cell.estado === "PRESENTE" ? STATUS_ACCENT.ok : cell.estado === "AUSENTE" ? STATUS_ACCENT.bad : undefined;
                         return (
                           <span
                             key={i}
                             title={cell.estado ? `${cell.day} · ${labelFromEnum(cell.estado)}` : `${cell.day} · Sin registro`}
-                            className="flex aspect-square items-center justify-center rounded-[6px] text-[10px] font-bold"
+                            className="flex aspect-square items-center justify-center rounded-[10px] text-[12px] font-black"
                             style={{
-                              backgroundColor: color ? `${color}22` : "rgb(31 27 24 / 0.05)",
-                              color: color ?? "rgb(31 27 24 / 0.3)"
+                              backgroundColor: tone ? tone.bg : "rgb(31 27 24 / 0.05)",
+                              color: tone ? tone.fg : "rgb(31 27 24 / 0.38)",
+                              border: tone ? `1.5px solid ${tone.ring}` : "1.5px solid transparent"
                             }}
                           >
                             {cell.day}
@@ -308,25 +367,28 @@ export function AlumnoAsistencias({ token }: { token: string }) {
             </div>
           </div>
 
-          {/* Actividad reciente: lista compacta en vez de una tabla larga,
-              con el punto de color como único indicador de estado. */}
-          <div className="rounded-[20px] border border-monserrat-ink/10 bg-white p-5 ">
-            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">Actividad reciente</p>
-            <div className="mt-3 grid">
-              {recientes.map((a, i) => (
-                <div
-                  key={a.id}
-                  className={`flex items-center gap-3 py-2.5 ${i > 0 ? "border-t border-monserrat-ink/6" : ""}`}
-                >
-                  <span
-                    className="h-2.5 w-2.5 flex-none rounded-full"
-                    style={{ backgroundColor: a.estado === "PRESENTE" ? COLOR_PRESENTE : COLOR_AUSENTE }}
-                  />
-                  <span className="w-24 flex-none text-xs font-black text-monserrat-ink">{a.fecha}</span>
-                  <span className="w-24 flex-none text-xs font-semibold text-monserrat-ink/60">{labelFromEnum(a.estado)}</span>
-                  <span className="min-w-0 flex-1 truncate text-xs text-monserrat-ink/45">{a.docenteNombre || "—"}</span>
-                </div>
-              ))}
+          {/* Actividad reciente */}
+          <div className="kid-card kid-rise p-5" style={rise(4)}>
+            <p className="text-lg font-black text-monserrat-ink">Últimos días</p>
+            <div className="mt-3 grid gap-2">
+              {recientes.map((a) => {
+                const ok = a.estado === "PRESENTE";
+                const tone = ok ? STATUS_ACCENT.ok : STATUS_ACCENT.bad;
+                return (
+                  <div
+                    key={a.id}
+                    className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[16px] px-3 py-2.5"
+                    style={{ backgroundColor: tone.bg }}
+                  >
+                    <span className="kid-chip !px-3" style={{ backgroundColor: "#fff", color: tone.fg, border: `1.5px solid ${tone.ring}` }}>
+                      {ok ? <UserCheck size={14} /> : <UserX size={14} />}
+                      {labelFromEnum(a.estado)}
+                    </span>
+                    <span className="text-sm font-black text-monserrat-ink">{a.fecha}</span>
+                    <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-monserrat-ink/60">{a.docenteNombre || "—"}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </>

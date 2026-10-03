@@ -1,13 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { BookOpen, GraduationCap, Layers, UserRound, Users2 } from "lucide-react";
-import { SectionHeader } from "../../ui/SectionHeader";
 import { monserratApi } from "../../../api/monserrat";
 import type { AsignacionAcademica } from "../../../types";
-
-// Mismo cuarteto de colores de marca que se usa en notas y asistencias
-// (rojo / azul-gris / verde / oro), reutilizado aquí como paleta de acento
-// por curso para que cada tarjeta sea reconocible de un vistazo.
-const PALETA_CURSOS = ["#9f171b", "#5b6b8c", "#3f7d54", "#d8a842"];
+import { accentFor, rise } from "./kidTheme";
 
 function labelFromEnum(value: string) {
   return value
@@ -17,28 +12,21 @@ function labelFromEnum(value: string) {
     .join(" ");
 }
 
-// Color estable por nombre de curso: el mismo curso siempre cae en el mismo
-// color, sin necesidad de guardar nada extra en el backend.
-function colorPorCurso(curso: string) {
-  let hash = 0;
-  for (let i = 0; i < curso.length; i += 1) hash = (hash + curso.charCodeAt(i)) % PALETA_CURSOS.length;
-  return PALETA_CURSOS[hash];
-}
-
 function initials(name?: string) {
   if (!name) return "??";
   const parts = name.trim().split(/\s+/);
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase();
 }
 
-function InfoChip({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function InfoChip({ icon, label, value, index }: { icon: React.ReactNode; label: string; value: string; index: number }) {
+  const accent = accentFor(label);
   return (
-    <div className="flex items-center gap-3 rounded-[16px] border border-monserrat-ink/10 bg-white p-5 ">
-      <span className="flex h-11 w-11 flex-none items-center justify-center rounded-[12px] bg-[#e9e9e8] text-monserrat-ink">
+    <div className="kid-card kid-rise flex items-center gap-3 p-4" style={rise(index)}>
+      <span className="kid-icon-badge" style={{ backgroundColor: accent.bg, color: accent.fg }}>
         {icon}
       </span>
       <div className="min-w-0">
-        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">{label}</p>
+        <p className="text-[12px] font-extrabold uppercase tracking-[0.1em] text-monserrat-ink/55">{label}</p>
         <p className="truncate text-xl font-black text-monserrat-ink">{value}</p>
       </div>
     </div>
@@ -84,57 +72,64 @@ export function AlumnoCursos({ token }: { token: string }) {
   }, [asignaciones]);
 
   return (
-    <div className="grid gap-4">
-      <SectionHeader title="Mis cursos" description="Cursos y grupo académico del alumno." align="left" />
-      {status && <div className="rounded-[16px] border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{status}</div>}
+    <div className="grid gap-5">
+      <div className="kid-rise">
+        <h2 className="text-[26px] font-black text-monserrat-ink">Tus cursos</h2>
+        <p className="text-[15px] font-semibold text-monserrat-ink/65">Mira qué cursos llevas y quién es tu profe en cada uno.</p>
+      </div>
+      {status && (
+        <div role="alert" className="rounded-[18px] border-2 border-[#e9b3b4] bg-[#fbe9e9] px-4 py-3 text-[14px] font-bold text-[#9f171b]">
+          {status}
+        </div>
+      )}
 
-      {/* Resumen del grupo académico: mismo lenguaje de chip con ícono que
-          usan Mis notas y Mis asistencias, para que las tres pantallas se
-          sientan parte de una sola libreta. */}
+      {/* Resumen del grupo académico */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <InfoChip icon={<GraduationCap size={20} />} label="Nivel" value={grupo?.nivel ?? "Sin datos"} />
-        <InfoChip icon={<Layers size={20} />} label="Grado" value={grupo?.grado ?? "Sin datos"} />
-        <InfoChip icon={<Users2 size={20} />} label="Sección" value={grupo?.seccion ?? "Sin datos"} />
-        <InfoChip icon={<BookOpen size={20} />} label="Cursos" value={String(cursos.length)} />
+        <InfoChip index={0} icon={<GraduationCap size={26} />} label="Nivel" value={grupo?.nivel ?? "Sin datos"} />
+        <InfoChip index={1} icon={<Layers size={26} />} label="Grado" value={grupo?.grado ?? "Sin datos"} />
+        <InfoChip index={2} icon={<Users2 size={26} />} label="Sección" value={grupo?.seccion ?? "Sin datos"} />
+        <InfoChip index={3} icon={<BookOpen size={26} />} label="Cursos" value={String(cursos.length)} />
       </div>
 
       {cursos.length === 0 ? (
-        <div className="grid place-items-center gap-2 rounded-[20px] border border-dashed border-monserrat-ink/15 bg-white p-10 text-center">
-          <BookOpen size={28} className="text-monserrat-ink/30" />
-          <p className="text-sm font-semibold text-monserrat-ink/50">No se encontraron cursos para tu grupo.</p>
+        <div className="kid-card kid-rise grid place-items-center gap-3 border-dashed p-10 text-center">
+          <span className="kid-icon-badge kid-bob" style={{ backgroundColor: "#fbf0d6", color: "#8a6a14" }}>
+            <BookOpen size={28} />
+          </span>
+          <p className="text-[16px] font-extrabold text-monserrat-ink">Aún no tienes cursos asignados</p>
+          <p className="text-[14px] font-semibold text-monserrat-ink/60">Cuando tu colegio los asigne, aparecerán aquí.</p>
         </div>
       ) : (
-        // Una tarjeta por curso con acento de color estable y el docente a
-        // cargo, en vez de una lista plana de nombres de curso.
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {cursos.map((asignacion) => {
-            const color = colorPorCurso(asignacion.curso);
+        // Una tarjeta por curso con color estable y el docente a cargo.
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {cursos.map((asignacion, i) => {
+            const accent = accentFor(asignacion.curso);
             return (
               <div
                 key={asignacion.curso}
-                className="rounded-[18px] border border-monserrat-ink/10 bg-white p-5 "
-                style={{ borderLeft: `4px solid ${color}` }}
+                className="kid-card kid-card-hover kid-rise p-5"
+                style={{ ...rise(i + 4), borderColor: accent.ring }}
               >
-                <div className="flex items-start gap-3">
-                  <span
-                    className="flex h-11 w-11 flex-none items-center justify-center rounded-[12px] text-sm font-black"
-                    style={{ backgroundColor: `${color}18`, color }}
-                  >
-                    <BookOpen size={18} />
+                <div className="flex items-center gap-4">
+                  <span className="kid-icon-badge" style={{ backgroundColor: accent.bg, color: accent.fg }}>
+                    <BookOpen size={28} />
                   </span>
                   <div className="min-w-0">
-                    <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/40">Curso</p>
-                    <p className="truncate text-lg font-black text-monserrat-ink">{labelFromEnum(asignacion.curso)}</p>
+                    <p className="text-[12px] font-extrabold uppercase tracking-[0.1em] text-monserrat-ink/55">Curso</p>
+                    <p className="truncate text-[19px] font-black text-monserrat-ink">{labelFromEnum(asignacion.curso)}</p>
                   </div>
                 </div>
 
-                <div className="mt-4 flex items-center gap-2.5 rounded-[12px] bg-[#f2f2f1] p-2.5">
-                  <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[#e3e3e1]/8 text-[11px] font-black text-monserrat-ink/60">
-                    {asignacion.docenteNombre ? initials(asignacion.docenteNombre) : <UserRound size={14} />}
+                <div className="mt-4 flex items-center gap-3 rounded-[16px] p-3" style={{ backgroundColor: accent.bg }}>
+                  <span
+                    className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-white text-[13px] font-black"
+                    style={{ color: accent.fg }}
+                  >
+                    {asignacion.docenteNombre ? initials(asignacion.docenteNombre) : <UserRound size={18} />}
                   </span>
                   <div className="min-w-0">
-                    <p className="truncate text-xs font-bold text-monserrat-ink">{asignacion.docenteNombre || "Docente por asignar"}</p>
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-monserrat-ink/35">Docente a cargo</p>
+                    <p className="truncate text-[14px] font-extrabold text-monserrat-ink">{asignacion.docenteNombre || "Docente por asignar"}</p>
+                    <p className="text-[12px] font-bold text-monserrat-ink/60">Tu profe de este curso</p>
                   </div>
                 </div>
               </div>

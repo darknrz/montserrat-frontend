@@ -275,3 +275,78 @@ export type Anuncio = {
   orden?: number;
   expiresAt?: string;
 };
+
+export type EstadoAnioEscolar = "PLANIFICADO" | "ACTIVO" | "CERRADO";
+export type AccionMigracion = "PROMOVER" | "REPETIR" | "EGRESAR" | "RETIRAR";
+
+export type AnioEscolar = {
+  id: number;
+  anio: number;
+  estado: EstadoAnioEscolar;
+  fechaCierre?: string;
+  cerradoPor?: string;
+  totalPromovidos?: number;
+  totalRepitentes?: number;
+  totalEgresados?: number;
+  totalRetirados?: number;
+};
+
+export type MigracionDecision = {
+  alumnoId: number;
+  accion?: AccionMigracion;
+  seccion?: string;
+};
+
+export type MigracionRequest = {
+  anioDestino: number;
+  copiarBimestres: boolean;
+  decisiones: MigracionDecision[];
+  confirmacion?: string;
+};
+
+export type MigracionItem = {
+  alumnoId: number;
+  dni: string;
+  codigo?: string;
+  nombre: string;
+  nivelActual?: string;
+  gradoActual?: string;
+  seccionActual?: string;
+  accion: AccionMigracion;
+  nivelDestino?: string;
+  gradoDestino?: string;
+  seccionDestino?: string;
+  seccionesPermitidas: string[];
+  requiereSeccion: boolean;
+  usaGrupo: boolean;
+  salonSugerido: boolean;
+};
+
+export type MigracionPreview = {
+  anioOrigen: number;
+  anioDestino: number;
+  items: MigracionItem[];
+  promovidos: number;
+  repitentes: number;
+  egresados: number;
+  retirados: number;
+  pendientesSeccion: number;
+  notasAArchivar: number;
+  asistenciasAArchivar: number;
+  bimestresACopiar: number;
+  omitidos: string[];
+  puedeEjecutar: boolean;
+};
+
+export type MigracionResultado = {
+  anioOrigen: number;
+  anioDestino: number;
+  promovidos: number;
+  repitentes: number;
+  egresados: number;
+  retirados: number;
+  notasArchivadas: number;
+  asistenciasArchivadas: number;
+  bimestresCopiados: number;
+  alumnosSinAsignaciones: number;
+};

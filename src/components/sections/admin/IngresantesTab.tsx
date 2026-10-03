@@ -115,7 +115,7 @@ export function IngresantesTab({
       {/* form */}
       <form
         onSubmit={submitIngresante}
-        className="grid content-start gap-3 rounded-[18px] border border-monserrat-ink/8 bg-monserrat-cream/40 p-5"
+        className="pro-card pro-rise grid content-start gap-3 p-5"
       >
         <div className="flex items-center justify-between">
           <h4 className="font-serif text-[16px] font-black text-monserrat-ink">
@@ -243,7 +243,7 @@ export function IngresantesTab({
         <div className="flex gap-2">
           <button
             disabled={isBusy}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-[10px] bg-monserrat-red py-2.5 text-[12px] font-black text-white transition hover:bg-monserrat-red/85 disabled:opacity-60"
+            className="pro-btn flex-1"
           >
             {editingIngresante ? (
               <>
@@ -259,7 +259,7 @@ export function IngresantesTab({
             <button
               type="button"
               onClick={handleCancelEdit}
-              className="rounded-[10px] border border-monserrat-ink/12 px-3 text-[12px] font-bold text-monserrat-ink/60 hover:border-monserrat-ink/25"
+              className="pro-btn-soft !px-3"
             >
               <X size={14} />
             </button>
@@ -275,7 +275,7 @@ export function IngresantesTab({
             <select
               value={filterYear}
               onChange={(e) => setFilterYear(e.target.value)}
-              className="rounded-full border border-monserrat-ink/10 bg-white py-1.5 pl-3 pr-7 text-[12px] font-bold text-monserrat-ink/60 outline-none"
+              className="rounded-full border border-monserrat-gold/40 bg-[#fffdf8] py-1.5 pl-3 pr-7 text-[12px] font-bold text-monserrat-ink/70 outline-none transition hover:border-monserrat-red/40 focus:border-monserrat-red/60"
               style={{
                 backgroundImage:
                   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%231C1410' stroke-width='2' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E\")",
@@ -294,7 +294,7 @@ export function IngresantesTab({
             <select
               value={filterSel}
               onChange={(e) => setFilterSel(e.target.value)}
-              className="rounded-full border border-monserrat-ink/10 bg-white py-1.5 pl-3 pr-7 text-[12px] font-bold text-monserrat-ink/60 outline-none"
+              className="rounded-full border border-monserrat-gold/40 bg-[#fffdf8] py-1.5 pl-3 pr-7 text-[12px] font-bold text-monserrat-ink/70 outline-none transition hover:border-monserrat-red/40 focus:border-monserrat-red/60"
               style={{
                 backgroundImage:
                   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%231C1410' stroke-width='2' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E\")",
@@ -310,7 +310,7 @@ export function IngresantesTab({
                 </option>
               ))}
             </select>
-            <label className="flex items-center gap-2 rounded-full border border-monserrat-ink/10 bg-white py-1.5 pl-3 pr-3 text-[12px] font-bold text-monserrat-ink/60">
+            <label className="flex items-center gap-2 rounded-full border border-monserrat-gold/40 bg-[#fffdf8] py-1.5 pl-3 pr-3 text-[12px] font-bold text-monserrat-ink/70">
               <span className="uppercase tracking-[0.12em] text-monserrat-ink/40">Vista</span>
               <select
                 value={academicoConfig.ingresantesModelo ?? "card-grid"}
@@ -328,7 +328,7 @@ export function IngresantesTab({
           </p>
         </div>
 
-        <div className="overflow-hidden rounded-[16px] border border-monserrat-ink/8 bg-white p-4 shadow-sm">
+        <div className="pro-card pro-rise overflow-hidden p-4">
           {model === "card-featured" ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
               {filteredIngresantes.length === 0 ? (
@@ -339,7 +339,7 @@ export function IngresantesTab({
                 filteredIngresantes.map((item) => (
                   <div
                     key={item.id}
-                    className="group overflow-hidden rounded-[12px] border border-monserrat-ink/8 bg-white p-4 transition-transform duration-200 hover:-translate-y-1 hover:scale-[1.01] hover:shadow-lg"
+                    className="group overflow-hidden rounded-[14px] border border-monserrat-gold/30 bg-[#fffdf8] p-4 transition duration-200 hover:-translate-y-1 hover:border-monserrat-red/30 hover:shadow-lg"
                   >
                     <div className="mb-4 overflow-hidden rounded-[12px] bg-monserrat-cream/20">
                       {item.fotoUrl ? (
@@ -366,7 +366,7 @@ export function IngresantesTab({
                         <span className="rounded-full bg-monserrat-red/10 px-3 py-1 text-[11px] font-bold text-monserrat-red">
                           {item.anio}
                         </span>
-                        <span className="inline-flex items-center gap-2 rounded-full bg-monserrat-ink/5 px-3 py-1 text-[11px] font-bold text-monserrat-ink">
+                        <span className="inline-flex items-center gap-2 rounded-full bg-monserrat-gold/15 px-3 py-1 text-[11px] font-bold text-monserrat-goldDark">
                           <span className="h-2.5 w-2.5 rounded-full bg-monserrat-gold" />
                           {item.tipoSeleccion}
                         </span>
@@ -379,10 +379,10 @@ export function IngresantesTab({
           ) : (
             <div className="max-h-[70vh] overflow-auto">
               <table className="w-full min-w-[600px] border-collapse text-left text-[12.5px]">
-                <thead className="bg-monserrat-ink text-monserrat-cream sticky top-0 z-10">
+                <thead className="pro-th sticky top-0 z-10">
                   <tr>
                     {['Nombre', 'Universidad', 'Carrera', 'Año', 'Ingreso', ''].map((h) => (
-                      <th key={h} className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.1em] text-monserrat-cream/70">
+                      <th key={h} className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.1em] text-monserrat-ink/55">
                         {h}
                       </th>
                     ))}
@@ -397,7 +397,7 @@ export function IngresantesTab({
                     </tr>
                   ) : (
                     filteredIngresantes.map((item) => (
-                      <tr key={item.id} className="border-t border-monserrat-ink/6 transition hover:bg-monserrat-cream/30">
+                      <tr key={item.id} className="border-t border-monserrat-gold/20 transition hover:bg-[#fbf4e2]">
                         <td className="px-4 py-3 font-bold text-monserrat-ink">{item.nombre}</td>
                         <td className="px-4 py-3">
                           <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-black ring-1">
@@ -413,7 +413,7 @@ export function IngresantesTab({
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex gap-1.5">
-                            <button type="button" onClick={() => handleEditClick(item)} className="flex h-8 w-8 items-center justify-center rounded-[8px] border border-monserrat-ink/12 bg-white transition hover:border-monserrat-ink/30">
+                            <button type="button" onClick={() => handleEditClick(item)} className="flex h-8 w-8 items-center justify-center rounded-[8px] border border-monserrat-gold/40 bg-white text-monserrat-ink/70 transition hover:border-monserrat-red/50 hover:text-monserrat-red">
                               <Edit3 size={13} />
                             </button>
                             <button type="button" onClick={() => handleDelete(item.id)} className="flex h-8 w-8 items-center justify-center rounded-[8px] bg-monserrat-red/8 text-monserrat-red transition hover:bg-monserrat-red/16">

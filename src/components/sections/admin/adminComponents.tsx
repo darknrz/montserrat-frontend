@@ -1,4 +1,4 @@
-import { Edit3, ImagePlus, Plus, Save, Search, Trash2, Upload, User, UserCheck, UserPlus, BookOpen, Check, X } from "lucide-react";
+import { Edit3, ImagePlus, Plus, Save, Search, Trash2, Upload, User, UserCheck, UserPlus, BookOpen, Check, GripVertical, X, ChevronUp, ChevronDown } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { createCatalogId, aulaPorGradoSeccion, competenciaConAbreviatura, formatGrado, SALONES, type CatalogItem, type SalonItem } from "./adminShared";
@@ -34,7 +34,7 @@ export function AdminField({ label, children, className = "" }: { label: string;
 export function AdminFormBtn({ isBusy }: { isBusy: boolean }) {
   return (
     <button disabled={isBusy}
-      className="inline-flex items-center gap-2 rounded-[10px] bg-monserrat-ink px-6 py-2.5 text-[13px] font-black text-white transition hover:bg-monserrat-ink/85 disabled:opacity-60">
+      className="inline-flex items-center gap-2 rounded-[10px] bg-monserrat-red px-6 py-2.5 text-[13px] font-black text-white transition hover:bg-monserrat-redDark disabled:opacity-60">
       <Save size={15} /> Guardar cambios
     </button>
   );
@@ -42,7 +42,7 @@ export function AdminFormBtn({ isBusy }: { isBusy: boolean }) {
 
 export function AdminMetric({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-[12px] border border-black/10 bg-white p-4">
+    <div className="flex items-center gap-3 rounded-[12px] border border-[#eadfc4] bg-white p-4">
       <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[9px] bg-black/5 text-monserrat-ink/55">
         {icon}
       </div>
@@ -85,7 +85,7 @@ export function RosterPanel({
   headerAction?: ReactNode;
 }) {
   return (
-    <div className={`overflow-hidden rounded-[12px] border border-black/10 bg-white ${className}`}>
+    <div className={`overflow-hidden rounded-[12px] border border-[#eadfc4] bg-white ${className}`}>
       <div className="flex items-center justify-between gap-2 border-b border-monserrat-gold/25 bg-gradient-to-r from-monserrat-cream/60 to-monserrat-cream/25 px-4 py-3">
         <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/45">{title}</p>
         {headerAction}
@@ -126,20 +126,53 @@ export function RosterPanel({
 
 // Panel de grados: los grados son fijos (formato estandar "1ro Prim"), solo se activan/desactivan.
 export function GradosConfigPanel({ title, items, onChange }: { title: string; items: CatalogItem[]; onChange: (items: CatalogItem[]) => void }) {
+  const [localItems, setLocalItems] = useState(items);
+
+  useEffect(() => {
+    setLocalItems(items);
+  }, [items]);
+
+  const updateLabel = (id: string, label: string) => {
+    setLocalItems((prev) => prev.map((item) => (item.id === id ? { ...item, label } : item)));
+  };
+
+  // Guarda al salir del campo, solo si el texto cambió (y no quedó vacío).
+  const commitLabel = (id: string) => {
+    const local = localItems.find((item) => item.id === id);
+    const original = items.find((item) => item.id === id);
+    if (!local || !original || local.label === original.label) return;
+    if (!local.label.trim()) {
+      setLocalItems(items);
+      return;
+    }
+    onChange(localItems.map((item) => (item.id === id ? { ...item, label: item.label.trim() } : item)));
+  };
+
   return (
-    <div className="overflow-hidden rounded-[12px] border border-black/10 bg-white">
-      <div className="border-b border-black/12 bg-[#e9e9e8] px-5 py-4">
+    <div className="overflow-hidden rounded-[12px] border border-[#eadfc4] bg-white">
+      <div className="border-b border-[#e3d7b8] bg-[#f4ead2] px-5 py-4">
         <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">Configuracion</p>
         <h4 className="font-serif text-xl font-black text-monserrat-ink">{title}</h4>
       </div>
       <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
-        {items.map((item) => (
-          <div key={item.id} className={`rounded-[12px] border p-4 transition ${item.active ? "border-black/12 bg-white" : "border-black/12 bg-[#eeeeec] opacity-60"}`}>
-            <p className="text-base font-black text-monserrat-ink">{formatGrado(item.id)}</p>
+        {localItems.map((item) => (
+          <div key={item.id} className={`rounded-[12px] border p-4 transition ${item.active ? "border-[#e3d7b8] bg-white" : "border-[#e3d7b8] bg-[#f3ecda] opacity-60"}`}>
+            <input
+              value={item.label}
+              maxLength={60}
+              onChange={(e) => updateLabel(item.id, e.target.value)}
+              onBlur={() => commitLabel(item.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+              }}
+              aria-label={`Nombre del grado ${formatGrado(item.id)}`}
+              className="w-full rounded-[9px] border border-[#eadfc4] bg-white px-3 py-2 text-base font-black text-monserrat-ink outline-none focus:border-black/25"
+            />
+            <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-monserrat-ink/40">{item.id}</p>
             <button
               type="button"
               onClick={() => onChange(items.map((it) => (it.id === item.id ? { ...it, active: !it.active } : it)))}
-              className={`mt-3 w-full rounded-[9px] border px-3 py-2 text-[11px] font-black ${item.active ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-black/10 bg-black/[0.035] text-monserrat-ink/55"}`}
+              className={`mt-3 w-full rounded-[9px] border px-3 py-2 text-[11px] font-black ${item.active ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-[#eadfc4] bg-black/[0.035] text-monserrat-ink/55"}`}
             >
               {item.active ? "Activo" : "Inactivo"}
             </button>
@@ -153,14 +186,14 @@ export function GradosConfigPanel({ title, items, onChange }: { title: string; i
 // Salones oficiales de la institucion (lista fija; no confundir con grados).
 export function SalonesOficialesPanel() {
   return (
-    <div className="overflow-hidden rounded-[12px] border border-black/10 bg-white">
-      <div className="border-b border-black/12 bg-[#e9e9e8] px-5 py-4">
+    <div className="overflow-hidden rounded-[12px] border border-[#eadfc4] bg-white">
+      <div className="border-b border-[#e3d7b8] bg-[#f4ead2] px-5 py-4">
         <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">Configuracion</p>
         <h4 className="font-serif text-xl font-black text-monserrat-ink">Salones</h4>
       </div>
       <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
         {SALONES.map((salon) => (
-          <div key={salon} className="rounded-[12px] border border-black/12 bg-white p-4">
+          <div key={salon} className="rounded-[12px] border border-[#e3d7b8] bg-white p-4">
             <p className="text-sm font-black uppercase text-monserrat-ink">{salon}</p>
           </div>
         ))}
@@ -213,19 +246,19 @@ export function ConfigPanel({ title, items, onChange }: { title: string; items: 
   const itemToDelete = deleteIndex === null ? null : localItems[deleteIndex];
 
   return (
-    <div className="overflow-hidden rounded-[12px] border border-black/10 bg-white">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/12 bg-[#e9e9e8] px-5 py-4">
+    <div className="overflow-hidden rounded-[12px] border border-[#eadfc4] bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e3d7b8] bg-[#f4ead2] px-5 py-4">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">Configuracion</p>
           <h4 className="font-serif text-xl font-black text-monserrat-ink">{title}</h4>
         </div>
-        <button type="button" onClick={addItem} className="inline-flex cursor-pointer items-center gap-1 rounded-[9px] border border-black/12 bg-[#f3f3f2] px-3 py-2 text-[11px] font-black text-monserrat-ink hover:bg-[#dededc]">
+        <button type="button" onClick={addItem} className="inline-flex cursor-pointer items-center gap-1 rounded-[9px] border border-[#e3d7b8] bg-[#fbf3de] px-3 py-2 text-[11px] font-black text-monserrat-ink hover:bg-[#ecdfbd]">
           <Plus size={12} /> Agregar
         </button>
       </div>
       <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
         {localItems.map((item, index) => (
-          <div key={item.id} className={`rounded-[12px] border p-4 transition ${item.active ? "border-black/12 bg-white" : "border-black/12 bg-[#eeeeec] opacity-60"}`}>
+          <div key={item.id} className={`rounded-[12px] border p-4 transition ${item.active ? "border-[#e3d7b8] bg-white" : "border-[#e3d7b8] bg-[#f3ecda] opacity-60"}`}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="truncate text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">{item.id}</p>
@@ -239,15 +272,15 @@ export function ConfigPanel({ title, items, onChange }: { title: string; items: 
                       (e.target as HTMLInputElement).blur();
                     }
                   }}
-                  className="mt-2 w-full rounded-[9px] border border-black/10 bg-white px-3 py-2 text-sm font-black text-monserrat-ink outline-none focus:border-black/25"
+                  className="mt-2 w-full rounded-[9px] border border-[#eadfc4] bg-white px-3 py-2 text-sm font-black text-monserrat-ink outline-none focus:border-black/25"
                 />
               </div>
-              <button type="button" onClick={() => setDeleteIndex(index)} className="flex h-8 w-8 flex-shrink-0 cursor-pointer items-center justify-center rounded-[8px] bg-[#e9e9e8] text-monserrat-ink/45 hover:bg-red-50 hover:text-red-600">
+              <button type="button" onClick={() => setDeleteIndex(index)} className="flex h-8 w-8 flex-shrink-0 cursor-pointer items-center justify-center rounded-[8px] bg-[#f4ead2] text-monserrat-ink/45 hover:bg-red-50 hover:text-red-600">
                 <Trash2 size={13} />
               </button>
             </div>
             <button type="button" onClick={() => updateActive(index, !item.active)}
-              className={`mt-3 w-full rounded-[9px] border px-3 py-2 text-[11px] font-black ${item.active ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-black/10 bg-black/[0.035] text-monserrat-ink/55"}`}>
+              className={`mt-3 w-full rounded-[9px] border px-3 py-2 text-[11px] font-black ${item.active ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-[#eadfc4] bg-black/[0.035] text-monserrat-ink/55"}`}>
               {item.active ? "Activo" : "Inactivo"}
             </button>
           </div>
@@ -317,13 +350,13 @@ export function CompetenciasPanel({
   const itemToDelete = deleteIndex === null ? null : localItems[deleteIndex];
 
   return (
-    <div className="overflow-hidden rounded-[12px] border border-black/10 bg-white">
-      <div className="border-b border-black/12 bg-[#e9e9e8] px-5 py-4">
+    <div className="overflow-hidden rounded-[12px] border border-[#eadfc4] bg-white">
+      <div className="border-b border-[#e3d7b8] bg-[#f4ead2] px-5 py-4">
         <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">Configuracion</p>
         <h4 className="font-serif text-xl font-black text-monserrat-ink">Competencias</h4>
       </div>
 
-      <div className="border-b border-black/10 bg-white p-4">
+      <div className="border-b border-[#eadfc4] bg-white p-4">
         <p className="mb-2 text-[11px] font-black uppercase tracking-[0.08em] text-monserrat-ink/50">
           Escribe la nueva competencia
         </p>
@@ -339,13 +372,13 @@ export function CompetenciasPanel({
             }}
             placeholder="Ej: Resuelve problemas de cantidad usando estrategias y procedimientos matematicos."
             rows={2}
-            className="flex-1 resize-none rounded-[9px] border border-black/10 bg-white px-3 py-2 text-sm font-semibold text-monserrat-ink outline-none focus:border-black/25"
+            className="flex-1 resize-none rounded-[9px] border border-[#eadfc4] bg-white px-3 py-2 text-sm font-semibold text-monserrat-ink outline-none focus:border-black/25"
           />
           <button
             type="button"
             onClick={addItem}
             disabled={!nuevaCompetencia.trim()}
-            className="inline-flex items-center justify-center gap-1 rounded-[9px] bg-monserrat-ink px-4 py-2 text-[12px] font-black text-white transition hover:bg-monserrat-ink/85 disabled:opacity-40 sm:self-start"
+            className="inline-flex items-center justify-center gap-1 rounded-[9px] bg-monserrat-red px-4 py-2 text-[12px] font-black text-white transition hover:bg-monserrat-redDark disabled:opacity-40 sm:self-start"
           >
             <Plus size={14} /> Agregar
           </button>
@@ -365,7 +398,7 @@ export function CompetenciasPanel({
           <div
             key={item.id}
             className={`flex items-start gap-3 rounded-[12px] border p-3 transition ${
-              item.active ? "border-black/12 bg-white" : "border-black/12 bg-[#eeeeec] opacity-60"
+              item.active ? "border-[#e3d7b8] bg-white" : "border-[#e3d7b8] bg-[#f3ecda] opacity-60"
             }`}
           >
             <span className="mt-1 flex-shrink-0 rounded-full bg-white px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] text-monserrat-ink/40">
@@ -377,14 +410,14 @@ export function CompetenciasPanel({
               onChange={(e) => updateLabel(index, e.target.value)}
               onBlur={() => commitLabel(index)}
               rows={2}
-              className="flex-1 resize-none rounded-[9px] border border-black/10 bg-white px-3 py-2 text-sm font-bold text-monserrat-ink outline-none focus:border-black/25"
+              className="flex-1 resize-none rounded-[9px] border border-[#eadfc4] bg-white px-3 py-2 text-sm font-bold text-monserrat-ink outline-none focus:border-black/25"
             />
             <div className="flex flex-shrink-0 flex-col gap-1.5">
               <button
                 type="button"
                 onClick={() => updateActive(index, !item.active)}
                 className={`rounded-[8px] px-2.5 py-1.5 text-[10px] font-black ${
-                  item.active ? "border border-emerald-200 bg-emerald-50 text-emerald-700" : "border border-black/10 bg-black/[0.035] text-monserrat-ink/55"
+                  item.active ? "border border-emerald-200 bg-emerald-50 text-emerald-700" : "border border-[#eadfc4] bg-black/[0.035] text-monserrat-ink/55"
                 }`}
               >
                 {item.active ? "Activo" : "Inactivo"}
@@ -392,7 +425,7 @@ export function CompetenciasPanel({
               <button
                 type="button"
                 onClick={() => setDeleteIndex(index)}
-                className="flex h-7 w-7 cursor-pointer items-center justify-center self-center rounded-[8px] bg-[#e9e9e8] text-monserrat-ink/45 hover:bg-red-50 hover:text-red-600"
+                className="flex h-7 w-7 cursor-pointer items-center justify-center self-center rounded-[8px] bg-[#f4ead2] text-monserrat-ink/45 hover:bg-red-50 hover:text-red-600"
               >
                 <Trash2 size={13} />
               </button>
@@ -447,26 +480,26 @@ export function SalonConfigPanel({
   const salonesPagina = salones.slice((pagina - 1) * SALONES_POR_PAGINA, pagina * SALONES_POR_PAGINA);
 
   return (
-    <div className="overflow-hidden rounded-[12px] border border-black/10 bg-white">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/12 bg-[#e9e9e8] px-5 py-4">
+    <div className="overflow-hidden rounded-[12px] border border-[#eadfc4] bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e3d7b8] bg-[#f4ead2] px-5 py-4">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">Configuracion</p>
           <h4 className="font-serif text-xl font-black text-monserrat-ink">Salones de {labelAcademico(nivel)}</h4>
         </div>
-        <button type="button" onClick={() => addSalon("", "", "Nuevo")} className="inline-flex cursor-pointer items-center gap-1 rounded-[9px] border border-black/12 bg-[#f3f3f2] px-3 py-2 text-[11px] font-black text-monserrat-ink hover:bg-[#dededc]">
+        <button type="button" onClick={() => addSalon("", "", "Nuevo")} className="inline-flex cursor-pointer items-center gap-1 rounded-[9px] border border-[#e3d7b8] bg-[#fbf3de] px-3 py-2 text-[11px] font-black text-monserrat-ink hover:bg-[#ecdfbd]">
           <Plus size={12} /> Agregar
         </button>
       </div>
 
       <div className="grid gap-3 p-4 xl:grid-cols-2">
         {salonesPagina.map((salon) => (
-          <div key={`${salon.nivel}-${salon.grado}-${salon.seccion}-${salon.aula}`} className={`rounded-[12px] border p-4 ${salon.active ? "border-black/12 bg-white" : "border-black/12 bg-[#eeeeec] opacity-60"}`}>
+          <div key={`${salon.nivel}-${salon.grado}-${salon.seccion}-${salon.aula}`} className={`rounded-[12px] border p-4 ${salon.active ? "border-[#e3d7b8] bg-white" : "border-[#e3d7b8] bg-[#f3ecda] opacity-60"}`}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">{labelAcademico(salon.nivel)}</p>
                 <h5 className="mt-1 font-serif text-lg font-black text-monserrat-ink">Aula {salon.aula || "(vacia)"}</h5>
               </div>
-              <button type="button" onClick={() => setDeleteTarget(salon)} className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-[8px] bg-[#e9e9e8] text-monserrat-ink/45 hover:bg-red-50 hover:text-red-600">
+              <button type="button" onClick={() => setDeleteTarget(salon)} className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-[8px] bg-[#f4ead2] text-monserrat-ink/45 hover:bg-red-50 hover:text-red-600">
                 <Trash2 size={13} />
               </button>
             </div>
@@ -485,7 +518,7 @@ export function SalonConfigPanel({
               </AdminField>
             </div>
             <button type="button" onClick={() => updateSalon(salon, { active: !salon.active })}
-              className={`mt-3 w-full rounded-[9px] border px-3 py-2 text-[11px] font-black ${salon.active ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-black/10 bg-black/[0.035] text-monserrat-ink/55"}`}>
+              className={`mt-3 w-full rounded-[9px] border px-3 py-2 text-[11px] font-black ${salon.active ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-[#eadfc4] bg-black/[0.035] text-monserrat-ink/55"}`}>
               {salon.active ? "Activo" : "Inactivo"}
             </button>
           </div>
@@ -493,7 +526,7 @@ export function SalonConfigPanel({
       </div>
 
       {totalPaginas > 1 && (
-        <div className="flex items-center justify-between border-t border-black/10 px-5 py-3 bg-black/[0.02]">
+        <div className="flex items-center justify-between border-t border-[#eadfc4] px-5 py-3 bg-black/[0.02]">
           <p className="text-[12px] font-semibold text-monserrat-ink/45">
             Página <span className="font-black text-monserrat-ink">{pagina}</span> de{" "}
             <span className="font-black text-monserrat-ink">{totalPaginas}</span>
@@ -539,7 +572,7 @@ export function ConfirmDeleteModal({ title, message, onCancel, onConfirm }: { ti
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm">
       <div className="w-full max-w-[420px] overflow-hidden rounded-[18px] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
-        <div className="border-b border-black/10 bg-black/[0.03] px-5 py-4">
+        <div className="border-b border-[#eadfc4] bg-black/[0.03] px-5 py-4">
           <p className="text-[10px] font-black uppercase tracking-[0.14em] text-monserrat-ink/45">Confirmacion requerida</p>
           <h3 className="mt-1 font-serif text-xl font-black text-monserrat-ink">{title}</h3>
         </div>
@@ -596,19 +629,28 @@ export function AdminTable({
   rows,
   className = "",
   bodyClassName = "",
-  columnWidths
+  columnWidths,
+  sortableColumns,
+  sortColumn,
+  sortDirection = "asc",
+  onSort
 }: {
   headers: string[];
   rows: { id: number; values: string[]; onEdit: () => void; onDelete: () => void }[];
   className?: string;
   bodyClassName?: string;
   columnWidths?: string[];
+  /** Índices de columna ordenables (muestran ^ y v en el encabezado). */
+  sortableColumns?: number[];
+  sortColumn?: number;
+  sortDirection?: "asc" | "desc";
+  onSort?: (column: number) => void;
 }) {
   return (
-    <div className={`overflow-hidden rounded-[12px] border border-black/10 bg-white ${className}`}>
+    <div className={`overflow-hidden rounded-[12px] border border-[#eadfc4] bg-white ${className}`}>
       <div className={`admin-table-scroll max-h-[70vh] overflow-auto ${bodyClassName}`}>
         <table className="w-full min-w-[760px] table-fixed border-collapse text-left text-[12.5px]">
-          <thead className="sticky top-0 z-10 bg-[#e3e3e1]">
+          <thead className="pro-th sticky top-0 z-10">
             <tr>
               {headers.map((h, i) => (
                 <th key={h}
@@ -618,20 +660,38 @@ export function AdminTable({
                     i === 3 ? "w-[10%]" :   // Estado
                     "w-[30%]"               // Detalle
                     )}`}
-                >{h}</th>
+                  aria-sort={sortableColumns?.includes(i) ? (sortColumn === i ? (sortDirection === "asc" ? "ascending" : "descending") : "none") : undefined}
+                >
+                  {sortableColumns?.includes(i) && onSort ? (
+                    <button
+                      type="button"
+                      onClick={() => onSort(i)}
+                      className="inline-flex cursor-pointer items-center gap-1.5 uppercase tracking-[0.1em] hover:text-monserrat-ink"
+                      title={`Ordenar por ${h}`}
+                    >
+                      {h}
+                      <span className="flex flex-col leading-none">
+                        <ChevronUp size={11} strokeWidth={3} className={sortColumn === i && sortDirection === "asc" ? "text-monserrat-ink" : "text-monserrat-ink/25"} />
+                        <ChevronDown size={11} strokeWidth={3} className={`-mt-1 ${sortColumn === i && sortDirection === "desc" ? "text-monserrat-ink" : "text-monserrat-ink/25"}`} />
+                      </span>
+                    </button>
+                  ) : (
+                    h
+                  )}
+                </th>
               ))}
               <th className="w-[8%] px-4 py-3"></th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.id} className="border-t border-black/10 hover:bg-[#f0f0ef]">
+              <tr key={row.id} className="border-t border-[#eadfc4] hover:bg-[#fbf3de]">
                 {row.values.map((v, i) => <td key={i} className="truncate px-2 py-3 text-monserrat-ink/80">{v}</td>)}
 
                 <td className="py-3">
                   <div className="flex gap-1.5">
-                    <button type="button" onClick={row.onEdit} className="flex h-8 w-8 items-center justify-center rounded-[8px] border border-black/10 bg-white text-monserrat-ink/60 hover:border-black/25 hover:text-monserrat-ink"><Edit3 size={13} /></button>
-                    <button type="button" onClick={row.onDelete} className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-[8px] bg-[#e9e9e8] text-monserrat-ink/45 hover:bg-red-50 hover:text-red-600"><Trash2 size={13} /></button>
+                    <button type="button" onClick={row.onEdit} className="flex h-8 w-8 items-center justify-center rounded-[8px] border border-[#eadfc4] bg-white text-monserrat-ink/60 hover:border-black/25 hover:text-monserrat-ink"><Edit3 size={13} /></button>
+                    <button type="button" onClick={row.onDelete} className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-[8px] bg-[#f4ead2] text-monserrat-ink/45 hover:bg-red-50 hover:text-red-600"><Trash2 size={13} /></button>
                   </div>
                 </td>
               </tr>
@@ -731,7 +791,7 @@ export function CompetenciaPickerModal({
             ? "border-emerald-600/20 bg-emerald-600/[0.05] hover:bg-emerald-600/[0.08]"
             : variant === "other"
             ? "border-amber-400/35 bg-amber-50/70 hover:bg-amber-50"
-            : "border-black/10 bg-white hover:border-monserrat-gold/35 hover:bg-monserrat-cream/25"
+            : "border-[#eadfc4] bg-white hover:border-monserrat-gold/35 hover:bg-monserrat-cream/25"
         }`}
       >
         <span
@@ -852,6 +912,7 @@ export function CompetenciaDocenteBoard({
   labelDocenteAsignado,
   onEditRow,
   onEditCompetencia,
+  onReorder,
 }: {
   competencias: CatalogItem[];
   docentesPorCompetencia: Record<string, string[]>;
@@ -861,9 +922,24 @@ export function CompetenciaDocenteBoard({
   labelDocenteAsignado: (dni: string) => string;
   onEditRow: (competenciaId: string) => void;
   onEditCompetencia?: () => void;
+  /** Se llama con los ids en el nuevo orden al arrastrar; la posición define C1, C2, C3… */
+  onReorder?: (idsOrdenados: string[]) => void;
 }) {
+  const [arrastrando, setArrastrando] = useState<string | null>(null);
+  const [sobre, setSobre] = useState<string | null>(null);
+
+  const soltarSobre = (destinoId: string) => {
+    if (!arrastrando || arrastrando === destinoId || !onReorder) return;
+    const ids = competencias.map((c) => c.id);
+    const desde = ids.indexOf(arrastrando);
+    const hasta = ids.indexOf(destinoId);
+    if (desde < 0 || hasta < 0) return;
+    ids.splice(hasta, 0, ids.splice(desde, 1)[0]);
+    onReorder(ids);
+  };
+
   return (
-    <div className="flex flex-col overflow-hidden rounded-[12px] border border-black/10 bg-white">
+    <div className="flex flex-col overflow-hidden rounded-[12px] border border-[#eadfc4] bg-white">
       <div className="grid grid-cols-[1.4fr_1fr] border-b border-monserrat-gold/25 bg-gradient-to-r from-monserrat-cream/60 to-monserrat-cream/25">
         <p className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/45 flex items-center gap-1.5">
           <BookOpen size={11} className="text-monserrat-goldDark/70" /> Competencias vinculadas
@@ -894,15 +970,37 @@ export function CompetenciaDocenteBoard({
             return (
               <div
                 key={c.id}
+                draggable={!!onReorder}
+                onDragStart={() => setArrastrando(c.id)}
+                onDragOver={(e) => {
+                  if (!arrastrando) return;
+                  e.preventDefault();
+                  setSobre(c.id);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  soltarSobre(c.id);
+                  setArrastrando(null);
+                  setSobre(null);
+                }}
+                onDragEnd={() => {
+                  setArrastrando(null);
+                  setSobre(null);
+                }}
                 className={`grid grid-cols-[1.4fr_1fr] border-b border-monserrat-ink/6 last:border-b-0 items-center min-h-[50px] ${
                   i % 2 === 1 ? "bg-monserrat-cream/20" : ""
+                } ${arrastrando === c.id ? "opacity-40" : ""} ${
+                  sobre === c.id && arrastrando && arrastrando !== c.id ? "border-t-2 border-t-monserrat-red/60" : ""
                 }`}
               >
                 <div
                   onClick={() => onEditCompetencia?.()}
-                  className="cursor-pointer px-4 py-3 text-[12.5px] font-semibold text-monserrat-ink/80 transition-all hover:translate-x-0.5 hover:text-monserrat-ink"
+                  className="flex cursor-pointer items-center gap-2 px-4 py-3 text-[12.5px] font-semibold text-monserrat-ink/80 transition-all hover:text-monserrat-ink"
                 >
-                  {competenciaConAbreviatura(c.label, i)}
+                  {onReorder && (
+                    <GripVertical size={14} className="shrink-0 cursor-grab text-monserrat-ink/30" aria-label="Arrastrar para ordenar" />
+                  )}
+                  <span>{competenciaConAbreviatura(c.label, i)}</span>
                 </div>
                 <div className="border-l border-monserrat-ink/6 h-full px-4 py-2 flex items-center min-w-0">
                   {dnis.length > 0 ? (
@@ -1044,7 +1142,7 @@ export function ElegirDocenteModal({
                   className={`relative flex flex-col items-center gap-1.5 rounded-[12px] border p-2.5 text-center transition-all ${
                     selected
                       ? "border-monserrat-red/30 bg-monserrat-red/[0.05]"
-                      : "border-black/10 bg-white hover:border-monserrat-gold/35 hover:bg-monserrat-cream/25"
+                      : "border-[#eadfc4] bg-white hover:border-monserrat-gold/35 hover:bg-monserrat-cream/25"
                   } ${!canSelect ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
                 >
                   <div

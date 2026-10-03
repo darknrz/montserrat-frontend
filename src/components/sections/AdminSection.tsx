@@ -29,6 +29,8 @@ import type {
 } from "../../types";
 import { canAccessAdminGeneral, canAccessPensiones, isAdminRole } from "../../types";
 import { FeedbackModal } from "../ui/FeedbackModal";
+import { MascotaSigue } from "../ui/MascotaSigue";
+import { primerNombre, saludo } from "./alumno/kidTheme";
 import {
   ADMIN_TAB_STORAGE_KEY,
   aulaPorGradoSeccion,
@@ -342,25 +344,23 @@ export function AdminSection({
   if (!session) return null;
 
   return (
-    <section id="admin" className="min-h-screen bg-[#f6f6f5] text-monserrat-ink">
+    <section id="admin" className="pro-page min-h-screen text-monserrat-ink">
       <div className="grid min-h-screen lg:grid-cols-[248px_minmax(0,1fr)]">
         <FeedbackModal
           isOpen={Boolean(errorMessage)}
-          title="No se pudo completar la accion"
+          title="No se pudo completar la acción"
           message={errorMessage ?? ""}
           onClose={() => setErrorMessage(null)}
         />
 
-        <aside className="border-b border-black/12 bg-[#f2f2f1] px-3 py-3 lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r lg:px-4">
+        <aside className="border-b border-[#e3d7b8] bg-[#fbf4e2] px-3 py-3 lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r lg:px-4">
           <div className="flex h-full flex-col">
             <div className="mb-5 flex items-center justify-between gap-3 px-2 py-1">
               <div className="flex min-w-0 items-center gap-2.5">
                 {institution.logoUrl ? (
                   <img src={institution.logoUrl} alt="" className="h-8 w-8 rounded-lg object-cover" />
                 ) : (
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-monserrat-ink text-sm font-black text-white">
-                    M
-                  </div>
+                  <img src="/logo-montserrat.png" alt="" className="h-9 w-9 object-contain" />
                 )}
                 <div className="min-w-0">
                   <p className="truncate text-[13px] font-black">Monserrat</p>
@@ -370,7 +370,7 @@ export function AdminSection({
               <LayoutDashboard size={15} className="hidden text-monserrat-ink/35 sm:block" />
             </div>
 
-            <nav className="flex gap-1 overflow-x-auto pb-2 lg:grid lg:overflow-visible lg:pb-0">
+            <nav className="flex gap-1.5 overflow-x-auto pb-2 lg:grid lg:overflow-visible lg:pb-0">
               {SIDEBAR_TABS.map((item) => {
                 const Icon = item.icon;
                 const active = tab === item.id;
@@ -379,26 +379,26 @@ export function AdminSection({
                     key={item.id}
                     type="button"
                     onClick={() => setTab(item.id)}
-                    className={`flex shrink-0 cursor-pointer items-center gap-2 rounded-[10px] px-3 py-2 text-left text-[13px] font-bold transition lg:w-full ${
+                    className={`flex min-h-[48px] shrink-0 cursor-pointer items-center gap-3 rounded-2xl px-4 py-2.5 text-left text-[14px] font-black transition lg:w-full ${
                       active
-                        ? "bg-[#e3e3e1] text-monserrat-ink"
-                        : "text-monserrat-ink/58 hover:bg-[#e8e8e6] hover:text-monserrat-ink"
+                        ? "pro-nav-active"
+                        : "bg-white/70 text-monserrat-ink/70 hover:bg-white hover:text-monserrat-red"
                     }`}
                   >
-                    <Icon size={15} className={active ? "text-monserrat-ink" : "text-monserrat-ink/45"} />
+                    <Icon size={20} className={active ? "text-white" : "text-monserrat-red"} />
                     <span className="whitespace-nowrap">{item.label}</span>
                   </button>
                 );
               })}
             </nav>
 
-            <div className="mt-auto hidden border-t border-black/8 pt-3 lg:block">
+            <div className="mt-auto hidden border-t border-[#e3d7b8] pt-3 lg:block">
               <a
                 href="/"
-                className="mb-2 flex cursor-pointer items-center gap-2 rounded-[10px] px-3 py-2 text-[12px] font-bold text-monserrat-ink/55 hover:bg-[#e8e8e6] hover:text-monserrat-ink"
+                className="mb-2 flex cursor-pointer items-center gap-2 rounded-[10px] px-3 py-2 text-[12px] font-bold text-monserrat-ink/55 hover:bg-[#f4ead2] hover:text-monserrat-ink"
               >
                 <BookOpen size={14} />
-                Sitio publico
+                Sitio público
               </a>
               <div className="flex items-center justify-between gap-2 rounded-[10px] px-3 py-2">
                 <div className="min-w-0">
@@ -410,8 +410,8 @@ export function AdminSection({
                 <button
                   type="button"
                   onClick={logout}
-                  className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-[8px] text-monserrat-ink/45 hover:bg-[#e8e8e6] hover:text-monserrat-ink"
-                  aria-label="Cerrar sesion"
+                  className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-[8px] text-monserrat-ink/45 hover:bg-[#f4ead2] hover:text-monserrat-ink"
+                  aria-label="Cerrar sesión"
                 >
                   <LogOut size={15} />
                 </button>
@@ -421,18 +421,19 @@ export function AdminSection({
         </aside>
 
         <div className="min-w-0">
-          {/* topbar */}
-          <div className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-black/12 bg-[#f6f6f5]/95 px-4 backdrop-blur sm:px-6 lg:px-8">
-            <div>
-              <h3 className="text-[22px] font-black text-monserrat-ink">
-                {activeTab.label}
-              </h3>
+          {/* encabezado amigable: mascota + saludo */}
+          <div className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-3 border-b-2 border-monserrat-gold/30 bg-[linear-gradient(120deg,#fff7e3_0%,#fdecc4_100%)] px-4 py-2.5 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-4">
+              <MascotaSigue className="kid-bob h-16 w-auto" />
+              <div className="kid-rise">
+                <p className="text-[12px] font-black uppercase tracking-[0.12em] text-monserrat-red">{activeTab.label}</p>
+                <h3 className="text-[22px] font-black leading-tight text-monserrat-ink sm:text-[26px]">
+                  {saludo()}, {primerNombre(session.nombre) || "admin"}!
+                </h3>
+              </div>
             </div>
-            <button
-              onClick={logout}
-              className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-black/12 bg-[#e9e9e8] px-3 py-1.5 text-[12px] font-bold text-monserrat-ink/65 transition hover:border-black/20 hover:bg-[#dededc] hover:text-monserrat-ink"
-            >
-              <LogOut size={14} /> Cerrar sesión
+            <button onClick={logout} className="inline-flex cursor-pointer items-center gap-2 kid-btn-soft">
+              <LogOut size={16} /> Cerrar sesión
             </button>
           </div>
 
@@ -452,9 +453,9 @@ export function AdminSection({
             ))}
           </div>
 
-          <div className="mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8">
+          <div className="pro-rise mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8">
             {status && (
-              <div className="mb-5 rounded-[10px] border border-black/10 bg-white px-4 py-2.5 text-[12px] font-bold text-monserrat-ink/70">
+              <div className="mb-5 rounded-[12px] border border-[#e3d7b8] bg-[#fffdf8] px-4 py-2.5 text-[12px] font-bold text-monserrat-ink/70">
                 {status}
               </div>
             )}
@@ -598,6 +599,7 @@ export function AdminSection({
                 cursosPrimariaActivos={cursosPrimariaActivos}
                 cursosSecundariaActivos={cursosSecundariaActivos}
                 token={token}
+                rol={session?.rol}
                 runAdminAction={runAdminAction}
                 setStatus={setStatus}
                 setErrorMessage={setErrorMessage}

@@ -100,8 +100,8 @@ h3 {
 @layer components {
   .admin-input {
     width: 100%;
-    border: 1px solid rgb(0 0 0 / 0.16);
-    border-radius: 10px;
+    border: 2px solid rgb(216 168 66 / 0.4);
+    border-radius: 14px;
     background: #ffffff;
     padding: 0.65rem 0.85rem;
     color: #1f1b18;
@@ -117,12 +117,12 @@ h3 {
   }
 
   .admin-input:hover {
-    border-color: rgb(0 0 0 / 0.28);
+    border-color: rgb(159 23 27 / 0.35);
   }
 
   .admin-input:focus {
-    border-color: rgb(0 0 0 / 0.34);
-    box-shadow: 0 0 0 3px rgb(0 0 0 / 0.06);
+    border-color: rgb(159 23 27 / 0.6);
+    box-shadow: 0 0 0 3px rgb(159 23 27 / 0.1);
     background: #ffffff;
   }
 
@@ -172,4 +172,191 @@ input:-webkit-autofill:focus {
   -webkit-box-shadow: 0 0 0px 1000px #ffffff inset;
   -webkit-text-fill-color: #1f1b18;
   transition: background-color 9999s ease-in-out 0s;
+}
+
+
+/* Carrusel del popup de anuncios */
+@keyframes popup-progress {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+@keyframes popup-slide-next {
+  from { opacity: 0; transform: translateX(32px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes popup-slide-prev {
+  from { opacity: 0; transform: translateX(-32px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.popup-slide-next { animation: popup-slide-next 450ms ease-out both; }
+.popup-slide-prev { animation: popup-slide-prev 450ms ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .popup-slide-next, .popup-slide-prev { animation: none; }
+}
+
+
+/* ───────── Portal del alumno: estilo amigable (colores de la institución) ───────── */
+@layer components {
+  .kid-page {
+    background: linear-gradient(135deg, #f8efe1 0%, #f4e7c9 45%, #efe4ca 100%);
+  }
+  .kid-card {
+    border-radius: 24px;
+    border: 2px solid rgb(216 168 66 / 0.32);
+    background: #fffdf8;
+    box-shadow: 0 10px 30px rgb(31 27 24 / 0.08);
+  }
+  .kid-card-hover {
+    transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+  }
+  .kid-card-hover:hover {
+    transform: translateY(-4px);
+    border-color: rgb(159 23 27 / 0.35);
+    box-shadow: 0 18px 40px rgb(159 23 27 / 0.14);
+  }
+  .kid-btn {
+    display: inline-flex;
+    min-height: 48px;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 16px;
+    background: #9f171b;
+    padding: 0.7rem 1.4rem;
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 800;
+    box-shadow: 0 8px 20px rgb(159 23 27 / 0.22);
+  }
+  .kid-btn:hover { background: #4f090c; }
+  .kid-btn:disabled { opacity: 0.6; }
+  .kid-btn-soft {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 14px;
+    border: 2px solid rgb(159 23 27 / 0.2);
+    background: #fff;
+    padding: 0.55rem 1.1rem;
+    color: #9f171b;
+    font-size: 0.875rem;
+    font-weight: 800;
+  }
+  .kid-btn-soft:hover { background: #fff3f3; }
+  .kid-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 999px;
+    padding: 0.3rem 0.8rem;
+    font-size: 0.8rem;
+    font-weight: 800;
+  }
+  .kid-icon-badge {
+    display: inline-flex;
+    height: 52px;
+    width: 52px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 18px;
+  }
+  /* Entrada escalonada: style={{ ['--i' as string]: index }} */
+  .kid-rise { animation: kid-rise 520ms cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: calc(var(--i, 0) * 70ms); }
+  .kid-bob { animation: kid-bob 3.4s ease-in-out infinite; }
+  .kid-pop { animation: kid-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both; animation-delay: calc(var(--i, 0) * 60ms); }
+}
+@keyframes kid-rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes kid-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+@keyframes kid-pop {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kid-rise, .kid-bob, .kid-pop { animation: none; }
+  .kid-card-hover:hover { transform: none; }
+}
+
+
+/* ───────── Docente y administración: misma identidad, estilo sobrio ───────── */
+@layer components {
+  .pro-page {
+    background: linear-gradient(135deg, #f8efe1 0%, #f4e7c9 45%, #efe4ca 100%);
+  }
+  .pro-card {
+    border-radius: 24px;
+    border: 2px solid rgb(216 168 66 / 0.32);
+    background: #fffdf8;
+    box-shadow: 0 10px 30px rgb(31 27 24 / 0.08);
+  }
+  .pro-panel {
+    border-radius: 20px;
+    border: 2px solid rgb(216 168 66 / 0.25);
+    background: #ffffff;
+  }
+  .pro-btn {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 16px;
+    background: #9f171b;
+    padding: 0.6rem 1.25rem;
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 800;
+    box-shadow: 0 8px 20px rgb(159 23 27 / 0.22);
+  }
+  .pro-btn:hover { background: #4f090c; }
+  .pro-btn:disabled { opacity: 0.55; }
+  .pro-btn-soft {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 14px;
+    border: 2px solid rgb(159 23 27 / 0.2);
+    background: #fff;
+    padding: 0.5rem 1.1rem;
+    color: #9f171b;
+    font-size: 0.875rem;
+    font-weight: 800;
+  }
+  .pro-btn-soft:hover { background: #fff3f3; }
+  .pro-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border-radius: 999px;
+    padding: 0.3rem 0.8rem;
+    font-size: 0.8rem;
+    font-weight: 800;
+  }
+  .pro-th {
+    background: #f4ead2;
+    color: rgb(31 27 24 / 0.6);
+  }
+  .pro-nav-active {
+    background: #9f171b;
+    color: #fff;
+    box-shadow: 0 8px 20px rgb(159 23 27 / 0.25);
+  }
+  .pro-rise { animation: pro-rise 520ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+}
+@keyframes pro-rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pro-rise { animation: none; }
 }

@@ -1,4 +1,5 @@
 import { CheckCircle2, XCircle } from "lucide-react";
+import { useAnioActivo } from "../../../hooks/useAnioActivo";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { monserratApi } from "../../../api/monserrat";
 import type { Matricula, UsuarioAcademico } from "../../../types";
@@ -20,7 +21,8 @@ export function MatriculaTab({
   labelAcademico,
 }: MatriculaTabProps) {
   const [matriculas, setMatriculas] = useState<Matricula[]>([]);
-  const [anio, setAnio] = useState(new Date().getFullYear());
+  const anioActivo = useAnioActivo(token);
+  const [anio, setAnio] = useState(anioActivo);
   const [search, setSearch] = useState("");
   const [nivelFiltro, setNivelFiltro] = useState("");
   const [gradoFiltro, setGradoFiltro] = useState("");
@@ -32,7 +34,8 @@ export function MatriculaTab({
     [usuariosAcademicos]
   );
 
-  const CURRENT_YEAR = new Date().getFullYear();
+  const CURRENT_YEAR = anioActivo;
+  useEffect(() => setAnio(anioActivo), [anioActivo]);
   const START_YEAR = 2021;
   const YEARS = Array.from({ length: CURRENT_YEAR - START_YEAR + 2 }, (_, i) => String(CURRENT_YEAR + 1 - i));
 
@@ -127,7 +130,7 @@ export function MatriculaTab({
   return (
     <div className="grid gap-4">
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-[14px] border border-monserrat-ink/8 bg-white px-5 py-4 shadow-sm">
+        <div className="pro-card pro-rise px-5 py-4 shadow-sm">
           <p className="text-[10px] font-black uppercase tracking-wide text-monserrat-ink/40">Matriculados {anio}</p>
           <p className="mt-1 text-2xl font-black text-monserrat-ink">
             {pagadas} <span className="text-sm font-semibold text-monserrat-ink/40">/ {filas.length}</span>
@@ -135,7 +138,7 @@ export function MatriculaTab({
         </div>
       </div>
 
-      <div className="rounded-[14px] border border-monserrat-ink/8 bg-white p-3 shadow-sm">
+      <div className="pro-card pro-rise p-3 shadow-sm">
         <div className="grid gap-3 sm:grid-cols-[1fr_150px_150px_auto]">
           <input
             value={search}
@@ -188,8 +191,8 @@ export function MatriculaTab({
                 onClick={() => setEstadoFiltro(s)}
                 className={`rounded-full border px-3 py-1 text-[12px] font-black transition-all ${
                   active
-                    ? "bg-monserrat-ink text-white border-monserrat-ink/20"
-                    : "bg-transparent text-monserrat-ink/40 border-monserrat-ink/10 hover:bg-monserrat-cream/40"
+                    ? "bg-monserrat-red text-white border-monserrat-ink/20"
+                    : "bg-transparent text-monserrat-ink/40 border-[#d8a842]/30 hover:bg-monserrat-cream/40"
                 }`}
               >
                 {labels[s]}
@@ -199,7 +202,7 @@ export function MatriculaTab({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-[14px] border border-monserrat-ink/8 bg-white shadow-sm">
+      <div className="overflow-hidden pro-card pro-rise shadow-sm">
         {filas.length === 0 ? (
           <div className="py-12 text-center text-[13px] font-semibold text-monserrat-ink/30">
             Sin alumnos con esos filtros
@@ -207,7 +210,7 @@ export function MatriculaTab({
         ) : (
           <table className="w-full border-collapse text-[13px]">
             <thead>
-              <tr className="border-b border-monserrat-ink/8 text-left">
+              <tr className="border-b border-[#d8a842]/25 text-left">
                 <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-monserrat-ink/40">Alumno</th>
                 <th className="px-3 py-2.5 text-[10px] font-black uppercase tracking-wide text-monserrat-ink/40">Grado</th>
                 <th className="px-3 py-2.5 text-[10px] font-black uppercase tracking-wide text-monserrat-ink/40">Salón</th>
@@ -258,7 +261,7 @@ export function MatriculaTab({
                         className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-black transition ${
                           pagada
                             ? "border-emerald-300 bg-emerald-100 text-emerald-700"
-                            : "border-monserrat-ink/12 bg-monserrat-cream/40 text-monserrat-ink/50"
+                            : "border-[#d8a842]/35 bg-monserrat-cream/40 text-monserrat-ink/50"
                         }`}
                       >
                         {pagada ? <CheckCircle2 size={13} /> : <XCircle size={13} />}

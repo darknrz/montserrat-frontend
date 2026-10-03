@@ -152,8 +152,23 @@ export function AcademicoTab({
       ? NIVELES.filter((n) => nivelesPorDocente.get(u.dni)?.has(n))
       : u.nivelEducativo ? [u.nivelEducativo] : [];
 
+  // Orden de la tabla: por defecto alfabético por nombre (columna 1); el admin puede cambiarlo con ^ / v.
+  const [sortColumn, setSortColumn] = useState(1);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const handleSort = (column: number) => {
+    if (column === sortColumn) {
+      setSortDirection((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+  };
+
   const usuariosFiltrados = useMemo(() => {
     const term = academicoSearch.trim().toLowerCase();
+    const collator = new Intl.Collator("es", { sensitivity: "base", numeric: true });
+    const sortKey = (u: UsuarioAcademico) =>
+      sortColumn === 0 ? u.codigo || u.dni || "" : sortColumn === 2 ? labelFromEnum(u.rol) : u.nombre || "";
     return usuariosAcademicos
       .filter((u) => academicoNivelFiltro === "TODOS" || nivelesDeUsuario(u).includes(academicoNivelFiltro))
       .filter(
@@ -172,8 +187,13 @@ export function AcademicoTab({
           ]
             .filter(Boolean)
             .some((value) => String(value).toLowerCase().includes(term))
-      );
-  }, [academicoNivelFiltro, academicoSearch, usuariosAcademicos, nivelesPorDocente]);
+      )
+      .sort((a, b) => {
+        const primary = collator.compare(sortKey(a), sortKey(b));
+        const result = primary !== 0 ? primary : collator.compare(a.nombre || "", b.nombre || "");
+        return sortDirection === "asc" ? result : -result;
+      });
+  }, [academicoNivelFiltro, academicoSearch, usuariosAcademicos, nivelesPorDocente, sortColumn, sortDirection]);
 
   const eliminarUsuarioAcademico = async (
     usuario: Pick<UsuarioAcademico, "id" | "nombre">,
@@ -1024,7 +1044,7 @@ export function AcademicoTab({
         {/* IZQUIERDA: formulario */}
         <form
           onSubmit={submitUsuarioAcademico}
-          className="grid content-start gap-4 rounded-[18px] border border-monserrat-ink/8 bg-white p-3 shadow-sm xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto xl:admin-table-scroll"
+          className="grid content-start gap-4 pro-card pro-rise p-3 shadow-sm xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto xl:admin-table-scroll"
         >
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -1037,7 +1057,7 @@ export function AcademicoTab({
               <button
                 type="button"
                 onClick={() => prepararFormularioAcademico("ALUMNO", "PRIMARIA")}
-                className="flex h-9 w-9 items-center justify-center rounded-[9px] border border-monserrat-ink/12 text-monserrat-ink/55 hover:border-monserrat-ink/30"
+                className="flex h-9 w-9 items-center justify-center rounded-[9px] border border-[#d8a842]/35 text-monserrat-ink/55 hover:border-monserrat-ink/30"
               >
                 <X size={15} />
               </button>
@@ -1063,7 +1083,7 @@ export function AcademicoTab({
                   }}
                   className={`flex items-center justify-center gap-2 rounded-[10px] border px-3 py-2.5 text-[12px] font-black transition ${usuarioAcademicoForm.rol === rol
                     ? "border-monserrat-red bg-monserrat-red text-white"
-                    : "border-monserrat-ink/10 bg-monserrat-cream/45 text-monserrat-ink/65 hover:border-monserrat-ink/25"
+                    : "border-[#d8a842]/30 bg-monserrat-cream/45 text-monserrat-ink/65 hover:border-monserrat-ink/25"
                     }`}
                 >
                   {rol === "ALUMNO" ? <Users size={14} /> : <GraduationCap size={14} />}
@@ -1090,8 +1110,8 @@ export function AcademicoTab({
                       }
                     }}
                     className={`rounded-[10px] border px-3 py-2 text-[12px] font-black transition ${usuarioAcademicoForm.nivelEducativo === nivel
-                      ? "border-monserrat-ink bg-monserrat-ink text-white"
-                      : "border-monserrat-ink/10 bg-white text-monserrat-ink/60 hover:border-monserrat-ink/25"
+                      ? "border-monserrat-red bg-monserrat-red text-white"
+                      : "border-[#d8a842]/30 bg-white text-monserrat-ink/60 hover:border-monserrat-ink/25"
                       }`}
                   >
                     {labelFromEnum(nivel)}
@@ -1156,7 +1176,7 @@ export function AcademicoTab({
                 className="admin-input"
               />
             </AdminField>
-            <AdminField label="Direccion" className="sm:col-span-2">
+            <AdminField label="Dirección" className="sm:col-span-2">
               <input
                 value={usuarioAcademicoForm.direccion ?? ""}
                 onChange={(e) =>
@@ -1176,7 +1196,7 @@ export function AcademicoTab({
           />
 
           {usuarioAcademicoForm.rol === "ALUMNO" ? (
-            <div className="grid gap-3 rounded-[12px] border border-monserrat-ink/8 bg-monserrat-cream/35 p-3 sm:grid-cols-2">
+            <div className="grid gap-3 rounded-[12px] border border-[#d8a842]/25 bg-monserrat-cream/35 p-3 sm:grid-cols-2">
               <AdminField label="Grado">
                 <select
                   value={
@@ -1277,7 +1297,7 @@ export function AcademicoTab({
 
           {/* Panel búsqueda + tabla */}
           <div className="flex min-w-0 flex-col gap-4">
-            <div className="grid gap-3 rounded-[16px] border border-monserrat-ink/8 bg-white p-3 shadow-sm">
+            <div className="grid gap-3 pro-card pro-rise p-3 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">
@@ -1291,18 +1311,18 @@ export function AcademicoTab({
                   <button
   type="button"
   onClick={() => void descargarPlantillaAlumnos()}
-  className="inline-flex items-center gap-1.5 rounded-[9px] border border-monserrat-ink/12 px-2.5 py-1.5 text-[11px] font-black text-monserrat-ink/65 hover:border-monserrat-ink/30"
+  className="inline-flex items-center gap-1.5 rounded-[9px] border border-[#d8a842]/35 px-2.5 py-1.5 text-[11px] font-black text-monserrat-ink/65 hover:border-monserrat-ink/30"
 >
   <FileSpreadsheet size={14} /> Plantilla
 </button>
 <button
   type="button"
   onClick={() => void exportarAlumnosExcel()}
-  className="inline-flex items-center gap-1.5 rounded-[9px] border border-monserrat-ink/12 px-2.5 py-1.5 text-[11px] font-black text-monserrat-ink/65 hover:border-monserrat-ink/30"
+  className="inline-flex items-center gap-1.5 rounded-[9px] border border-[#d8a842]/35 px-2.5 py-1.5 text-[11px] font-black text-monserrat-ink/65 hover:border-monserrat-ink/30"
 >
   <Download size={14} /> Exportar alumnos
 </button>
-<label className="inline-flex cursor-pointer items-center gap-1.5 rounded-[9px] bg-monserrat-ink px-2.5 py-1.5 text-[11px] font-black text-white hover:bg-monserrat-ink/90">
+<label className="inline-flex cursor-pointer items-center gap-1.5 rounded-[9px] bg-monserrat-red px-2.5 py-1.5 text-[11px] font-black text-white hover:bg-monserrat-redDark">
   <Upload size={14} /> Importar
   <input
     type="file"
@@ -1365,6 +1385,10 @@ export function AcademicoTab({
             <AdminTable
               headers={["Codigo", "Nombre", "Rol", "Nivel", "GRADO", "SALÓN"]}
               columnWidths={["w-[11%]", "w-[27%]", "w-[9%]", "w-[19%]", "w-[14%]", "w-[20%]"]}
+              sortableColumns={[0, 1, 2]}
+              sortColumn={sortColumn}
+              sortDirection={sortDirection}
+              onSort={handleSort}
               rows={usuariosFiltrados.map((u) => {
                 const niveles = nivelesDeUsuario(u);
                 const esDocente = u.rol === "DOCENTE";

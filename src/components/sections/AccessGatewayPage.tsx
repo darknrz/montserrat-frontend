@@ -22,7 +22,25 @@ export function AccessGatewayPage({ onNavigate }: AccessGatewayPageProps) {
 
   const [monsterSrc, setMonsterSrc] = useState(`${MONSTER_BASE}/idle/1.png`);
   const seguirPunteroMouseRef = useRef(true);
+  // Mientras se escribe en un campo de texto la mascota "lee"; pasado este instante vuelve a seguir el puntero.
+  const pausaLecturaHastaRef = useRef(0);
   const coverIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Precarga todos los fotogramas de la mascota para que las animaciones no parpadeen.
+  useEffect(() => {
+    const frames = [
+      ...[1, 2, 3, 4, 5].map((n) => `${MONSTER_BASE}/idle/${n}.png`),
+      ...[1, 2, 3].map((n) => `${MONSTER_BASE}/read/${n}.png`),
+      ...[1, 2, 3, 4, 5, 6, 7, 8].map((n) => `${MONSTER_BASE}/cover/${n}.png`),
+    ];
+    frames.forEach((src) => {
+      const img = new Image();
+      img.src = src;
+    });
+    return () => {
+      if (coverIntervalRef.current) clearInterval(coverIntervalRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     const adminSession = readSession("monserrat_admin_session");
@@ -37,10 +55,11 @@ export function AccessGatewayPage({ onNavigate }: AccessGatewayPageProps) {
     }
   }, [onNavigate]);
 
-  // Sigue el cursor dividiendo la pantalla completa en 4 cuadrantes
+  // Sigue el puntero (mouse, lápiz o dedo) dividiendo la pantalla completa en 4 cuadrantes.
+  // Se usan eventos de puntero: en celular y tablet reaccionan al tocar y al arrastrar el dedo.
   useEffect(() => {
-    function handleMouseMove(event: MouseEvent) {
-      if (!seguirPunteroMouseRef.current) return;
+    function handlePointer(event: PointerEvent) {
+      if (!seguirPunteroMouseRef.current || Date.now() < pausaLecturaHastaRef.current) return;
 
       const anchoMitad = window.innerWidth / 2;
       const altoMitad = window.innerHeight / 2;
@@ -56,12 +75,17 @@ export function AccessGatewayPage({ onNavigate }: AccessGatewayPageProps) {
       }
     }
 
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
+    window.addEventListener("pointermove", handlePointer, { passive: true });
+    window.addEventListener("pointerdown", handlePointer, { passive: true });
+    return () => {
+      window.removeEventListener("pointermove", handlePointer);
+      window.removeEventListener("pointerdown", handlePointer);
+    };
   }, []);
 
+  // Con el campo de usuario activo la mascota sigue al puntero; solo se pausa al escribir.
   const handleUsernameFocus = () => {
-    seguirPunteroMouseRef.current = false;
+    seguirPunteroMouseRef.current = true;
   };
 
   const handleUsernameBlur = () => {
@@ -69,6 +93,7 @@ export function AccessGatewayPage({ onNavigate }: AccessGatewayPageProps) {
   };
 
   const handleUsernameKeyUp = (value: string) => {
+    pausaLecturaHastaRef.current = Date.now() + 1500;
     const length = value.length;
     if (length >= 0 && length <= 5) {
       setMonsterSrc(`${MONSTER_BASE}/read/1.png`);
@@ -77,7 +102,7 @@ export function AccessGatewayPage({ onNavigate }: AccessGatewayPageProps) {
     } else if (length >= 15 && length <= 20) {
       setMonsterSrc(`${MONSTER_BASE}/read/3.png`);
     } else {
-      setMonsterSrc(`${MONSTER_BASE}/read/4.png`);
+      setMonsterSrc(`${MONSTER_BASE}/read/3.png`); // solo existen los fotogramas read/1..3
     }
   };
 
@@ -158,7 +183,7 @@ export function AccessGatewayPage({ onNavigate }: AccessGatewayPageProps) {
         href="/"
         className="fixed left-4 top-4 z-10 inline-flex rounded-full border border-monserrat-ink/12 bg-white/90 px-4 py-2 text-xs font-black text-monserrat-ink/65 backdrop-blur sm:left-6 sm:top-6"
       >
-        Volver al sitio publico
+        Volver al sitio público
       </a>
 
       <FeedbackModal
@@ -188,7 +213,7 @@ export function AccessGatewayPage({ onNavigate }: AccessGatewayPageProps) {
               }}
               onFocus={handleUsernameFocus}
               onBlur={handleUsernameBlur}
-              placeholder="giovanni.developer@gmail.com"
+              placeholder="Tu usuario o código"
               autoComplete="off"
               required
               className="h-12 w-full border-0 text-[15px] text-monserrat-ink outline-none"
@@ -204,7 +229,7 @@ export function AccessGatewayPage({ onNavigate }: AccessGatewayPageProps) {
               onChange={(event) => setPassword(event.target.value)}
               onFocus={handlePasswordFocus}
               onBlur={handlePasswordBlur}
-              placeholder="*******"
+              placeholder="Tu contraseña"
               required
               className="h-12 w-full border-0 text-[15px] text-monserrat-ink outline-none"
             />
@@ -225,7 +250,7 @@ export function AccessGatewayPage({ onNavigate }: AccessGatewayPageProps) {
               onClick={() => onNavigate("/restablecer-password")}
               className="text-sm font-black text-monserrat-red/75 transition hover:text-monserrat-red"
             >
-              Olvide mi contrasena
+              Olvidé mi contraseña
             </button>
           </div>
 
@@ -238,7 +263,7 @@ export function AccessGatewayPage({ onNavigate }: AccessGatewayPageProps) {
             ) : (
               <ShieldCheck size={18} />
             )}
-            {isBusy ? "Verificando…" : "Login"}
+            {isBusy ? "Verificando…" : "Ingresar"}
           </button>
         </form>
       </div>

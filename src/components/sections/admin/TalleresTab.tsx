@@ -1,4 +1,5 @@
 import { CheckCircle2, Pencil, Plus, Trash2, X, XCircle } from "lucide-react";
+import { useAnioActivo } from "../../../hooks/useAnioActivo";
 import { useEffect, useMemo, useState } from "react";
 import { monserratApi } from "../../../api/monserrat";
 import type { Taller, TallerCatalogo, UsuarioAcademico } from "../../../types";
@@ -29,7 +30,8 @@ const bloquearNegativos = (e: React.KeyboardEvent<HTMLInputElement>) => {
 export function TalleresTab({ usuariosAcademicos, token, setErrorMessage }: TalleresTabProps) {
   const [catalogo, setCatalogo] = useState<TallerCatalogo[]>([]);
   const [registros, setRegistros] = useState<Taller[]>([]);
-  const [anio, setAnio] = useState(new Date().getFullYear());
+  const anioActivo = useAnioActivo(token);
+  const [anio, setAnio] = useState(anioActivo);
   const [search, setSearch] = useState("");
   const [nivelFiltro, setNivelFiltro] = useState("");
   const [gradoFiltro, setGradoFiltro] = useState("");
@@ -45,7 +47,8 @@ export function TalleresTab({ usuariosAcademicos, token, setErrorMessage }: Tall
 
   const alumnos = useMemo(() => usuariosAcademicos.filter((u) => u.rol === "ALUMNO"), [usuariosAcademicos]);
 
-  const CURRENT_YEAR = new Date().getFullYear();
+  const CURRENT_YEAR = anioActivo;
+  useEffect(() => setAnio(anioActivo), [anioActivo]);
   const START_YEAR = 2021;
   const YEARS = Array.from({ length: CURRENT_YEAR - START_YEAR + 2 }, (_, i) => String(CURRENT_YEAR + 1 - i));
 
@@ -190,7 +193,7 @@ export function TalleresTab({ usuariosAcademicos, token, setErrorMessage }: Tall
   return (
     <div className="grid gap-4">
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-[14px] border border-monserrat-ink/8 bg-white px-5 py-4 shadow-sm">
+        <div className="pro-card pro-rise px-5 py-4 shadow-sm">
           <p className="text-[10px] font-black uppercase tracking-wide text-monserrat-ink/40">Talleres {anio}</p>
           <p className="mt-1 text-2xl font-black text-monserrat-ink">
             {resumen.pagados} <span className="text-sm font-semibold text-monserrat-ink/40">/ {resumen.total} pagados</span>
@@ -202,7 +205,7 @@ export function TalleresTab({ usuariosAcademicos, token, setErrorMessage }: Tall
       </div>
 
       {/* Catalogo de talleres */}
-      <div className="rounded-[14px] border border-monserrat-ink/8 bg-white p-4 shadow-sm">
+      <div className="pro-card pro-rise p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <p className="font-black text-monserrat-ink">Talleres del {anio}</p>
@@ -214,14 +217,14 @@ export function TalleresTab({ usuariosAcademicos, token, setErrorMessage }: Tall
           <button
             type="button"
             onClick={() => (formAbierto ? resetForm() : setFormAbierto(true))}
-            className="inline-flex items-center gap-1.5 rounded-full border border-monserrat-ink/12 px-3 py-1.5 text-[12px] font-black text-monserrat-ink/60 hover:bg-monserrat-cream/40"
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#d8a842]/35 px-3 py-1.5 text-[12px] font-black text-monserrat-ink/60 hover:bg-monserrat-cream/40"
           >
             {formAbierto ? <X size={13} /> : <Plus size={13} />} {formAbierto ? "Cancelar" : "Nuevo taller"}
           </button>
         </div>
 
         {formAbierto && (
-          <div className="mt-3 grid gap-3 rounded-[10px] border border-dashed border-monserrat-ink/15 bg-[#f2f2f1] p-3">
+          <div className="mt-3 grid gap-3 rounded-[10px] border border-dashed border-monserrat-ink/15 bg-[#f4ead2] p-3">
             <div className="flex flex-wrap items-end gap-2">
               <div className="min-w-[200px] flex-1">
                 <label className="text-[10px] font-black uppercase tracking-wide text-monserrat-ink/40">Nombre</label>
@@ -259,8 +262,8 @@ export function TalleresTab({ usuariosAcademicos, token, setErrorMessage }: Tall
                       onClick={() => toggleDestino(tokenSalon(s))}
                       className={`rounded-full border px-3 py-1 text-[11px] font-black transition ${
                         activo
-                          ? "border-monserrat-ink/20 bg-monserrat-ink text-white"
-                          : "border-monserrat-ink/12 bg-white text-monserrat-ink/50 hover:bg-monserrat-cream/40"
+                          ? "border-monserrat-red/30 bg-monserrat-red text-white"
+                          : "border-[#d8a842]/35 bg-white text-monserrat-ink/50 hover:bg-monserrat-cream/40"
                       }`}
                     >
                       {s}
@@ -269,7 +272,7 @@ export function TalleresTab({ usuariosAcademicos, token, setErrorMessage }: Tall
                 })}
               </div>
               <p className="mt-2 text-[10px] font-black uppercase tracking-wide text-monserrat-ink/40">
-                O grados completos (ej. 2do Sec, que no tiene salon)
+                O grados completos
               </p>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {ALL_GRADOS.map((g) => {
@@ -281,8 +284,8 @@ export function TalleresTab({ usuariosAcademicos, token, setErrorMessage }: Tall
                       onClick={() => toggleDestino(tokenGrado(g))}
                       className={`rounded-full border px-3 py-1 text-[11px] font-black transition ${
                         activo
-                          ? "border-monserrat-ink/20 bg-monserrat-ink text-white"
-                          : "border-monserrat-ink/12 bg-white text-monserrat-ink/50 hover:bg-monserrat-cream/40"
+                          ? "border-monserrat-red/30 bg-monserrat-red text-white"
+                          : "border-[#d8a842]/35 bg-white text-monserrat-ink/50 hover:bg-monserrat-cream/40"
                       }`}
                     >
                       {formatGrado(g)}
@@ -296,7 +299,7 @@ export function TalleresTab({ usuariosAcademicos, token, setErrorMessage }: Tall
               <button
                 type="button"
                 onClick={() => void guardarTaller()}
-                className="rounded-[10px] bg-monserrat-ink px-4 py-2 text-[12px] font-black text-white hover:bg-monserrat-ink/85"
+                className="rounded-[10px] bg-monserrat-red px-4 py-2 text-[12px] font-black text-white hover:bg-monserrat-redDark"
               >
                 {editandoId != null ? "Guardar cambios" : "Crear taller"}
               </button>
@@ -309,7 +312,7 @@ export function TalleresTab({ usuariosAcademicos, token, setErrorMessage }: Tall
         ) : (
           <div className="mt-3 flex flex-wrap gap-2">
             {catalogo.map((t) => (
-              <div key={t.id} className="flex items-start gap-2 rounded-[10px] border border-monserrat-ink/8 bg-[#f2f2f1] px-3 py-2">
+              <div key={t.id} className="flex items-start gap-2 rounded-[10px] border border-[#d8a842]/25 bg-[#f4ead2] px-3 py-2">
                 <div className="min-w-0">
                   <p className="text-[12px] font-black text-monserrat-ink">{t.nombre}</p>
                   <p className="text-[11px] text-monserrat-ink/45">S/ {Number(t.monto).toFixed(2)}</p>
@@ -332,7 +335,7 @@ export function TalleresTab({ usuariosAcademicos, token, setErrorMessage }: Tall
       </div>
 
       {/* Filtros */}
-      <div className="rounded-[14px] border border-monserrat-ink/8 bg-white p-3 shadow-sm">
+      <div className="pro-card pro-rise p-3 shadow-sm">
         <div className="grid gap-3 sm:grid-cols-[1fr_140px_140px_150px_110px]">
           <input
             value={search}
@@ -380,7 +383,7 @@ export function TalleresTab({ usuariosAcademicos, token, setErrorMessage }: Tall
       </div>
 
       {/* Tabla: talleres como columnas, alumnos como filas */}
-      <div className="overflow-hidden rounded-[14px] border border-monserrat-ink/8 bg-white shadow-sm">
+      <div className="overflow-hidden pro-card pro-rise shadow-sm">
         {filas.length === 0 ? (
           <div className="py-12 text-center text-[13px] font-semibold text-monserrat-ink/30">Sin alumnos con esos filtros</div>
         ) : catalogo.length === 0 ? (
@@ -391,7 +394,7 @@ export function TalleresTab({ usuariosAcademicos, token, setErrorMessage }: Tall
           <div className="max-h-[70vh] overflow-auto">
             <table className="w-full border-collapse text-[12px]">
               <thead>
-                <tr className="sticky top-0 z-10 border-b border-monserrat-ink/8 bg-white text-left">
+                <tr className="sticky top-0 z-10 border-b border-[#d8a842]/25 bg-white text-left">
                   <th className={`${th} sticky left-0 z-20 min-w-[200px] bg-white px-4 text-left`}>Alumno</th>
                   <th className={`${th} text-left`}>Grado</th>
                   <th className={`${th} text-left`}>Salón</th>
@@ -458,7 +461,7 @@ export function TalleresTab({ usuariosAcademicos, token, setErrorMessage }: Tall
                               className={`inline-flex h-8 w-8 items-center justify-center rounded-[8px] border transition ${
                                 pagada
                                   ? "border-emerald-300 bg-emerald-100 text-emerald-700"
-                                  : "border-monserrat-ink/12 bg-monserrat-cream/40 text-monserrat-ink/40"
+                                  : "border-[#d8a842]/35 bg-monserrat-cream/40 text-monserrat-ink/40"
                               }`}
                             >
                               {pagada ? <CheckCircle2 size={14} /> : <XCircle size={14} />}

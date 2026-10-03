@@ -23,10 +23,10 @@ function FormSection({
   children: React.ReactNode;
 }) {
   return (
-    <div className="overflow-hidden rounded-[16px] border border-monserrat-ink/8 bg-white shadow-sm">
-      <div className="border-b border-monserrat-ink/8 bg-monserrat-ink px-5 py-4">
-        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-cream/70">{eyebrow}</p>
-        <h4 className="font-serif text-xl font-black text-white">{title}</h4>
+    <div className="pro-card pro-rise overflow-hidden">
+      <div className="border-b border-monserrat-gold/30 bg-[#f4ead2] px-5 py-4">
+        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-red/80">{eyebrow}</p>
+        <h4 className="font-serif text-xl font-black text-monserrat-ink">{title}</h4>
       </div>
       <div className="p-5">{children}</div>
     </div>
@@ -177,7 +177,7 @@ export function InstitucionTab({
       </FormSection>
 
       {/* ── Barra de acción fija visualmente separada ── */}
-      <div className="flex justify-end border-t border-monserrat-ink/8 pt-4">
+      <div className="flex justify-end border-t border-monserrat-gold/30 pt-4">
         <AdminFormBtn isBusy={isBusy} />
       </div>
     </form>

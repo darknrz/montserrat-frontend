@@ -73,14 +73,8 @@ export function Navbar({ institution, onChatbotOpen }: NavbarProps) {
 
         {/* Logo */}
         <a href="#inicio" className="flex items-center gap-2.5 mr-auto">
-          {institution.logoUrl ? (
-            <img src={institution.logoUrl} alt={institution.nombre}
-              className="h-7 w-7 shrink-0 rounded-full border-[1.5px] border-monserrat-gold object-cover" />
-          ) : (
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-[1.5px] border-monserrat-gold bg-monserrat-red text-[11px] font-black text-monserrat-gold">
-              M
-            </span>
-          )}
+          <img src="/logo-montserrat.png" alt={institution.nombre}
+            className="h-8 w-auto shrink-0 object-contain" />
           <div className="hidden sm:block">
             <p className={`text-[12px] font-black leading-tight transition-colors duration-300 ${logo}`}>
               {institution.nombre}

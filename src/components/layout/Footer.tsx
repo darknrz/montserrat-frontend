@@ -34,17 +34,11 @@ export function Footer({ institution, redes }: FooterProps) {
           <div className="grid gap-8 lg:grid-cols-[1.25fr_0.75fr_1fr_0.8fr]">
             <div>
               <a href="#inicio" className="inline-flex items-center gap-3">
-                {institution.logoUrl ? (
-                  <img
-                    src={institution.logoUrl}
-                    alt={institution.nombre}
-                    className="h-14 w-14 rounded-2xl border border-monserrat-gold/60 object-cover"
-                  />
-                ) : (
-                  <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-monserrat-gold/60 bg-monserrat-red text-xl font-black text-monserrat-gold">
-                    M
-                  </span>
-                )}
+                <img
+                  src="/logo-montserrat.png"
+                  alt={institution.nombre}
+                  className="h-16 w-auto object-contain"
+                />
                 <div>
                   <p className="text-base font-black leading-tight">{institution.nombre}</p>
                   <p className="mt-1 text-xs font-semibold text-monserrat-gold/80">{institution.ciudad} - {institution.niveles}</p>

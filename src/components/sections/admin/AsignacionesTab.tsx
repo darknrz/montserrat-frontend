@@ -53,6 +53,13 @@ const emptyAsignacion = {
 
 const asignacionesPanelBodyClass = "max-h-[calc(100vh-220px)]";
 
+// Salón(es) del grado en formato estándar: grupos (Ciclado, Anual, Letras...) o el salón propio del grado.
+function detalleSalonGrado(gradoId: string): string {
+  const grupos = getGruposPorGrado(gradoId);
+  if (grupos.length > 0) return grupos.map((g) => GRUPO_LABELS[g] ?? g).join(" · ");
+  return formatSalon(gradoId, null) || "—";
+}
+
 export function AsignacionesTab({
   usuariosAcademicos,
   asignacionesAcademicas,
@@ -212,7 +219,8 @@ export function AsignacionesTab({
   const competenciasDelCurso = useMemo(() => {
     if (!asignacionAcademicaForm.curso) return [];
     const ids = competenciasPorCurso[asignacionAcademicaForm.curso] ?? [];
-    return competenciasPrimaria.filter((c) => ids.includes(c.id));
+    // Respeta el orden guardado: la posición define C1, C2, C3…
+    return ids.map((id) => competenciasPrimaria.find((c) => c.id === id)).filter((c): c is NonNullable<typeof c> => !!c);
   }, [competenciasPorCurso, competenciasPrimaria, asignacionAcademicaForm.curso]);
 
   const cursoActual = asignacionAcademicaForm.curso ?? "";
@@ -251,7 +259,7 @@ export function AsignacionesTab({
   const competenciasDelCursoSecundaria = useMemo(() => {
     if (!asignacionAcademicaForm.curso) return [];
     const ids = competenciasPorCursoSecundaria[asignacionAcademicaForm.curso] ?? [];
-    return competenciasSecundaria.filter((c) => ids.includes(c.id));
+    return ids.map((id) => competenciasSecundaria.find((c) => c.id === id)).filter((c): c is NonNullable<typeof c> => !!c);
   }, [competenciasPorCursoSecundaria, competenciasSecundaria, asignacionAcademicaForm.curso]);
 
   const cursoActualSecundaria = asignacionAcademicaForm.curso ?? "";
@@ -435,7 +443,7 @@ export function AsignacionesTab({
       setAsignacionesAcademicas(await monserratApi.asignacionesAcademicas(token));
       setEditingAsignacionAcademica(null);
       setAsignacionAcademicaForm(emptyAsignacion);
-    }, "Asignacion academica guardada");
+    }, "Asignación académica guardada");
   };
 
   const cursosDelAula = useMemo(
@@ -505,6 +513,23 @@ export function AsignacionesTab({
       delete next[key];
     }
     saveAcademicoConfig({ ...academicoConfig, [docentesPorCompetenciaKey]: next });
+  };
+
+  // Reordena (arrastrando) las competencias de un área: el orden define C1, C2, C3…
+  const reordenarCompetencias = (curso: string, idsOrdenados: string[]) => {
+    if (!curso) return;
+    saveAcademicoConfig({
+      ...academicoConfig,
+      [competenciasPorCursoKey]: { ...competenciasPorCurso, [curso]: idsOrdenados },
+    });
+  };
+
+  const reordenarCompetenciasSecundaria = (curso: string, idsOrdenados: string[]) => {
+    if (!curso) return;
+    saveAcademicoConfig({
+      ...academicoConfig,
+      competenciasPorCursoSecundaria: { ...competenciasPorCursoSecundaria, [curso]: idsOrdenados },
+    });
   };
 
   // Igual que toggleCompetenciaForCurso pero para SECUNDARIA.
@@ -626,7 +651,7 @@ export function AsignacionesTab({
   return (
     <div className="flex flex-col">
       {/* Selector de Nivel */}
-      <div className="flex gap-3 pb-4 border-b border-monserrat-ink/10 mb-4 flex-none">
+      <div className="flex gap-3 pb-4 border-b border-[#d8a842]/30 mb-4 flex-none">
         {NIVELES.map((nivel) => {
           const activo = asignacionAcademicaForm.nivelEducativo === nivel;
           return (
@@ -636,7 +661,7 @@ export function AsignacionesTab({
               className={`px-5 py-2 rounded-xl text-xs font-black tracking-wide uppercase transition-all duration-300 ${
                 activo
                   ? "bg-monserrat-red text-white shadow-md shadow-monserrat-red/10 scale-105"
-                  : "bg-monserrat-cream/40 text-monserrat-ink/60 border border-monserrat-ink/8 hover:bg-monserrat-cream/70 hover:text-monserrat-ink"
+                  : "bg-monserrat-cream/40 text-monserrat-ink/60 border border-[#d8a842]/25 hover:bg-monserrat-cream/70 hover:text-monserrat-ink"
               }`}
             >
               {nivel === "INICIAL" ? "Inicial" : nivel === "PRIMARIA" ? "Primaria" : "Secundaria"}
@@ -658,7 +683,7 @@ export function AsignacionesTab({
                   .map((grado) => ({
                     id: grado.id,
                     title: formatGrado(grado.id),
-                    detail: formatSalon(grado.id, null) || "Salón según grupo",
+                    detail: detalleSalonGrado(grado.id),
                     raw: grado.id,
                   }))}
                 selectedId={asignacionAcademicaForm.grado}
@@ -667,8 +692,8 @@ export function AsignacionesTab({
               />
               {gruposDelGradoActual.length > 0 && (
                 <RosterPanel
-                  title="Grupo"
-                  empty="Sin grupos"
+                  title="Salón"
+                  empty="Sin salones"
                   rows={gruposDelGradoActual.map((g) => ({ id: g, title: GRUPO_LABELS[g] ?? g, detail: g, raw: g }))}
                   selectedId={grupoSeleccionado}
                   onSelect={(grupo) => setGrupoSeleccionado(grupo)}
@@ -698,6 +723,7 @@ export function AsignacionesTab({
                 grupo={gruposDelGradoActual.length > 0 ? grupoSeleccionado : undefined}
                 curso={asignacionAcademicaForm.curso ?? ""}
                 labelDocenteAsignado={labelDocenteAsignadoSecundaria}
+                onReorder={(ids) => reordenarCompetenciasSecundaria(asignacionAcademicaForm.curso ?? "", ids)}
                 onEditRow={(competenciaId) => setElegirDocenteForSecundaria(competenciaId)}
                 onEditCompetencia={() => {
                   if (asignacionAcademicaForm.curso) setAddingCompetenciaCursoSecundaria(asignacionAcademicaForm.curso);
@@ -714,7 +740,7 @@ export function AsignacionesTab({
                   .map((grado) => ({
                     id: grado.id,
                     title: formatGrado(grado.id),
-                    detail: formatSalon(grado.id, null) || "Salón según grupo",
+                    detail: detalleSalonGrado(grado.id),
                     raw: grado.id,
                   }))}
                 selectedId={asignacionAcademicaForm.grado}
@@ -723,8 +749,8 @@ export function AsignacionesTab({
               />
               {gruposDelGradoActual.length > 0 && (
                 <RosterPanel
-                  title="Grupo"
-                  empty="Sin grupos"
+                  title="Salón"
+                  empty="Sin salones"
                   rows={gruposDelGradoActual.map((g) => ({ id: g, title: GRUPO_LABELS[g] ?? g, detail: g, raw: g }))}
                   selectedId={grupoSeleccionado}
                   onSelect={(grupo) => setGrupoSeleccionado(grupo)}
@@ -754,6 +780,7 @@ export function AsignacionesTab({
                 grupo={gruposDelGradoActual.length > 0 ? grupoSeleccionado : undefined}
                 curso={asignacionAcademicaForm.curso ?? ""}
                 labelDocenteAsignado={labelDocenteAsignado}
+                onReorder={(ids) => reordenarCompetencias(asignacionAcademicaForm.curso ?? "", ids)}
                 onEditRow={(competenciaId) => setElegirDocenteFor(competenciaId)}
                 onEditCompetencia={() => {
                   if (asignacionAcademicaForm.curso) setAddingCompetenciaCurso(asignacionAcademicaForm.curso);

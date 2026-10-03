@@ -137,7 +137,7 @@ export function CarruselTab({
     <div className="grid gap-5 xl:grid-cols-[300px_minmax(0,1fr)]">
       <form
         onSubmit={submitVideo}
-        className="grid content-start gap-3 rounded-[18px] border border-monserrat-ink/8 bg-monserrat-cream/40 p-5"
+        className="pro-card pro-rise grid content-start gap-3 p-5"
       >
         <AdminField label="Título">
           <input
@@ -165,7 +165,7 @@ export function CarruselTab({
         <div className="flex gap-2">
           <button
             disabled={isBusy}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-[10px] bg-monserrat-red py-2.5 text-[12px] font-black text-white transition hover:bg-monserrat-red/85 disabled:opacity-60"
+            className="pro-btn flex-1"
           >
             {editingVideo ? (
               <>
@@ -181,7 +181,7 @@ export function CarruselTab({
             <button
               type="button"
               onClick={handleCancelEdit}
-              className="rounded-[10px] border border-monserrat-ink/12 px-3 hover:border-monserrat-ink/25"
+              className="pro-btn-soft !px-3"
             >
               <X size={14} />
             </button>
@@ -199,7 +199,7 @@ export function CarruselTab({
           onDelete: () => handleDelete(v),
         }))}
         onReorder={handleReorder}
-        className="bg-white shadow-sm"
+        className="pro-rise bg-[#fffdf8] shadow-sm"
         bodyClassName="max-h-[70vh]"
       />
     </div>

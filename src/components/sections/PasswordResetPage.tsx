@@ -23,13 +23,14 @@ export function PasswordResetPage({ onNavigate }: PasswordResetPageProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [monsterSrc, setMonsterSrc] = useState(`${MONSTER_BASE}/idle/1.png`);
   const seguirPunteroMouseRef = useRef(true);
+  const pausaLecturaHastaRef = useRef(0);
   const coverIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const isResetMode = Boolean(initialToken);
 
   useEffect(() => {
-    function handleMouseMove(event: MouseEvent) {
-      if (!seguirPunteroMouseRef.current) return;
+    function handlePointer(event: PointerEvent) {
+      if (!seguirPunteroMouseRef.current || Date.now() < pausaLecturaHastaRef.current) return;
 
       const anchoMitad = window.innerWidth / 2;
       const altoMitad = window.innerHeight / 2;
@@ -45,15 +46,18 @@ export function PasswordResetPage({ onNavigate }: PasswordResetPageProps) {
       }
     }
 
-    window.addEventListener("mousemove", handleMouseMove);
+    // Eventos de puntero: funcionan con mouse, lápiz y dedo (celular y tablet).
+    window.addEventListener("pointermove", handlePointer, { passive: true });
+    window.addEventListener("pointerdown", handlePointer, { passive: true });
     return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("pointermove", handlePointer);
+      window.removeEventListener("pointerdown", handlePointer);
       if (coverIntervalRef.current) clearInterval(coverIntervalRef.current);
     };
   }, []);
 
   const handleTextFocus = () => {
-    seguirPunteroMouseRef.current = false;
+    seguirPunteroMouseRef.current = true; // sigue al puntero; solo se pausa al escribir
   };
 
   const handleTextBlur = () => {
@@ -61,6 +65,7 @@ export function PasswordResetPage({ onNavigate }: PasswordResetPageProps) {
   };
 
   const handleReadInput = (value: string) => {
+    pausaLecturaHastaRef.current = Date.now() + 1500;
     const length = value.length;
     if (length >= 0 && length <= 5) {
       setMonsterSrc(`${MONSTER_BASE}/read/1.png`);

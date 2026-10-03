@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { MascotaSigue } from "../../ui/MascotaSigue";
 import { AlertTriangle, Camera, CheckCircle2, GraduationCap, IdCard, KeyRound, Layers, Lightbulb, Mail, Phone, RefreshCw, Users2 } from "lucide-react";
-import { SectionHeader } from "../../ui/SectionHeader";
 import { monserratApi } from "../../../api/monserrat";
 import type { PerfilAcademico, PensionEstado } from "../../../types";
+import { STATUS_ACCENT, accentFor, primerNombre, rise, saludo } from "./kidTheme";
 
 function labelFromEnum(value: string) {
   return value
@@ -12,30 +13,30 @@ function labelFromEnum(value: string) {
     .join(" ");
 }
 
-// Estados de matrícula conocidos, cada uno con su propio color — el mismo
-// principio que "presente/ausente" en asistencias: el color dice el estado
-// antes de leer la palabra.
+// Estados de matrícula conocidos, cada uno con su propio color — el color dice el
+// estado antes de leer la palabra.
 const ESTADO_MATRICULA_COLOR: Record<string, string> = {
-  MATRICULADO: "#3f7d54",
+  MATRICULADO: "#2f6b45",
   RETIRADO: "#9f171b",
-  TRASLADADO: "#d8a842",
-  EGRESADO: "#5b6b8c"
+  TRASLADADO: "#8a6a14",
+  EGRESADO: "#2c5d8f"
 };
 
 function colorEstadoMatricula(estado?: string) {
-  if (!estado) return "rgb(31 27 24 / 0.35)";
-  return ESTADO_MATRICULA_COLOR[estado] ?? "rgb(31 27 24 / 0.35)";
+  if (!estado) return "rgb(31 27 24 / 0.5)";
+  return ESTADO_MATRICULA_COLOR[estado] ?? "rgb(31 27 24 / 0.5)";
 }
 
-function DetailChip({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function DetailChip({ icon, label, value, index }: { icon: React.ReactNode; label: string; value: string; index: number }) {
+  const accent = accentFor(label);
   return (
-    <div className="flex items-center gap-3 rounded-[16px] border border-monserrat-ink/8 bg-[#f6f6f5]0 p-4">
-      <span className="flex h-9 w-9 flex-none items-center justify-center rounded-[10px] bg-white text-monserrat-ink/50 ">
+    <div className="kid-pop flex items-center gap-3 rounded-[20px] border-2 border-[#d8a842]/25 bg-[#fffaf0] p-3.5" style={rise(index)}>
+      <span className="kid-icon-badge !h-11 !w-11 !rounded-[14px]" style={{ backgroundColor: accent.bg, color: accent.fg }}>
         {icon}
       </span>
       <div className="min-w-0">
-        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-monserrat-ink/40">{label}</p>
-        <p className="truncate text-sm font-black text-monserrat-ink">{value}</p>
+        <p className="text-[12px] font-bold text-monserrat-ink/55">{label}</p>
+        <p className="truncate text-[15px] font-black text-monserrat-ink">{value}</p>
       </div>
     </div>
   );
@@ -96,124 +97,153 @@ export function AlumnoPerfil({ token }: { token: string }) {
   const details = useMemo(() => {
     if (!perfil) return [];
     return [
-      { label: "DNI", value: perfil.dni, icon: <IdCard size={16} /> },
-      { label: "Nivel educativo", value: perfil.nivelEducativo ? labelFromEnum(perfil.nivelEducativo) : "-", icon: <GraduationCap size={16} /> },
-      { label: "Grado", value: perfil.grado ? labelFromEnum(perfil.grado.replace(/_PRIMARIA|_SECUNDARIA/g, "")) : "-", icon: <Layers size={16} /> },
-      { label: "Sección", value: perfil.seccion || "-", icon: <Users2 size={16} /> },
-      { label: "Teléfono", value: perfil.telefono || "-", icon: <Phone size={16} /> },
-      { label: "Correo", value: perfil.correo || "-", icon: <Mail size={16} /> }
+      { label: "DNI", value: perfil.dni, icon: <IdCard size={20} /> },
+      { label: "Nivel educativo", value: perfil.nivelEducativo ? labelFromEnum(perfil.nivelEducativo) : "-", icon: <GraduationCap size={20} /> },
+      { label: "Grado", value: perfil.grado ? labelFromEnum(perfil.grado.replace(/_PRIMARIA|_SECUNDARIA/g, "")) : "-", icon: <Layers size={20} /> },
+      { label: "Sección", value: perfil.seccion || "-", icon: <Users2 size={20} /> },
+      { label: "Teléfono", value: perfil.telefono || "-", icon: <Phone size={20} /> },
+      { label: "Correo", value: perfil.correo || "-", icon: <Mail size={20} /> }
     ];
   }, [perfil]);
 
-  if (!perfil) return <div className="rounded-[12px] bg-white p-4">Cargando perfil del alumno...</div>;
+  if (!perfil) {
+    return (
+      <div className="kid-card grid place-items-center gap-3 p-10 text-center" role="status">
+        <MascotaSigue className="kid-bob h-24 w-auto" />
+        <p className="text-lg font-black text-monserrat-ink">Cargando tu perfil…</p>
+      </div>
+    );
+  }
 
   const colorMatricula = colorEstadoMatricula(perfil.estadoMatricula);
   const pensionAlDia = pension?.pagada ?? null;
+  const nombrePila = primerNombre(perfil.nombre);
 
   return (
-    <div className="grid gap-4">
-      <SectionHeader title="Perfil alumno" description="Datos personales y académicos." align="left" />
+    <div className="grid gap-5">
+      <div className="kid-rise">
+        <h3 className="text-2xl font-black text-monserrat-ink">Mi perfil</h3>
+        <p className="mt-1 text-[15px] font-semibold text-monserrat-ink/60">Tus datos personales y académicos.</p>
+      </div>
 
-      {status && <div className="rounded-[16px] border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{status}</div>}
+      {status && (
+        <div role="status" className="rounded-2xl border-2 border-[#a9d4b7] bg-[#e5f3ea] px-4 py-3 text-sm font-bold text-[#2f6b45]">
+          {status}
+        </div>
+      )}
 
-      <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-[18px] border border-monserrat-ink/10 bg-white p-5 ">
-          <div className="flex items-center gap-4 md:items-start">
-            {/* La foto lleva su propio botón de cámara superpuesto en vez de un
-                botón "Cambiar foto" aparte, como en la mayoría de apps con perfil. */}
+      <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="kid-card kid-rise overflow-hidden">
+          {/* Cabecera con la mascota: saludo cercano y foto grande y redondeada */}
+          <div className="relative flex flex-wrap items-center gap-5 bg-gradient-to-br from-[#fbe9e9] via-[#fbf3e1] to-[#fffdf8] px-5 py-6 sm:px-6">
             <div className="relative flex-none">
               {perfil.fotoUrl ? (
-                <img src={perfil.fotoUrl} alt={perfil.nombre} className="h-24 w-24 rounded-[18px] object-cover " />
+                <img
+                  src={perfil.fotoUrl}
+                  alt={perfil.nombre}
+                  className="h-28 w-28 rounded-full border-4 border-white object-cover shadow-[0_8px_24px_rgba(159,23,27,0.2)]"
+                />
               ) : (
-                <div className="flex h-24 w-24 items-center justify-center rounded-[18px] bg-[#e3e3e1] text-monserrat-ink">
-                  <span className="text-3xl font-black">{perfil.nombre?.charAt(0) ?? "A"}</span>
+                <div className="flex h-28 w-28 items-center justify-center rounded-full border-4 border-white bg-monserrat-red text-white shadow-[0_8px_24px_rgba(159,23,27,0.2)]">
+                  <span className="text-4xl font-black">{perfil.nombre?.charAt(0) ?? "A"}</span>
                 </div>
               )}
               <label
-                className={`absolute -bottom-2 -right-2 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-2 border-white bg-[#e3e3e1] text-monserrat-ink  transition hover:bg-[#e3e3e1] ${
+                className={`absolute -bottom-1 -right-1 flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border-4 border-white bg-[#d8a842] text-monserrat-ink shadow-md transition hover:bg-[#c99a35] focus-within:outline focus-within:outline-2 focus-within:outline-monserrat-red ${
                   isUploading ? "pointer-events-none opacity-60" : ""
                 }`}
                 title="Cambiar foto"
               >
-                <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={isUploading} />
-                <Camera size={15} />
+                <input type="file" accept="image/*" className="sr-only" onChange={handlePhotoUpload} disabled={isUploading} aria-label="Cambiar foto de perfil" />
+                <Camera size={18} />
               </label>
             </div>
 
-            <div className="min-w-0">
-              <p className="text-xs uppercase tracking-[0.2em] text-monserrat-ink/50">Alumno</p>
-              <h3 className="mt-2 truncate text-3xl font-black text-monserrat-ink">{perfil.nombre}</h3>
+            <div className="min-w-0 flex-1">
+              <p className="text-[15px] font-bold text-monserrat-red">
+                {saludo()}{nombrePila ? `, ${nombrePila}` : ""}!
+              </p>
+              <h3 className="mt-1 break-words text-2xl font-black leading-tight text-monserrat-ink sm:text-3xl">{perfil.nombre}</h3>
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <span className="text-sm text-monserrat-ink/60">{perfil.nivelEducativo ? labelFromEnum(perfil.nivelEducativo) : "Nivel no definido"}</span>
+                <span className="kid-chip bg-white text-monserrat-ink/70">
+                  {perfil.nivelEducativo ? labelFromEnum(perfil.nivelEducativo) : "Nivel no definido"}
+                </span>
                 {perfil.estadoMatricula && (
-                  <span
-                    className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide"
-                    style={{ backgroundColor: `${colorMatricula}18`, color: colorMatricula }}
-                  >
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: colorMatricula }} />
+                  <span className="kid-chip" style={{ backgroundColor: `${colorMatricula}1a`, color: colorMatricula }}>
+                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: colorMatricula }} />
                     {labelFromEnum(perfil.estadoMatricula)}
                   </span>
                 )}
               </div>
-              {isUploading && <p className="mt-2 text-xs font-semibold text-monserrat-ink/40">Subiendo foto…</p>}
+              {isUploading && <p className="mt-2 text-sm font-bold text-monserrat-ink/55">Subiendo foto…</p>}
             </div>
+
+            <MascotaSigue className="kid-bob pointer-events-none hidden h-28 w-auto xl:block" />
           </div>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            {details.map((item) => (
-              <DetailChip key={item.label} icon={item.icon} label={item.label} value={item.value} />
+          <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6">
+            {details.map((item, i) => (
+              <DetailChip key={item.label} icon={item.icon} label={item.label} value={item.value} index={i} />
             ))}
           </div>
         </div>
 
-        <div className="rounded-[18px] border border-monserrat-ink/10 bg-[#f2f2f1] p-5 ">
-          <div className="rounded-[16px] bg-white p-4">
-            <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-monserrat-ink/40">
-              <KeyRound size={12} /> Codigo chatbot
+        <div className="grid content-start gap-5">
+          <div className="kid-card kid-rise p-5" style={rise(1)}>
+            <p className="flex items-center gap-2 text-lg font-black text-monserrat-ink">
+              <span className="kid-icon-badge !h-10 !w-10 !rounded-[12px]" style={{ backgroundColor: STATUS_ACCENT.warn.bg, color: STATUS_ACCENT.warn.fg }}>
+                <KeyRound size={18} />
+              </span>
+              Código del chatbot
             </p>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-              <code className="rounded-[10px] bg-[#e3e3e1] px-3 py-2 text-lg font-black tracking-[0.18em] text-monserrat-ink">
+              <code className="rounded-[14px] border-2 border-dashed border-[#d8a842] bg-[#fbf3e1] px-4 py-2.5 text-xl font-black tracking-[0.18em] text-monserrat-ink">
                 {perfil.codigoChatbot || "PENDIENTE"}
               </code>
               <button
                 type="button"
                 onClick={handleRegenerateChatbotCode}
                 disabled={isRegeneratingCode}
-                className="inline-flex items-center gap-1.5 rounded-[10px] bg-[#e3e3e1] px-3 py-2 text-[12px] font-black text-monserrat-ink transition hover:bg-[#e3e3e1]/85 disabled:opacity-60"
+                className="kid-btn-soft disabled:opacity-60"
               >
-                <RefreshCw size={14} />
+                <RefreshCw size={16} className={isRegeneratingCode ? "animate-spin" : ""} />
                 {isRegeneratingCode ? "Generando..." : "Regenerar"}
               </button>
             </div>
-            <p className="mt-3 text-xs font-semibold leading-5 text-monserrat-ink/55">
+            <p className="mt-3 text-[14px] font-semibold leading-6 text-monserrat-ink/65">
               El chatbot pedira tu nombre completo, DNI o codigo institucional junto con este codigo para responder sobre tus notas, asistencia o pension.
             </p>
           </div>
 
-          <h4 className="mt-5 text-lg font-black text-monserrat-ink">Resumen financiero</h4>
-          <div className="mt-5 space-y-4">
-            <div className="rounded-[16px] bg-white p-4">
-              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-monserrat-ink/40">Pensión actual</p>
-              <div className="mt-2 flex items-center gap-2.5">
+          <div className="kid-card kid-rise p-5" style={rise(2)}>
+            <h4 className="text-lg font-black text-monserrat-ink">Resumen financiero</h4>
+            <div
+              className="mt-3 rounded-[20px] border-2 p-4"
+              style={{
+                backgroundColor: pensionAlDia === null ? "#f6f1e6" : pensionAlDia ? STATUS_ACCENT.ok.bg : STATUS_ACCENT.bad.bg,
+                borderColor: pensionAlDia === null ? "#e8dcc0" : pensionAlDia ? STATUS_ACCENT.ok.ring : STATUS_ACCENT.bad.ring
+              }}
+            >
+              <p className="text-[13px] font-bold text-monserrat-ink/60">Pensión actual</p>
+              <div className="mt-1 flex items-center gap-2.5">
                 {pensionAlDia === null ? null : pensionAlDia ? (
-                  <CheckCircle2 size={22} className="text-[#3f7d54]" />
+                  <CheckCircle2 size={26} className="text-[#2f6b45]" />
                 ) : (
-                  <AlertTriangle size={22} className="text-monserrat-ink" />
+                  <AlertTriangle size={26} className="text-[#9f171b]" />
                 )}
                 <p
                   className="text-3xl font-black"
-                  style={{ color: pensionAlDia === null ? "#1f1b18" : pensionAlDia ? "#3f7d54" : "#9f171b" }}
+                  style={{ color: pensionAlDia === null ? "#1f1b18" : pensionAlDia ? "#2f6b45" : "#9f171b" }}
                 >
                   {pension ? (pension.pagada ? "Pagada" : "Pendiente") : "Cargando..."}
                 </p>
               </div>
-              {pension?.observacion && <p className="mt-2 text-sm text-monserrat-ink/60">Observación: {pension.observacion}</p>}
+              {pension?.observacion && <p className="mt-2 text-sm font-semibold text-monserrat-ink/65">Observación: {pension.observacion}</p>}
             </div>
-            <div className="rounded-[16px] bg-white p-4">
-              <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-monserrat-ink/40">
-                <Lightbulb size={12} /> Sugerencia
-              </p>
-              <p className="mt-2 text-sm leading-6 text-monserrat-ink/70">
+
+            <div className="mt-3 flex gap-3 rounded-[20px] border-2 border-[#d8a842]/30 bg-[#fbf3e1] p-4">
+              <Lightbulb size={22} className="mt-0.5 flex-none text-[#8a6a14]" />
+              <p className="text-[14px] font-semibold leading-6 text-monserrat-ink/75">
                 Revisa tu historial de asistencias y notas para confirmar que estás al día. Si tienes dudas sobre tu pensión, contacta con la administración.
               </p>
             </div>

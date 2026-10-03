@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { SectionHeader } from "../../ui/SectionHeader";
 import { monserratApi } from "../../../api/monserrat";
 import type { UsuarioAcademico, AsistenciaAcademica, AsignacionAcademica } from "../../../types";
 import { getGruposPorGrado, GRUPO_LABELS, type AcademicoConfig } from "../admin/adminShared";
@@ -206,11 +205,11 @@ export function DocenteAsistencias({ token }: { token: string }) {
 
   return (
     <div className="grid gap-4">
-      <SectionHeader title="Asistencias" description="Control de asistencias de tu grupo." align="left" />
+      <p className="mb-1 text-sm font-semibold text-monserrat-ink/60">Control de asistencias de tu grupo.</p>
       {status && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{status}</div>}
 
       <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-[18px] border border-monserrat-ink/10 bg-white p-5 ">
+        <div className="pro-card pro-rise p-5">
           <div className="mb-4 flex flex-wrap gap-3">
             <label className="flex items-center gap-2">
               <span className="text-sm text-monserrat-ink/70">Periodo:</span>
@@ -257,8 +256,8 @@ export function DocenteAsistencias({ token }: { token: string }) {
             )}
 
             <input type="date" value={asistenciaFecha} onChange={(e) => setAsistenciaFecha(e.target.value)} className="admin-input max-w-55" />
-            <button type="button" onClick={() => marcarTodos("PRESENTE")} className="inline-flex items-center rounded-xl border border-monserrat-ink/12 bg-[#f2f2f1] px-4 py-2 text-sm font-black text-monserrat-ink">Todos presentes</button>
-            <button type="button" onClick={() => marcarTodos("AUSENTE")} className="inline-flex items-center rounded-xl border border-monserrat-ink/12 bg-white px-4 py-2 text-sm font-black text-monserrat-ink">Todos ausentes</button>
+            <button type="button" onClick={() => marcarTodos("PRESENTE")} className="pro-btn-soft">Todos presentes</button>
+            <button type="button" onClick={() => marcarTodos("AUSENTE")} className="pro-btn-soft">Todos ausentes</button>
           </div>
           <div className="overflow-hidden rounded-2xl border border-monserrat-ink/8">
             <div className="grid grid-cols-[1.6fr_0.6fr_1fr] gap-0 border-b border-monserrat-ink/8 bg-[#f2f2f1] px-4 py-3 text-sm uppercase tracking-[0.14em] text-monserrat-ink/50">
@@ -273,7 +272,7 @@ export function DocenteAsistencias({ token }: { token: string }) {
                 const porcentaje = resumen.porcentaje;
                 const debajo = porcentaje !== null && porcentaje < minAsistencia;
                 return (
-                  <button key={alumno.dni} type="button" onClick={() => toggleAsistencia(alumno.dni)} className="flex w-full items-center justify-between gap-4 border-b border-monserrat-ink/8 px-4 py-3 text-left hover:bg-[#f2f2f1]">
+                  <button key={alumno.dni} type="button" onClick={() => toggleAsistencia(alumno.dni)} className="flex w-full items-center justify-between gap-4 border-b border-monserrat-ink/8 px-4 py-3 text-left hover:bg-[#f4ead2]">
                     <span className="font-semibold text-monserrat-ink">{alumno.nombre}</span>
                     <span className={`text-sm font-black ${porcentaje === null ? 'text-monserrat-ink/40' : debajo ? 'text-monserrat-ink' : 'text-monserrat-ink/70'} text-center w-14`}>{porcentaje === null ? 'N/A' : `${porcentaje}%`}</span>
                     <span className="text-sm font-black uppercase tracking-[0.12em] text-monserrat-ink/70">{labelFromEnum(estado)}</span>
@@ -283,12 +282,12 @@ export function DocenteAsistencias({ token }: { token: string }) {
               {alumnosFiltrados.length === 0 && <div className="px-4 py-4 text-sm text-monserrat-ink/50">Aún no hay alumnos asignados para el filtro seleccionado.</div>}
             </div>
           </div>
-          <button type="button" disabled={isBusy || alumnos.length === 0} onClick={submitAsistenciaBulk} className="mt-4 inline-flex items-center justify-center rounded-[14px] bg-[#e3e3e1] px-5 py-3 text-sm font-black text-monserrat-ink disabled:opacity-50">
+          <button type="button" disabled={isBusy || alumnos.length === 0} onClick={submitAsistenciaBulk} className="pro-btn mt-4">
             {isBusy ? "Guardando..." : `Guardar asistencia (${alumnosFiltrados.length})`}
           </button>
         </div>
 
-        <div className="rounded-[18px] border border-monserrat-ink/10 bg-white p-5 ">
+        <div className="pro-card pro-rise p-5">
           <h4 className="text-lg font-black text-monserrat-ink">Resumen histórico</h4>
           <div className="mt-4 grid gap-3">
             {Object.entries(asistenciaResumen).map(([estado, total]) => (
@@ -298,7 +297,7 @@ export function DocenteAsistencias({ token }: { token: string }) {
               </div>
             ))}
           </div>
-          <div className="mt-6 rounded-[14px] border border-monserrat-ink/8 bg-white p-4">
+          <div className="mt-6 rounded-2xl border border-monserrat-gold/25 bg-white p-4">
             <p className="text-sm font-black">Resumen del grado seleccionado</p>
             <p className="mt-2 text-sm text-monserrat-ink/70">Alumnos en filtro: <span className="font-black">{nivelSummary.total}</span></p>
             <p className="mt-1 text-sm text-monserrat-ink">Por debajo del mínimo ({minAsistencia}%): <span className="font-black">{nivelSummary.below}</span></p>

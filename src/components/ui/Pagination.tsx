@@ -15,7 +15,7 @@ export function Pagination({ currentPage, totalPages, onChange }: PaginationProp
         type="button"
         onClick={() => onChange(Math.max(1, currentPage - 1))}
         disabled={currentPage === 1}
-        className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-black/15 bg-white text-monserrat-ink disabled:cursor-not-allowed disabled:opacity-40"
+        className="inline-flex h-10 w-10 items-center justify-center rounded-[12px] border border-monserrat-red/25 bg-white text-monserrat-red hover:bg-[#fff3f3] disabled:cursor-not-allowed disabled:opacity-40"
         aria-label="Página anterior"
       >
         <ChevronLeft size={18} />
@@ -27,7 +27,7 @@ export function Pagination({ currentPage, totalPages, onChange }: PaginationProp
         type="button"
         onClick={() => onChange(Math.min(totalPages, currentPage + 1))}
         disabled={currentPage === totalPages}
-        className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-black/15 bg-white text-monserrat-ink disabled:cursor-not-allowed disabled:opacity-40"
+        className="inline-flex h-10 w-10 items-center justify-center rounded-[12px] border border-monserrat-red/25 bg-white text-monserrat-red hover:bg-[#fff3f3] disabled:cursor-not-allowed disabled:opacity-40"
         aria-label="Página siguiente"
       >
         <ChevronRight size={18} />

@@ -11,9 +11,9 @@ export function FeedbackModal({ isOpen, title, message, onClose }: FeedbackModal
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 px-4 py-8 backdrop-blur-sm" role="dialog" aria-modal="true">
-      <div className="w-full max-w-md overflow-hidden rounded-[18px] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
-        <div className="flex items-start justify-between gap-4 border-b border-monserrat-ink/8 bg-red-50 px-5 py-4">
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-monserrat-ink/55 px-4 py-8 backdrop-blur-sm" role="dialog" aria-modal="true">
+      <div className="w-full max-w-md overflow-hidden rounded-[20px] bg-[#fffdf8] shadow-[0_24px_80px_rgba(31,27,24,0.3)]">
+        <div className="flex items-start justify-between gap-4 border-b border-monserrat-red/15 bg-[#fdeeee] px-5 py-4">
           <div className="flex items-start gap-3">
             <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-monserrat-red text-white">
               <AlertTriangle size={18} />
@@ -38,7 +38,7 @@ export function FeedbackModal({ isOpen, title, message, onClose }: FeedbackModal
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex items-center justify-center rounded-[12px] bg-monserrat-red px-4 py-2.5 text-sm font-black text-white transition hover:bg-monserrat-red/85"
+              className="pro-btn"
             >
               Entendido
             </button>

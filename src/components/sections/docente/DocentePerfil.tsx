@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { SectionHeader } from "../../ui/SectionHeader";
 import { monserratApi } from "../../../api/monserrat";
 import type { PerfilAcademico } from "../../../types";
 import { GRUPO_LABELS } from "../admin/adminShared";
@@ -173,13 +172,13 @@ export function DocentePerfil({ token }: { token: string }) {
   };
 
   if (!perfil) {
-    return <div className="rounded-xl bg-white p-4">Cargando perfil del docente...</div>;
+    return <div className="pro-card p-4 text-sm font-semibold text-monserrat-ink/70">Cargando perfil del docente...</div>;
   }
 
   return (
     <div className="grid gap-4">
-      <SectionHeader title="Perfil docente" description="Consulta y actualiza tus datos personales, contacto y formación académica." align="left" />
-      <div className="grid gap-4 rounded-[20px] border border-monserrat-ink/10 bg-white p-5  xl:grid-cols-[1.05fr_0.95fr]">
+      <p className="mb-1 text-sm font-semibold text-monserrat-ink/60">Consulta y actualiza tus datos personales, contacto y formación académica.</p>
+      <div className="pro-card pro-rise grid gap-4 p-5 xl:grid-cols-[1.05fr_0.95fr]">
         <div className="space-y-4">
           <div className="rounded-[18px] bg-[#f2f2f1]/60 p-4">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -200,7 +199,7 @@ export function DocentePerfil({ token }: { token: string }) {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <label className="flex cursor-pointer items-center justify-center rounded-[999px] border border-monserrat-ink/10 bg-white px-4 py-2 text-sm font-semibold text-monserrat-ink transition hover:bg-[#f2f2f1]">
+                <label className="flex cursor-pointer items-center justify-center rounded-[999px] border border-monserrat-ink/10 bg-white px-4 py-2 text-sm font-semibold text-monserrat-ink transition hover:bg-[#f4ead2]">
                   <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={isUploading} />
                   {isUploading ? "Subiendo..." : "Cambiar foto"}
                 </label>
@@ -233,7 +232,7 @@ export function DocentePerfil({ token }: { token: string }) {
                   <input
                     value={formData.nombre}
                     onChange={(event) => handleInputChange("nombre", event.target.value)}
-                    className="rounded-xl border border-monserrat-ink/10 bg-white px-3 py-2 text-sm"
+                    className="admin-input"
                   />
                 </label>
                 <label className="grid gap-1 text-sm font-semibold text-monserrat-ink">
@@ -242,7 +241,7 @@ export function DocentePerfil({ token }: { token: string }) {
                     type="email"
                     value={formData.correo}
                     onChange={(event) => handleInputChange("correo", event.target.value)}
-                    className="rounded-xl border border-monserrat-ink/10 bg-white px-3 py-2 text-sm"
+                    className="admin-input"
                   />
                 </label>
                 <label className="grid gap-1 text-sm font-semibold text-monserrat-ink">
@@ -250,7 +249,7 @@ export function DocentePerfil({ token }: { token: string }) {
                   <input
                     value={formData.telefono}
                     onChange={(event) => handleInputChange("telefono", event.target.value)}
-                    className="rounded-xl border border-monserrat-ink/10 bg-white px-3 py-2 text-sm"
+                    className="admin-input"
                   />
                 </label>
                 <label className="grid gap-1 text-sm font-semibold text-monserrat-ink">
@@ -258,7 +257,7 @@ export function DocentePerfil({ token }: { token: string }) {
                   <input
                     value={formData.direccion}
                     onChange={(event) => handleInputChange("direccion", event.target.value)}
-                    className="rounded-xl border border-monserrat-ink/10 bg-white px-3 py-2 text-sm"
+                    className="admin-input"
                   />
                 </label>
                 <label className="grid gap-1 text-sm font-semibold text-monserrat-ink">
@@ -266,7 +265,7 @@ export function DocentePerfil({ token }: { token: string }) {
                   <input
                     value={formData.materia}
                     onChange={(event) => handleInputChange("materia", event.target.value)}
-                    className="rounded-xl border border-monserrat-ink/10 bg-white px-3 py-2 text-sm"
+                    className="admin-input"
                   />
                 </label>
                 <label className="grid gap-1 text-sm font-semibold text-monserrat-ink">
@@ -274,13 +273,13 @@ export function DocentePerfil({ token }: { token: string }) {
                   <input
                     value={formData.especialidad}
                     onChange={(event) => handleInputChange("especialidad", event.target.value)}
-                    className="rounded-xl border border-monserrat-ink/10 bg-white px-3 py-2 text-sm"
+                    className="admin-input"
                   />
                 </label>
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
-                <button type="submit" disabled={isSaving} className="rounded-[999px] bg-[#e3e3e1] px-4 py-2 text-sm font-semibold text-monserrat-ink disabled:cursor-not-allowed disabled:opacity-70">
+                <button type="submit" disabled={isSaving} className="pro-btn">
                   {isSaving ? "Guardando..." : "Guardar cambios"}
                 </button>
               </div>
@@ -305,14 +304,14 @@ export function DocentePerfil({ token }: { token: string }) {
 
           <div className="mt-6 space-y-3">
             {keyFacts.map((item) => (
-              <div key={item.label} className="rounded-2xl bg-white p-4 ">
+              <div key={item.label} className="rounded-2xl border border-monserrat-gold/25 bg-white p-4">
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-monserrat-ink/40">{item.label}</p>
                 <p className="mt-2 text-sm font-semibold text-monserrat-ink">{item.value}</p>
               </div>
             ))}
           </div>
 
-          <div className="mt-6 rounded-[14px] border border-black/10 bg-white p-4 ">
+          <div className="mt-6 rounded-2xl border border-monserrat-gold/30 bg-[#fbf4e4] p-4">
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-monserrat-ink">Sugerencia</p>
             <p className="mt-2 text-sm leading-6 text-monserrat-ink/70">
               Mantén actualizada tu foto y tus datos de contacto para que la información refleje mejor tu identidad institucional.
