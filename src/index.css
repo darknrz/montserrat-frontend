@@ -360,3 +360,52 @@ input:-webkit-autofill:focus {
 @media (prefers-reduced-motion: reduce) {
   .pro-rise { animation: none; }
 }
+
+/* ───────── Sitio público: aparición al hacer scroll, esqueletos y menú ───────── */
+@layer components {
+  .reveal {
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity 600ms ease, transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition-delay: calc(var(--i, 0) * 70ms);
+  }
+  .reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  /* Esqueleto de carga color crema (sin saltos de diseño) */
+  .sk {
+    border-radius: 18px;
+    background: linear-gradient(100deg, #f1e6cb 30%, #f9f1de 50%, #f1e6cb 70%);
+    background-size: 220% 100%;
+    animation: sk-shimmer 1.4s ease-in-out infinite;
+  }
+  .nav-link {
+    position: relative;
+  }
+  .nav-link::after {
+    content: "";
+    position: absolute;
+    left: 0.9rem;
+    right: 0.9rem;
+    bottom: 0.2rem;
+    height: 2px;
+    border-radius: 2px;
+    background: #d8a842;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 220ms ease;
+  }
+  .nav-link:hover::after,
+  .nav-link:focus-visible::after {
+    transform: scaleX(1);
+  }
+}
+@keyframes sk-shimmer {
+  0% { background-position: 120% 0; }
+  100% { background-position: -120% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .sk { animation: none; }
+}

@@ -236,6 +236,9 @@ export function Carrusel({ videos }: CarruselProps) {
     [duration]
   );
 
+  // Sin imágenes ni videos publicados la galería no existe (tampoco su enlace en el menú).
+  if (videos.length === 0) return null;
+
   const progressPct = duration > 0 ? (currentT / duration) * 100 : 0;
 
   const slidePct = ((index + 1) / videos.length) * 100;
@@ -243,20 +246,22 @@ export function Carrusel({ videos }: CarruselProps) {
   return (
     <section
       id="videos"
-      className="bg-monserrat-cream px-4 py-20 sm:px-6 lg:px-8"
+      className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8"
     >
       <div className="mx-auto max-w-6xl">
-        <SectionHeader
-          eyebrow="Galería multimedia"
-          title="Imágenes y videos institucionales"
-          description="Publica banners, fotos y videos del colegio desde el panel administrador."
-        />
+        <div className="kid-rise">
+          <SectionHeader
+            eyebrow="Galería"
+            title="Momentos de nuestra comunidad"
+            description="Imágenes y videos de las actividades, logros y vida diaria del colegio."
+          />
+        </div>
 
         {current ? (
-          <div className="mt-12 grid gap-4 lg:grid-cols-[1fr_300px]">
+          <div className={`mt-10 grid gap-5 ${videos.length > 1 ? "lg:grid-cols-[1fr_300px]" : "mx-auto max-w-4xl"}`}>
 
             {/* PLAYER */}
-            <div className="overflow-hidden rounded-[24px] bg-monserrat-black shadow-[0_8px_32px_rgba(28,20,16,0.15)]">
+            <div className="overflow-hidden rounded-[28px] border-4 border-white bg-monserrat-black shadow-[0_18px_50px_rgba(31,27,24,0.2)] ring-2 ring-monserrat-gold/40">
               <div
                 ref={playerRef}
                 className="relative aspect-[16/9] overflow-hidden cursor-pointer"
@@ -493,17 +498,18 @@ export function Carrusel({ videos }: CarruselProps) {
               </div>
             </div>
 
-            {/* SIDEBAR */}
-            <div className="flex flex-col gap-2 overflow-y-auto lg:max-h-[420px]">
+            {/* LISTA (solo cuando hay más de un elemento) */}
+            {videos.length > 1 && (
+            <div className="flex flex-col gap-2.5 overflow-y-auto lg:max-h-[420px]">
               {videos.map((item, i) => (
                 <button
                   key={item.id}
                   type="button"
                   onClick={() => goTo(i)}
-                  className={`flex items-center gap-3 rounded-[16px] border p-2.5 text-left transition ${
+                  className={`flex items-center gap-3 rounded-[20px] border-2 p-2.5 text-left transition ${
                     i === index
-                      ? "border-monserrat-red bg-white shadow-[0_4px_16px_rgba(139,26,26,0.12)]"
-                      : "border-monserrat-ink/8 bg-white/70 hover:border-monserrat-ink/18 hover:bg-white"
+                      ? "border-monserrat-red bg-white shadow-[0_8px_20px_rgba(159,23,27,0.16)]"
+                      : "border-monserrat-gold/30 bg-white/80 hover:border-monserrat-red/40 hover:bg-white"
                   }`}
                 >
                   <div className="relative h-[52px] w-[72px] flex-shrink-0 overflow-hidden rounded-[10px] bg-monserrat-black">
@@ -542,21 +548,9 @@ export function Carrusel({ videos }: CarruselProps) {
                 </button>
               ))}
             </div>
+            )}
           </div>
-        ) : (
-          <div className="mt-12 rounded-[24px] border border-dashed border-monserrat-ink/15 bg-white px-6 py-16 text-center">
-            <p className="text-3xl mb-3">🎬</p>
-
-            <h3 className="text-xl font-black text-monserrat-ink">
-              El carrusel aún no tiene contenido
-            </h3>
-
-            <p className="mt-2 text-[13px] text-monserrat-ink/55">
-              Sube imágenes o videos desde el panel administrador para
-              publicarlos aquí.
-            </p>
-          </div>
-        )}
+        ) : null}
       </div>
     </section>
   );

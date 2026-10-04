@@ -1,10 +1,10 @@
-﻿import { Eye, EyeOff, Lock, ShieldCheck, User } from "lucide-react";
+﻿import { AlertTriangle, Eye, EyeOff, Lock, ShieldCheck, Sparkles, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { monserratApi } from "../../api/monserrat";
 import type { LoginResponse } from "../../types";
 import { isAdminRole } from "../../types";
-import { FeedbackModal } from "../ui/FeedbackModal";
+import { AmbienteAmigable, saludoDeLaHora } from "./AmbienteAmigable";
 import { MonsterCharacter } from "./MonsterCharacter";
 
 type AccessGatewayPageProps = {
@@ -19,6 +19,10 @@ export function AccessGatewayPage({ onNavigate }: AccessGatewayPageProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isBusy, setIsBusy] = useState(false);
+  // Estado visual de la mascota: "error" (niega con la cabeza) y "exito" (salta de alegría).
+  const [estado, setEstado] = useState<"idle" | "error" | "exito">("idle");
+  const [capsLock, setCapsLock] = useState(false);
+  const estadoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [monsterSrc, setMonsterSrc] = useState(`${MONSTER_BASE}/idle/1.png`);
   const seguirPunteroMouseRef = useRef(true);
@@ -39,6 +43,7 @@ export function AccessGatewayPage({ onNavigate }: AccessGatewayPageProps) {
     });
     return () => {
       if (coverIntervalRef.current) clearInterval(coverIntervalRef.current);
+      if (estadoTimerRef.current) clearTimeout(estadoTimerRef.current);
     };
   }, []);
 
@@ -136,48 +141,71 @@ export function AccessGatewayPage({ onNavigate }: AccessGatewayPageProps) {
     }, 60);
   };
 
+  const mostrarError = (mensaje: string) => {
+    setErrorMessage(mensaje);
+    setEstado("error");
+    if (estadoTimerRef.current) clearTimeout(estadoTimerRef.current);
+    estadoTimerRef.current = setTimeout(() => setEstado("idle"), 700);
+  };
+
   const handleLogin = async (event: FormEvent) => {
     event.preventDefault();
+    if (isBusy) return;
+
+    // Validación amable (sin los globos del navegador).
+    if (!username.trim()) {
+      mostrarError("Escribe tu DNI o tu usuario para entrar.");
+      return;
+    }
+    if (!password) {
+      mostrarError("Escribe tu contraseña.");
+      return;
+    }
+
     setIsBusy(true);
     setErrorMessage(null);
 
     try {
-      const response = await monserratApi.login(username, password);
+      const response = await monserratApi.login(username.trim(), password);
 
-      if (isAdminRole(response.rol)) {
+      const esAdmin = isAdminRole(response.rol);
+      const esAcademico = response.rol === "DOCENTE" || response.rol === "ALUMNO";
+      if (!esAdmin && !esAcademico) {
+        throw new Error("Rol no permitido");
+      }
+
+      if (esAdmin) {
         window.localStorage.removeItem("monserrat_academic_session");
         window.localStorage.setItem("monserrat_admin_session", JSON.stringify(response));
-        if (window.location.pathname === "/portal") {
-          window.location.reload();
-        } else {
-          onNavigate("/portal");
-        }
-        return;
-      }
-
-      if (response.rol === "DOCENTE" || response.rol === "ALUMNO") {
+      } else {
         window.localStorage.removeItem("monserrat_admin_session");
         window.localStorage.setItem("monserrat_academic_session", JSON.stringify(response));
-        if (window.location.pathname === "/portal") {
-          window.location.reload();
-        } else {
-          onNavigate("/portal");
-        }
-        return;
       }
 
-      throw new Error("Rol no permitido");
+      // Celebración corta antes de entrar al portal.
+      setEstado("exito");
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      if (window.location.pathname === "/portal") {
+        window.location.reload();
+      } else {
+        onNavigate("/portal");
+      }
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Credenciales incorrectas");
+      mostrarError(error instanceof Error ? error.message : "Credenciales incorrectas");
     } finally {
       setIsBusy(false);
     }
   };
 
+  const campo =
+    "group flex items-center gap-2.5 rounded-2xl border-2 border-monserrat-gold/40 bg-white px-4 shadow-sm transition focus-within:border-monserrat-red focus-within:shadow-[0_0_0_4px_rgba(159,23,27,0.08)]";
+  const icono = "text-monserrat-gold transition group-focus-within:text-monserrat-red";
+
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[linear-gradient(135deg,_#f8efe1_0%,_#f4e7c9_45%,_#efe4ca_100%)] px-4 py-10 sm:px-6 lg:px-8">
       <div className="pointer-events-none absolute left-[-8%] top-[-10%] h-64 w-64 rounded-full bg-monserrat-gold/20 blur-3xl" />
       <div className="pointer-events-none absolute bottom-[-8%] right-[-8%] h-72 w-72 rounded-full bg-monserrat-red/10 blur-3xl" />
+      <AmbienteAmigable />
 
       <a
         href="/"
@@ -186,63 +214,109 @@ export function AccessGatewayPage({ onNavigate }: AccessGatewayPageProps) {
         Volver al sitio público
       </a>
 
-      <FeedbackModal
-        isOpen={Boolean(errorMessage)}
-        title="No fue posible ingresar"
-        message={errorMessage ?? ""}
-        onClose={() => setErrorMessage(null)}
-      />
+      <div className="relative z-[1] flex flex-col items-center">
+        <div className="amb-rise mb-2 text-center">
+          {estado === "exito" ? (
+            <p key="ok" className="amb-pop inline-flex items-center gap-2 rounded-full bg-monserrat-red px-5 py-1.5 text-sm font-black text-white shadow-[0_10px_24px_rgba(159,23,27,0.25)]">
+              <Sparkles size={15} /> ¡Bienvenido! Entrando…
+            </p>
+          ) : (
+            <>
+              <p className="text-[22px] font-black leading-tight text-monserrat-ink sm:text-[26px]">{saludoDeLaHora()}</p>
+              <p className="text-sm font-semibold text-monserrat-ink/60">¿Listo para aprender hoy?</p>
+            </>
+          )}
+        </div>
 
-      <div className="flex flex-col items-center">
         <div className="relative z-10 -mb-20">
-          <MonsterCharacter src={monsterSrc} />
+          <MonsterCharacter src={monsterSrc} estado={estado} />
         </div>
 
         <form
           onSubmit={handleLogin}
-          className="relative w-full max-w-[620px] rounded-[28px] border border-monserrat-red/20 bg-[#fffdf8] px-7 py-8 text-center shadow-[0_24px_70px_rgba(31,27,24,0.15)] sm:w-[560px] sm:px-10 sm:py-12 lg:px-14 lg:py-14"
+          noValidate
+          className="amb-rise relative w-full max-w-[620px] rounded-[28px] border-2 border-monserrat-gold/35 bg-[#fffdf8] px-7 pb-8 pt-16 text-center shadow-[0_24px_70px_rgba(31,27,24,0.15)] sm:w-[560px] sm:px-10 sm:pb-12 sm:pt-20 lg:px-14 lg:pb-14"
         >
-          <label className="mb-1.5 block text-left text-sm font-bold text-monserrat-ink/70">Usuario</label>
-          <div className="mb-5 flex items-center gap-2.5 rounded-2xl border border-monserrat-red/20 bg-white/80 px-4 shadow-sm">
-            <User size={17} className="text-monserrat-red/60" />
+          <div className="mb-6 flex items-center justify-center gap-3">
+            <img src="/logo-montserrat.png" alt="" className="h-11 w-auto object-contain" draggable={false} />
+            <div className="text-left">
+              <h1 className="text-xl font-black leading-tight text-monserrat-ink">Portal Monserrat</h1>
+              <p className="text-xs font-semibold text-monserrat-ink/55">Ingresa con tu DNI y tu contraseña</p>
+            </div>
+          </div>
+
+          {errorMessage && (
+            <div
+              role="alert"
+              className="amb-pop mb-5 flex items-start gap-2.5 rounded-2xl border-2 border-monserrat-red/25 bg-[#fdf0f0] px-4 py-3 text-left text-sm font-bold text-monserrat-red"
+            >
+              <AlertTriangle size={18} className="mt-0.5 shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
+          <label htmlFor="login-usuario" className="mb-1.5 block text-left text-sm font-bold text-monserrat-ink/70">
+            Usuario
+          </label>
+          <div className={`mb-5 ${campo}`}>
+            <User size={18} className={icono} />
             <input
+              id="login-usuario"
               value={username}
               onChange={(event) => {
                 setUsername(event.target.value);
                 handleUsernameKeyUp(event.target.value);
+                if (errorMessage) setErrorMessage(null);
               }}
               onFocus={handleUsernameFocus}
               onBlur={handleUsernameBlur}
-              placeholder="Tu usuario o código"
-              autoComplete="off"
-              required
-              className="h-12 w-full border-0 text-[15px] text-monserrat-ink outline-none"
+              placeholder="Tu DNI o usuario"
+              autoComplete="username"
+              inputMode="text"
+              className="h-12 w-full border-0 bg-transparent text-[15px] text-monserrat-ink outline-none placeholder:text-monserrat-ink/35"
             />
           </div>
 
-          <label className="mb-1.5 block text-left text-sm font-bold text-monserrat-ink/70">Contraseña</label>
-          <div className="mb-2 flex items-center gap-2.5 rounded-2xl border border-monserrat-red/20 bg-white/80 px-4 shadow-sm">
-            <Lock size={17} className="text-monserrat-red/60" />
+          <label htmlFor="login-clave" className="mb-1.5 block text-left text-sm font-bold text-monserrat-ink/70">
+            Contraseña
+          </label>
+          <div className={`mb-2 ${campo}`}>
+            <Lock size={18} className={icono} />
             <input
+              id="login-clave"
               type={showPassword ? "text" : "password"}
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                if (errorMessage) setErrorMessage(null);
+              }}
               onFocus={handlePasswordFocus}
-              onBlur={handlePasswordBlur}
+              onBlur={() => {
+                handlePasswordBlur();
+                setCapsLock(false);
+              }}
+              onKeyDown={(event) => setCapsLock(event.getModifierState("CapsLock"))}
+              onKeyUp={(event) => setCapsLock(event.getModifierState("CapsLock"))}
               placeholder="Tu contraseña"
-              required
-              className="h-12 w-full border-0 text-[15px] text-monserrat-ink outline-none"
+              autoComplete="current-password"
+              className="h-12 w-full border-0 bg-transparent text-[15px] text-monserrat-ink outline-none placeholder:text-monserrat-ink/35"
             />
             <button
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
-              className="text-monserrat-red/50 transition hover:text-monserrat-red"
+              className="rounded-lg p-1 text-monserrat-gold transition hover:text-monserrat-red focus-visible:outline-2"
               aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-              tabIndex={-1}
+              aria-pressed={showPassword}
             >
-              {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
+
+          {capsLock && (
+            <p role="status" className="amb-pop mb-1 flex items-center gap-1.5 text-left text-xs font-black text-[#8a6a14]">
+              <AlertTriangle size={13} /> Tienes las mayúsculas activadas (Bloq Mayús).
+            </p>
+          )}
 
           <div className="text-right">
             <button
@@ -255,6 +329,7 @@ export function AccessGatewayPage({ onNavigate }: AccessGatewayPageProps) {
           </div>
 
           <button
+            type="submit"
             disabled={isBusy}
             className="mt-6 inline-flex h-[54px] w-full items-center justify-center gap-2 rounded-2xl bg-monserrat-red text-base font-black text-white shadow-[0_10px_24px_rgba(159,23,27,0.2)] transition hover:bg-monserrat-redDark disabled:cursor-not-allowed disabled:opacity-60"
           >
@@ -263,8 +338,14 @@ export function AccessGatewayPage({ onNavigate }: AccessGatewayPageProps) {
             ) : (
               <ShieldCheck size={18} />
             )}
-            {isBusy ? "Verificando…" : "Ingresar"}
+            {isBusy ? (estado === "exito" ? "¡Bienvenido!" : "Verificando…") : "Ingresar"}
           </button>
+
+          {/* Ayuda para la primera vez: coincide con el alta de alumnos y docentes (usuario = DNI, clave inicial = DNI). */}
+          <div className="mt-5 rounded-2xl border-2 border-monserrat-gold/30 bg-[#fff7e3] px-4 py-3 text-left text-[13px] font-semibold leading-5 text-monserrat-ink/70">
+            <span className="font-black text-monserrat-ink">¿Primera vez?</span> Si eres alumno o docente, tu usuario es tu
+            DNI y tu contraseña inicial también es tu DNI. El sistema te pedirá cambiarla al entrar.
+          </div>
         </form>
       </div>
     </main>

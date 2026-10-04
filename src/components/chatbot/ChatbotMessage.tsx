@@ -11,15 +11,15 @@ export function ChatbotMessage({ message }: ChatbotMessageProps) {
   return (
     <div className={`flex gap-2 ${isUser ? "justify-end" : "justify-start"}`}>
       {!isUser && (
-        <span className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-monserrat-black text-xs font-black text-monserrat-gold">
+        <span className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-monserrat-red text-xs font-black text-white shadow-sm">
           M
         </span>
       )}
       <div
-        className={`max-w-[84%] rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm ${
+        className={`max-w-[84%] rounded-3xl px-4 py-3 text-sm leading-6 shadow-sm ${
           isUser
-            ? "rounded-br-md bg-monserrat-red text-white"
-            : "rounded-bl-md border border-black/10 bg-white text-monserrat-ink"
+            ? "rounded-br-md bg-monserrat-red text-white shadow-[0_8px_18px_rgba(159,23,27,0.18)]"
+            : "rounded-bl-md border-2 border-monserrat-gold/30 bg-white text-monserrat-ink"
         }`}
       >
         <RichMessage text={message.text} isUser={isUser} />
