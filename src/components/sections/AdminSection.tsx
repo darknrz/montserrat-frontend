@@ -16,7 +16,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { monserratApi } from "../../api/monserrat";
 import type {
   AsignacionAcademica,
@@ -252,19 +252,24 @@ export function AdminSection({
       ...(academicoConfig.nivelesAcademicos ?? []),
     ].find((item) => item.id === id)?.label ?? labelFromEnum(id);
 
+  // Número del último guardado: si el admin hace varios cambios seguidos (p. ej. marcar dos docentes en el modal),
+  // la respuesta de un guardado viejo no debe pisar el estado más reciente ni revertirlo.
+  const ultimoGuardadoConfig = useRef(0);
+
   const saveAcademicoConfig = (next: AcademicoConfig) => {
     const previo = academicoConfig; // para revertir si el servidor rechaza el cambio (p. ej. salón en uso)
+    const numero = ++ultimoGuardadoConfig.current;
     setAcademicoConfig(next);
     setErrorMessage(null);
     if (!token) return;
     void monserratApi
       .updateAcademicoConfiguracion(next, token)
-      .then((saved) =>
-        setAcademicoConfig(
-          mergeAcademicoConfig({ ...(saved as AcademicoConfig), ...next })
-        )
-      )
+      .then((saved) => {
+        if (numero !== ultimoGuardadoConfig.current) return;
+        setAcademicoConfig(mergeAcademicoConfig({ ...(saved as AcademicoConfig), ...next }));
+      })
       .catch((error: unknown) => {
+        if (numero !== ultimoGuardadoConfig.current) return;
         setAcademicoConfig(previo);
         applyAcademicoConfigToRegistry(previo);
         setStatus(
