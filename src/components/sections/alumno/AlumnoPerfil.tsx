@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { formatGrado, formatSalon } from "../admin/adminShared";
 import { MascotaSigue } from "../../ui/MascotaSigue";
 import { AlertTriangle, Camera, CheckCircle2, GraduationCap, IdCard, KeyRound, Layers, Lightbulb, Mail, Phone, RefreshCw, Users2 } from "lucide-react";
 import { monserratApi } from "../../../api/monserrat";
@@ -99,8 +100,8 @@ export function AlumnoPerfil({ token }: { token: string }) {
     return [
       { label: "DNI", value: perfil.dni, icon: <IdCard size={20} /> },
       { label: "Nivel educativo", value: perfil.nivelEducativo ? labelFromEnum(perfil.nivelEducativo) : "-", icon: <GraduationCap size={20} /> },
-      { label: "Grado", value: perfil.grado ? labelFromEnum(perfil.grado.replace(/_PRIMARIA|_SECUNDARIA/g, "")) : "-", icon: <Layers size={20} /> },
-      { label: "Sección", value: perfil.seccion || "-", icon: <Users2 size={20} /> },
+      { label: "Grado", value: formatGrado(perfil.grado) || "-", icon: <Layers size={20} /> },
+      { label: "Salón", value: formatSalon(perfil.grado, perfil.seccion) || "-", icon: <Users2 size={20} /> },
       { label: "Teléfono", value: perfil.telefono || "-", icon: <Phone size={20} /> },
       { label: "Correo", value: perfil.correo || "-", icon: <Mail size={20} /> }
     ];

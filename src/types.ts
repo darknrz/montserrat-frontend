@@ -294,7 +294,6 @@ export type AnioEscolar = {
 export type MigracionDecision = {
   alumnoId: number;
   accion?: AccionMigracion;
-  seccion?: string;
 };
 
 export type MigracionRequest = {
@@ -315,11 +314,12 @@ export type MigracionItem = {
   accion: AccionMigracion;
   nivelDestino?: string;
   gradoDestino?: string;
+  // La migración es solo por grado: el salón se asigna después (exámenes de ubicación). Campos antiguos, opcionales.
   seccionDestino?: string;
-  seccionesPermitidas: string[];
-  requiereSeccion: boolean;
-  usaGrupo: boolean;
-  salonSugerido: boolean;
+  seccionesPermitidas?: string[];
+  requiereSeccion?: boolean;
+  usaGrupo?: boolean;
+  salonSugerido?: boolean;
 };
 
 export type MigracionPreview = {
@@ -330,7 +330,9 @@ export type MigracionPreview = {
   repitentes: number;
   egresados: number;
   retirados: number;
-  pendientesSeccion: number;
+  pendientesSeccion?: number;
+  /** Alumnos que continúan en un grado que exige elegir salón y quedarán sin salón. */
+  alumnosSinSalon?: number;
   notasAArchivar: number;
   asistenciasAArchivar: number;
   bimestresACopiar: number;
@@ -349,4 +351,5 @@ export type MigracionResultado = {
   asistenciasArchivadas: number;
   bimestresCopiados: number;
   alumnosSinAsignaciones: number;
+  alumnosSinSalon?: number;
 };

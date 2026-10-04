@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, CalendarCheck, CheckCircle2 } from "lucide-react";
+import { AlertTriangle, ArrowRight, CalendarCheck, CheckCircle2, Info } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { monserratApi } from "../../../api/monserrat";
 import { resetAnioActivoCache } from "../../../hooks/useAnioActivo";
@@ -10,7 +10,7 @@ import type {
   MigracionPreview,
   MigracionResultado,
 } from "../../../types";
-import { GRADO_SHORT_LABELS, GRUPO_LABELS, formatSalon } from "./adminShared";
+import { formatGrado } from "./adminShared";
 
 type Props = {
   token: string;
@@ -24,15 +24,7 @@ const ACCIONES: { value: AccionMigracion; label: string }[] = [
   { value: "RETIRAR", label: "Retirar" },
 ];
 
-const labelGrado = (g?: string) => (g ? (GRADO_SHORT_LABELS[g] ?? g) : "—");
-const labelSeccion = (s?: string) => (s ? (GRUPO_LABELS[s] ?? s) : "—");
-// La institución habla de "salones" (Inicial, Ciclado I, Anual...), no de secciones A/B/C.
-// Un salón agrupa alumnos de varios grados por nivel académico, por eso se muestra "grado · salón".
-const salonActual = (i: MigracionItem) => formatSalon(i.gradoActual, i.seccionActual) || labelGrado(i.gradoActual);
-const salonDestino = (i: MigracionItem) =>
-  i.gradoDestino ? formatSalon(i.gradoDestino, i.usaGrupo ? i.seccionDestino : null) || labelGrado(i.gradoDestino) : "";
-const etiquetaActual = (i: MigracionItem) => `${labelGrado(i.gradoActual)} · ${salonActual(i)}`;
-const etiquetaDestino = (i: MigracionItem) => `${labelGrado(i.gradoDestino)} · ${salonDestino(i)}`;
+const labelGrado = (g?: string) => (g ? formatGrado(g) || g : "—");
 
 const ESTADO_STYLES: Record<string, string> = {
   ACTIVO: "bg-[#e3f1e7] text-[#2f6b45]",
@@ -94,46 +86,24 @@ export function MigracionAnioPanel({ token, setErrorMessage }: Props) {
     void generarPreview({});
   };
 
-  const cambiarDecision = (item: MigracionItem, patch: Partial<MigracionDecision>) => {
-    const next = {
-      ...decisiones,
-      [item.alumnoId]: {
-        accion: item.accion,
-        seccion: item.seccionDestino,
-        ...decisiones[item.alumnoId],
-        ...patch,
-        alumnoId: item.alumnoId,
-      },
-    };
-    // Al cambiar de acción, la sección elegida antes ya no aplica.
-    if (patch.accion && patch.seccion === undefined) next[item.alumnoId].seccion = undefined;
+  const cambiarDecision = (item: MigracionItem, accion: AccionMigracion) => {
+    const next = { ...decisiones, [item.alumnoId]: { alumnoId: item.alumnoId, accion } };
     setDecisiones(next);
     void generarPreview(next);
   };
 
-  // Alumnos con sección pendiente, agrupados por grado de destino, para asignarla en bloque.
-  const pendientesPorGrado = useMemo(() => {
-    const map = new Map<string, MigracionItem[]>();
-    (preview?.items ?? [])
-      .filter((i) => (i.requiereSeccion || i.salonSugerido) && i.gradoDestino)
-      .forEach((i) => map.set(i.gradoDestino!, [...(map.get(i.gradoDestino!) ?? []), i]));
-    return [...map.entries()];
-  }, [preview]);
-
-  // Resumen "salon actual -> salon destino" con conteo: es lo que el admin revisa de un vistazo.
-  const resumenSalones = useMemo(() => {
+  // Resumen POR GRADO: "grado actual → grado destino: N alumnos". Los salones no intervienen.
+  const resumenGrados = useMemo(() => {
     const map = new Map<string, { origen: string; destino: string; accion: AccionMigracion; total: number }>();
     (preview?.items ?? []).forEach((i) => {
       const destino = i.gradoDestino
-        ? i.usaGrupo && !i.seccionDestino
-          ? `${labelGrado(i.gradoDestino)} · por definir`
-          : etiquetaDestino(i)
+        ? labelGrado(i.gradoDestino)
         : i.accion === "EGRESAR"
-          ? "Egresa"
-          : "Retirado";
-      const key = `${etiquetaActual(i)}|${destino}|${i.accion}`;
+          ? "Egresan"
+          : "Retirados";
+      const key = `${i.gradoActual}|${destino}|${i.accion}`;
       const prev = map.get(key);
-      map.set(key, prev ? { ...prev, total: prev.total + 1 } : { origen: etiquetaActual(i), destino, accion: i.accion, total: 1 });
+      map.set(key, prev ? { ...prev, total: prev.total + 1 } : { origen: labelGrado(i.gradoActual), destino, accion: i.accion, total: 1 });
     });
     return [...map.values()];
   }, [preview]);
@@ -145,15 +115,6 @@ export function MigracionAnioPanel({ token, setErrorMessage }: Props) {
       .filter((i) => i.nombre.toLowerCase().includes(term) || i.dni.includes(term) || (i.codigo ?? "").toLowerCase().includes(term))
       .slice(0, 30);
   }, [preview, busqueda]);
-
-  const asignarSeccionEnBloque = (items: MigracionItem[], seccion: string) => {
-    const next = { ...decisiones };
-    items.forEach((i) => {
-      next[i.alumnoId] = { accion: i.accion, ...next[i.alumnoId], seccion, alumnoId: i.alumnoId };
-    });
-    setDecisiones(next);
-    void generarPreview(next);
-  };
 
   const ejecutar = async () => {
     if (!anioDestino) return;
@@ -184,10 +145,20 @@ export function MigracionAnioPanel({ token, setErrorMessage }: Props) {
       <div>
         <h3 className="font-serif text-lg font-black text-monserrat-ink">Migrar año escolar</h3>
         <p className="mt-1 text-[12px] font-semibold text-monserrat-ink/50">
-          Cierra el año activo, archiva sus notas y asistencias, promueve a los alumnos y abre el nuevo año.
+          Cierra el año activo, archiva sus notas y asistencias, promueve a los alumnos de grado y abre el nuevo año.
           Solo el super admin puede ejecutarlo.
         </p>
       </div>
+
+      <p className="flex items-start gap-2 rounded-[10px] border border-[#d8a842]/40 bg-[#fdf8ea] px-3 py-2 text-[12px] font-semibold text-monserrat-ink/75">
+        <Info size={15} className="mt-0.5 shrink-0 text-[#8a6a14]" />
+        <span>
+          <strong>Los salones no se asignan en la migración:</strong> se definen después de los exámenes de ubicación.
+          Los alumnos que pasen a un grado con varios salones (p. ej. 6to Prim, 1ro–5to Sec) quedarán{" "}
+          <strong>sin salón</strong> hasta que se los asignes en Académico (editar alumno) o importando un Excel con la
+          columna SALÓN.
+        </span>
+      </p>
 
       <div className="flex flex-wrap gap-2">
         {anios.map((a) => (
@@ -214,10 +185,15 @@ export function MigracionAnioPanel({ token, setErrorMessage }: Props) {
             Archivadas {resultado.notasArchivadas} notas y {resultado.asistenciasArchivadas} asistencias.{" "}
             {resultado.bimestresCopiados > 0 && `${resultado.bimestresCopiados} bimestres copiados. `}
           </p>
+          {(resultado.alumnosSinSalon ?? 0) > 0 && (
+            <p className="text-[#8a6a14]">
+              {resultado.alumnosSinSalon} alumno(s) quedaron sin salón: asígnalo en Académico (editar alumno) o
+              importando un Excel con la columna SALÓN, cuando se conozcan los resultados de los exámenes de ubicación.
+            </p>
+          )}
           {resultado.alumnosSinAsignaciones > 0 && (
             <p className="text-[#8a6a14]">
-              {resultado.alumnosSinAsignaciones} alumno(s) quedaron sin docentes: asigna docentes al aula en la
-              pestaña Académico.
+              {resultado.alumnosSinAsignaciones} alumno(s) quedaron sin docentes: se asignan al elegir su salón.
             </p>
           )}
         </div>
@@ -296,59 +272,23 @@ export function MigracionAnioPanel({ token, setErrorMessage }: Props) {
             </details>
           )}
 
-          {pendientesPorGrado.length > 0 && (
-            <div
-              className={`grid gap-2 rounded-[10px] border p-3 ${
-                preview.pendientesSeccion > 0
-                  ? "border-[#9f171b]/30 bg-[#fdf0f0]"
-                  : "border-[#d8a842]/50 bg-[#fdf8ea]"
-              }`}
-            >
-              <p
-                className={`flex items-center gap-2 text-[12px] font-black ${
-                  preview.pendientesSeccion > 0 ? "text-[#9f171b]" : "text-[#8a6a14]"
-                }`}
-              >
-                <AlertTriangle size={14} />
-                {preview.pendientesSeccion > 0
-                  ? `${preview.pendientesSeccion} alumno(s) necesitan que elijas su salón (Letras o Ciencias no se puede deducir)`
-                  : "Salones sugeridos por la escalera académica: revisa si alguno debe ser distinto"}
-              </p>
-              {pendientesPorGrado.map(([grado, items]) => {
-                const comunes = new Set(items.map((i) => i.seccionDestino ?? ""));
-                const valor = comunes.size === 1 ? [...comunes][0] : "";
-                return (
-                  <label key={grado} className="flex flex-wrap items-center gap-2 text-[12px] font-semibold">
-                    {items.length} alumno(s) pasan a {labelGrado(grado)}, salón →
-                    <select
-                      className="admin-input !w-auto"
-                      value={valor}
-                      onChange={(e) => e.target.value && asignarSeccionEnBloque(items, e.target.value)}
-                    >
-                      <option value="">{valor ? "" : "Elegir para todos…"}</option>
-                      {items[0].seccionesPermitidas.map((s) => (
-                        <option key={s} value={s}>
-                          {labelSeccion(s)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                );
-              })}
-            </div>
+          {(preview.alumnosSinSalon ?? 0) > 0 && (
+            <p className="flex items-center gap-2 rounded-[10px] border border-[#d8a842]/50 bg-[#fdf8ea] px-3 py-2 text-[12px] font-black text-[#8a6a14]">
+              <AlertTriangle size={14} /> {preview.alumnosSinSalon} alumno(s) quedarán sin salón.
+            </p>
           )}
 
           <div className="overflow-auto rounded-[10px] border border-[#d8a842]/30">
             <table className="w-full min-w-[520px] text-left text-[12px]">
               <thead className="bg-[#f4ead2] text-[10px] font-black uppercase tracking-[0.1em] text-monserrat-ink/50">
                 <tr>
-                  <th className="px-3 py-2">Grado · salón actual</th>
-                  <th className="px-3 py-2">Grado · salón {preview.anioDestino}</th>
+                  <th className="px-3 py-2">Grado actual</th>
+                  <th className="px-3 py-2">Grado {preview.anioDestino}</th>
                   <th className="px-3 py-2 text-right">Alumnos</th>
                 </tr>
               </thead>
               <tbody>
-                {resumenSalones.map((r) => (
+                {resumenGrados.map((r) => (
                   <tr key={`${r.origen}|${r.destino}|${r.accion}`} className="border-t border-[#d8a842]/15">
                     <td className="px-3 py-2 font-bold text-monserrat-ink">{r.origen}</td>
                     <td className="px-3 py-2">
@@ -368,8 +308,8 @@ export function MigracionAnioPanel({ token, setErrorMessage }: Props) {
           <div className="grid gap-2 rounded-[10px] border border-[#d8a842]/30 p-3">
             <p className="text-[12px] font-black text-monserrat-ink">Ajustes individuales (opcional)</p>
             <p className="text-[11px] font-semibold text-monserrat-ink/50">
-              Todo se calcula automáticamente. Busca a un alumno solo si necesitas una excepción: que repita, que
-              pase a otro salón o que se retire.
+              Todo se calcula automáticamente por grado. Busca a un alumno solo si necesitas una excepción: que repita
+              el grado, que egrese o que se retire.
             </p>
             <input
               className="admin-input"
@@ -384,12 +324,12 @@ export function MigracionAnioPanel({ token, setErrorMessage }: Props) {
               >
                 <span className="min-w-[200px] flex-1 font-bold text-monserrat-ink">
                   {item.nombre}
-                  <span className="ml-2 font-semibold text-monserrat-ink/50">{etiquetaActual(item)}</span>
+                  <span className="ml-2 font-semibold text-monserrat-ink/50">{labelGrado(item.gradoActual)}</span>
                 </span>
                 <select
                   className="admin-input !w-auto"
                   value={item.accion}
-                  onChange={(e) => cambiarDecision(item, { accion: e.target.value as AccionMigracion })}
+                  onChange={(e) => cambiarDecision(item, e.target.value as AccionMigracion)}
                 >
                   {ACCIONES.filter((a) => a.value !== "EGRESAR" || item.gradoActual === "QUINTO_SECUNDARIA").map((a) => (
                     <option key={a.value} value={a.value}>
@@ -400,22 +340,7 @@ export function MigracionAnioPanel({ token, setErrorMessage }: Props) {
                 {item.gradoDestino ? (
                   <span className="inline-flex items-center gap-2">
                     <ArrowRight size={12} className="text-monserrat-ink/40" />
-                    {item.usaGrupo ? (
-                      <select
-                        className={`admin-input !w-auto ${item.requiereSeccion ? "!border-[#9f171b]" : ""}`}
-                        value={item.seccionDestino ?? ""}
-                        onChange={(e) => cambiarDecision(item, { seccion: e.target.value || undefined })}
-                      >
-                        <option value="">Elegir salón…</option>
-                        {item.seccionesPermitidas.map((s) => (
-                          <option key={s} value={s}>
-                            {labelSeccion(s)}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      salonDestino(item)
-                    )}
+                    {labelGrado(item.gradoDestino)}
                   </span>
                 ) : (
                   <span className="text-monserrat-ink/50">
@@ -434,8 +359,8 @@ export function MigracionAnioPanel({ token, setErrorMessage }: Props) {
               <AlertTriangle size={16} className="mt-0.5 shrink-0 text-[#9f171b]" />
               <span>
                 Esta acción es <strong>irreversible</strong>: las notas y asistencias de {preview.anioOrigen} pasan al
-                histórico, se reinician las asignaciones docente-alumno de quienes cambian de aula y los egresados y
-                retirados quedan inactivos. Las matrículas, pensiones y talleres de {preview.anioOrigen} se conservan.
+                histórico, se reinician las asignaciones docente-alumno de quienes cambian de grado y los egresados y
+                retirados quedan inactivos. Los alumnos que pasen a un grado con varios salones quedan sin salón hasta que se los asignes. Las matrículas, pensiones y talleres de {preview.anioOrigen} se conservan.
               </span>
             </p>
             <label className="grid gap-1 text-[11px] font-black uppercase tracking-[0.08em] text-monserrat-ink/50">
@@ -458,7 +383,7 @@ export function MigracionAnioPanel({ token, setErrorMessage }: Props) {
               </button>
               {!preview.puedeEjecutar && (
                 <span className="ml-3 text-[12px] font-semibold text-[#9f171b]">
-                  Elige los salones pendientes para habilitar la migración.
+                  La migración no se puede ejecutar en este momento.
                 </span>
               )}
             </div>

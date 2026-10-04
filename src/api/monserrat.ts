@@ -171,11 +171,11 @@ export const monserratApi = {
     sendJson<UsuarioAcademico>(`/academico/usuarios/${id}`, "PUT", data, token),
   deleteUsuarioAcademico: (id: number, token: string, force = false) =>
     deleteRequest(`/academico/usuarios/${id}${force ? "?force=true" : ""}`, token),
-  createAsignacionAcademica: (data: { docenteDni: string; alumnoDni: string; curso: string; nivelEducativo: string; grado: string; seccion: string; activo?: boolean }, token: string) =>
+  createAsignacionAcademica: (data: { docenteDni: string; alumnoDni: string; curso: string; nivelEducativo: string; grado: string; seccion?: string; activo?: boolean }, token: string) =>
     sendJson<AsignacionAcademica>("/academico/asignaciones", "POST", data, token),
-  createAsignacionAula: (data: { docenteDni: string; curso?: string; nivelEducativo: string; grado: string; seccion: string; activo?: boolean }, token: string) =>
+  createAsignacionAula: (data: { docenteDni: string; curso?: string; nivelEducativo: string; grado: string; seccion?: string; activo?: boolean }, token: string) =>
     sendJson<AsignacionAcademica[]>("/academico/asignaciones/aula", "POST", data, token),
-  updateAsignacionAcademica: (id: number, data: { docenteDni: string; alumnoDni: string; curso: string; nivelEducativo: string; grado: string; seccion: string; activo?: boolean }, token: string) =>
+  updateAsignacionAcademica: (id: number, data: { docenteDni: string; alumnoDni: string; curso: string; nivelEducativo: string; grado: string; seccion?: string; activo?: boolean }, token: string) =>
     sendJson<AsignacionAcademica>(`/academico/asignaciones/${id}`, "PUT", data, token),
   deleteAsignacionAcademica: (id: number, token: string) => deleteRequest(`/academico/asignaciones/${id}`, token),
   perfilAcademico: (token: string) => getJsonAuth<PerfilAcademico>("/academico/me", token),

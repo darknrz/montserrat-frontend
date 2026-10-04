@@ -1,6 +1,7 @@
 import { BookOpen, GraduationCap, School, ShieldCheck, Users } from "lucide-react";
 import { useEffect, useState } from "react";
-import { ConfigPanel, GradosConfigPanel, AdminMetric, CompetenciasPanel } from "./adminComponents";
+import { ConfigPanel, GradosConfigPanel, SalonesConfigPanel, AdminMetric, CompetenciasPanel } from "./adminComponents";
+import { getSalones, useAcademicoRegistry } from "./academicoRegistry";
 import { monserratApi } from "../../../api/monserrat";
 import { useAnioActivo } from "../../../hooks/useAnioActivo";
 import { MigracionAnioPanel } from "./MigracionAnioPanel";
@@ -10,6 +11,7 @@ import {
   type ConfigView,
   type CatalogItem,
   type SalonItem,
+  applyAcademicoConfigToRegistry,
 } from "./adminShared";
 
 type NivelKey = "inicial" | "primaria" | "secundaria";
@@ -50,7 +52,13 @@ export function ConfiguracionTab({
   setStatus,
   setErrorMessage,
 }: ConfiguracionTabProps) {
+  useAcademicoRegistry(); // refresca contadores y nombres cuando cambian grados o salones
   const [configView, setConfigView] = useState<ConfigView>("inicial-cursos");
+  // Publica el cambio en el registro al instante y luego lo guarda en el servidor.
+  const saveOrganizacion = (next: AcademicoConfig) => {
+    applyAcademicoConfigToRegistry(next);
+    saveAcademicoConfig(next);
+  };
   const getCursos = (n: NivelKey): CatalogItem[] => academicoConfig[CURSOS_KEY[n]] ?? [];
   const getCompetencias = (n: NivelKey): CatalogItem[] => academicoConfig[COMPETENCIAS_KEY[n]] ?? [];
   const getGrados = (n: NivelKey): CatalogItem[] => academicoConfig[GRADOS_KEY[n]] ?? [];
@@ -230,7 +238,7 @@ export function ConfiguracionTab({
                 configView === "salones-institucion" ? "bg-white" : "bg-[#f4ead2]"
               }`}
             >
-              {(academicoConfig.nivelesAcademicos ?? []).length}
+              {getSalones().length}
             </span>
           </button>
           <button
@@ -290,14 +298,14 @@ export function ConfiguracionTab({
             <GradosConfigPanel
               title="Grados"
               items={getGrados(vistaActual.nivel)}
-              onChange={(items) => saveAcademicoConfig({ ...academicoConfig, [GRADOS_KEY[vistaActual.nivel]]: items })}
+              onChange={(items) => saveOrganizacion({ ...academicoConfig, [GRADOS_KEY[vistaActual.nivel]]: items })}
             />
           )}
           {configView === "salones-institucion" && (
-            <ConfigPanel
-              title="Salones"
-              items={academicoConfig.nivelesAcademicos ?? []}
-              onChange={(items) => saveAcademicoConfig({ ...academicoConfig, nivelesAcademicos: items })}
+            <SalonesConfigPanel
+              onChange={({ nivelesAcademicos, salonGrados }) =>
+                saveOrganizacion({ ...academicoConfig, nivelesAcademicos, salonGrados })
+              }
             />
           )}
           {configView === "migracion-anio" && rol === "SUPER_ADMIN" && (

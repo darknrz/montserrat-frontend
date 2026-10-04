@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { monserratApi } from "../../../api/monserrat";
 import type { UsuarioAcademico, AsistenciaAcademica, AsignacionAcademica } from "../../../types";
-import { getGruposPorGrado, GRUPO_LABELS, type AcademicoConfig } from "../admin/adminShared";
+import { getGruposPorGrado, type AcademicoConfig } from "../admin/adminShared";
+import { getSalonLabel } from "../admin/academicoRegistry";
 
 const ESTADOS_ASISTENCIA = ["PRESENTE", "AUSENTE"] as const;
 
@@ -249,7 +250,7 @@ export function DocenteAsistencias({ token }: { token: string }) {
                 <span className="text-sm text-monserrat-ink/70">Grupo:</span>
                 <select value={selectedGrupo} onChange={(e) => setSelectedGrupo(e.target.value)} className="admin-input">
                   {gruposDelGrado.map((grupo) => (
-                    <option key={grupo} value={grupo}>{GRUPO_LABELS[grupo] ?? grupo}</option>
+                    <option key={grupo} value={grupo}>{getSalonLabel(grupo) || grupo}</option>
                   ))}
                 </select>
               </label>

@@ -30,6 +30,7 @@ import type {
 import { canAccessAdminGeneral, canAccessPensiones, isAdminRole } from "../../types";
 import { FeedbackModal } from "../ui/FeedbackModal";
 import { MascotaSigue } from "../ui/MascotaSigue";
+import { useAcademicoRegistry } from "./admin/academicoRegistry";
 import { primerNombre, saludo } from "./alumno/kidTheme";
 import {
   ADMIN_TAB_STORAGE_KEY,
@@ -39,6 +40,7 @@ import {
   isAdminTab,
   labelFromEnum,
   mergeAcademicoConfig,
+  applyAcademicoConfigToRegistry,
   type AcademicoConfig,
   type SalonItem,
   type Tab,
@@ -94,6 +96,7 @@ export function AdminSection({
   const [academicoConfig, setAcademicoConfig] = useState<AcademicoConfig>(defaultAcademicoConfig);
 
   const token = session?.token ?? "";
+  useAcademicoRegistry(); // refresca nombres de grados y salones al cambiar la configuración
   const isAdmin = isAdminRole(session?.rol);
   // SUPER_ADMIN: acceso total. ADMIN: todo excepto pensiones. ADMIN_PENSIONES: solo pensiones.
   const canGeneral = canAccessAdminGeneral(session?.rol);
@@ -250,6 +253,7 @@ export function AdminSection({
     ].find((item) => item.id === id)?.label ?? labelFromEnum(id);
 
   const saveAcademicoConfig = (next: AcademicoConfig) => {
+    const previo = academicoConfig; // para revertir si el servidor rechaza el cambio (p. ej. salón en uso)
     setAcademicoConfig(next);
     setErrorMessage(null);
     if (!token) return;
@@ -261,6 +265,8 @@ export function AdminSection({
         )
       )
       .catch((error: unknown) => {
+        setAcademicoConfig(previo);
+        applyAcademicoConfigToRegistry(previo);
         setStatus(
           error instanceof Error ? error.message : "No se pudo guardar la configuracion academica"
         );

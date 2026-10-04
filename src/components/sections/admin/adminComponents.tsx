@@ -1,7 +1,8 @@
 import { Edit3, ImagePlus, Plus, Save, Search, Trash2, Upload, User, UserCheck, UserPlus, BookOpen, Check, GripVertical, X, ChevronUp, ChevronDown } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { createCatalogId, aulaPorGradoSeccion, competenciaConAbreviatura, formatGrado, SALONES, type CatalogItem, type SalonItem } from "./adminShared";
+import { createCatalogId, aulaPorGradoSeccion, competenciaConAbreviatura, formatGrado, GRADOS_INICIAL, GRADOS_PRIMARIA_SOLO, GRADOS_SECUNDARIA, type CatalogItem, type SalonItem } from "./adminShared";
+import { esSalonCanonico, getSalones, useAcademicoRegistry } from "./academicoRegistry";
 
 // Cierra cualquier modal con la tecla Escape. Un solo hook compartido
 // evita repetir el mismo useEffect en cada modal de la app.
@@ -105,7 +106,9 @@ export function RosterPanel({
           >
             <div className="min-w-0 flex-1">
               <p className={`truncate text-[13px] font-black ${selectedId === row.id ? "text-monserrat-ink" : "text-monserrat-ink"}`}>{row.title}</p>
-              <p className={`mt-0.5 truncate text-[11px] font-semibold ${selectedId === row.id ? "text-monserrat-redDark/70" : "text-monserrat-ink/45"}`}>{row.detail}</p>
+              {row.detail && (
+                <p className={`mt-0.5 truncate text-[11px] font-semibold ${selectedId === row.id ? "text-monserrat-redDark/70" : "text-monserrat-ink/45"}`}>{row.detail}</p>
+              )}
             </div>
             {onEdit && row.raw && (
               <button
@@ -126,6 +129,7 @@ export function RosterPanel({
 
 // Panel de grados: los grados son fijos (formato estandar "1ro Prim"), solo se activan/desactivan.
 export function GradosConfigPanel({ title, items, onChange }: { title: string; items: CatalogItem[]; onChange: (items: CatalogItem[]) => void }) {
+  useAcademicoRegistry(); // refresca los nombres cuando cambia la organización académica
   const [localItems, setLocalItems] = useState(items);
 
   useEffect(() => {
@@ -151,8 +155,11 @@ export function GradosConfigPanel({ title, items, onChange }: { title: string; i
   return (
     <div className="overflow-hidden rounded-[12px] border border-[#eadfc4] bg-white">
       <div className="border-b border-[#e3d7b8] bg-[#f4ead2] px-5 py-4">
-        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">Configuracion</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">Configuración</p>
         <h4 className="font-serif text-xl font-black text-monserrat-ink">{title}</h4>
+        <p className="mt-1 text-[11px] font-semibold text-monserrat-ink/50">
+          Cambiar el nombre solo cambia lo que se muestra en el sistema; los datos de los alumnos no se modifican.
+        </p>
       </div>
       <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
         {localItems.map((item) => (
@@ -183,18 +190,286 @@ export function GradosConfigPanel({ title, items, onChange }: { title: string; i
   );
 }
 
-// Salones oficiales de la institucion (lista fija; no confundir con grados).
-export function SalonesOficialesPanel() {
+// ---------------------------------------------------------------------------
+// Salones: organización base de la institución. Un salón agrupa alumnos por nivel académico y puede
+// reunir varios grados. Los ids son fijos (el backend los guarda como grupo del alumno); el admin puede
+// renombrar, activar/desactivar y elegir qué grados admite cada salón.
+// ---------------------------------------------------------------------------
+export type SalonesConfigChange = {
+  nivelesAcademicos: CatalogItem[];
+  salonGrados: Record<string, string[]>;
+};
+
+export function SalonesConfigPanel({ onChange }: { onChange: (next: SalonesConfigChange) => void }) {
+  useAcademicoRegistry();
+  const salones = getSalones();
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [agregando, setAgregando] = useState(false);
+  const [nuevoNombre, setNuevoNombre] = useState("");
+  const [nuevosGrados, setNuevosGrados] = useState<string[]>([]);
+  const [errorNuevo, setErrorNuevo] = useState<string | null>(null);
+  const [eliminarId, setEliminarId] = useState<string | null>(null);
+
+  // Id técnico a partir del nombre: MAYÚSCULAS, sin tildes, solo A-Z0-9_, 2–40 caracteres y único.
+  const generarId = (nombre: string): string => {
+    const base = nombre
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 36);
+    const raiz = base.length >= 2 ? base : `SALON_${base || "NUEVO"}`;
+    const usados = new Set(salones.map((x) => x.id));
+    let id = raiz;
+    for (let n = 2; usados.has(id); n++) id = `${raiz}_${n}`;
+    return id;
+  };
+
+  const cancelarNuevo = () => {
+    setAgregando(false);
+    setNuevoNombre("");
+    setNuevosGrados([]);
+    setErrorNuevo(null);
+  };
+
+  const agregarSalon = () => {
+    const nombre = nuevoNombre.trim();
+    if (!nombre) return setErrorNuevo("Escribe el nombre del salón.");
+    if (nuevosGrados.length === 0) return setErrorNuevo("Elige al menos un grado que admita este salón.");
+    if (salones.some((x) => x.label.trim().toLowerCase() === nombre.toLowerCase())) {
+      return setErrorNuevo("Ya existe un salón con ese nombre.");
+    }
+    const id = generarId(nombre);
+    const next = [...salones, { id, label: nombre, active: true, grados: [...nuevosGrados] }];
+    onChange({
+      nivelesAcademicos: next.map((x) => ({ id: x.id, label: x.label, active: x.active })),
+      salonGrados: Object.fromEntries(next.map((x) => [x.id, x.grados])),
+    });
+    cancelarNuevo();
+  };
+
+  const eliminarSalon = (id: string) => {
+    const next = salones.filter((x) => x.id !== id);
+    onChange({
+      nivelesAcademicos: next.map((x) => ({ id: x.id, label: x.label, active: x.active })),
+      salonGrados: Object.fromEntries(next.map((x) => [x.id, x.grados])),
+    });
+    setEliminarId(null);
+  };
+
+  // Sincroniza los borradores de nombre con lo guardado.
+  useEffect(() => {
+    setDrafts(Object.fromEntries(salones.map((salon) => [salon.id, salon.label])));
+  }, [salones]);
+
+  const build = (patch: (salon: (typeof salones)[number]) => Partial<(typeof salones)[number]>): SalonesConfigChange => {
+    const next = salones.map((salon) => ({ ...salon, ...patch(salon) }));
+    return {
+      nivelesAcademicos: next.map((salon) => ({ id: salon.id, label: salon.label, active: salon.active })),
+      salonGrados: Object.fromEntries(next.map((salon) => [salon.id, salon.grados])),
+    };
+  };
+
+  const commitLabel = (id: string) => {
+    const original = salones.find((salon) => salon.id === id);
+    const draft = (drafts[id] ?? "").trim();
+    if (!original) return;
+    if (!draft) {
+      setDrafts((prev) => ({ ...prev, [id]: original.label }));
+      return;
+    }
+    if (draft === original.label) return;
+    onChange(build((salon) => (salon.id === id ? { label: draft } : {})));
+  };
+
+  const toggleActive = (id: string) =>
+    onChange(build((salon) => (salon.id === id ? { active: !salon.active } : {})));
+
+  const toggleGrado = (id: string, grado: string) =>
+    onChange(
+      build((salon) => {
+        if (salon.id !== id) return {};
+        const tiene = salon.grados.includes(grado);
+        if (tiene && salon.grados.length === 1) return {}; // un salón necesita al menos un grado
+        return { grados: tiene ? salon.grados.filter((g) => g !== grado) : [...salon.grados, grado] };
+      })
+    );
+
+  const niveles: { titulo: string; grados: readonly string[] }[] = [
+    { titulo: "Inicial", grados: GRADOS_INICIAL },
+    { titulo: "Primaria", grados: GRADOS_PRIMARIA_SOLO },
+    { titulo: "Secundaria", grados: GRADOS_SECUNDARIA },
+  ];
+
   return (
     <div className="overflow-hidden rounded-[12px] border border-[#eadfc4] bg-white">
-      <div className="border-b border-[#e3d7b8] bg-[#f4ead2] px-5 py-4">
-        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">Configuracion</p>
-        <h4 className="font-serif text-xl font-black text-monserrat-ink">Salones</h4>
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#e3d7b8] bg-[#f4ead2] px-5 py-4">
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-monserrat-ink/40">Configuración</p>
+          <h4 className="font-serif text-xl font-black text-monserrat-ink">Salones</h4>
+          <p className="mt-1 text-[11px] font-semibold text-monserrat-ink/50">
+            Un salón agrupa alumnos por nivel académico y puede reunir varios grados. Renombrar solo cambia el nombre que se
+            muestra en el sistema; los datos de alumnos y asignaciones no se modifican. Los salones tipo grupo (Ciclado,
+            Anual, Letras, Ciencias y los que agregues) se asignan a cada alumno en Académico; los grados que tienen varios
+            salones muestran un desplegable, y los que tienen uno solo lo asignan automáticamente.
+          </p>
+        </div>
+        {!agregando && (
+          <button type="button" onClick={() => setAgregando(true)} className="pro-btn-soft inline-flex items-center gap-1.5">
+            <Plus size={14} /> Agregar salón
+          </button>
+        )}
       </div>
-      <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
-        {SALONES.map((salon) => (
-          <div key={salon} className="rounded-[12px] border border-[#e3d7b8] bg-white p-4">
-            <p className="text-sm font-black uppercase text-monserrat-ink">{salon}</p>
+
+      {agregando && (
+        <div className="border-b border-[#e3d7b8] bg-[#fffaf0] p-4">
+          <p className="text-[11px] font-black uppercase tracking-[0.1em] text-monserrat-ink/55">Nuevo salón</p>
+          <div className="mt-2 grid gap-3 lg:grid-cols-[minmax(0,320px)_1fr]">
+            <div>
+              <input
+                value={nuevoNombre}
+                maxLength={60}
+                autoFocus
+                onChange={(e) => {
+                  setNuevoNombre(e.target.value);
+                  setErrorNuevo(null);
+                }}
+                placeholder="Nombre del salón (ej. REFORZAMIENTO)"
+                aria-label="Nombre del nuevo salón"
+                className="w-full rounded-[9px] border border-[#eadfc4] bg-white px-3 py-2 text-base font-black text-monserrat-ink outline-none focus:border-monserrat-red/50"
+              />
+              <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-monserrat-ink/40">
+                ID: {nuevoNombre.trim() ? generarId(nuevoNombre) : "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.1em] text-monserrat-ink/45">Grados que admite</p>
+              <div className="mt-1.5 grid gap-1.5">
+                {niveles.map((nivel) => (
+                  <div key={nivel.titulo} className="flex flex-wrap items-center gap-1.5">
+                    <span className="w-[74px] shrink-0 text-[10px] font-bold text-monserrat-ink/40">{nivel.titulo}</span>
+                    {nivel.grados.map((grado) => {
+                      const activo = nuevosGrados.includes(grado);
+                      return (
+                        <button
+                          key={grado}
+                          type="button"
+                          aria-pressed={activo}
+                          onClick={() => {
+                            setNuevosGrados((prev) => (prev.includes(grado) ? prev.filter((g) => g !== grado) : [...prev, grado]));
+                            setErrorNuevo(null);
+                          }}
+                          className={`rounded-full border px-2.5 py-1 text-[11px] font-black transition ${
+                            activo
+                              ? "border-monserrat-red bg-monserrat-red text-white"
+                              : "border-[#e3d7b8] bg-[#fffdf8] text-monserrat-ink/55 hover:border-monserrat-red/40"
+                          }`}
+                        >
+                          {formatGrado(grado)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          {errorNuevo && <p className="mt-2 text-[12px] font-bold text-red-700">{errorNuevo}</p>}
+          <div className="mt-3 flex gap-2">
+            <button type="button" onClick={agregarSalon} className="pro-btn inline-flex items-center gap-1.5">
+              <Plus size={14} /> Guardar salón
+            </button>
+            <button type="button" onClick={cancelarNuevo} className="pro-btn-soft">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="grid gap-3 p-4 lg:grid-cols-2">
+        {salones.map((salon) => (
+          <div
+            key={salon.id}
+            className={`rounded-[12px] border p-4 transition ${salon.active ? "border-[#e3d7b8] bg-white" : "border-[#e3d7b8] bg-[#f3ecda] opacity-70"}`}
+          >
+            <div className="flex items-start gap-2">
+              <div className="min-w-0 flex-1">
+                <input
+                  value={drafts[salon.id] ?? salon.label}
+                  maxLength={60}
+                  onChange={(e) => setDrafts((prev) => ({ ...prev, [salon.id]: e.target.value }))}
+                  onBlur={() => commitLabel(salon.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                  }}
+                  aria-label={`Nombre del salón ${salon.label}`}
+                  className="w-full rounded-[9px] border border-[#eadfc4] bg-white px-3 py-2 text-base font-black text-monserrat-ink outline-none focus:border-monserrat-red/50"
+                />
+                <p className="mt-1 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-monserrat-ink/40">
+                  <span>ID: {salon.id}</span>
+                  {!esSalonCanonico(salon.id) && (
+                    <>
+                      <span className="rounded-full bg-[#fbf0d6] px-2 py-0.5 text-[9px] font-black text-[#8a6a14]">Personalizado</span>
+                      <button
+                        type="button"
+                        onClick={() => setEliminarId(salon.id)}
+                        className="inline-flex items-center gap-1 text-[10px] font-black text-red-600 hover:underline"
+                      >
+                        <Trash2 size={11} /> Eliminar
+                      </button>
+                    </>
+                  )}
+                </p>
+                {eliminarId === salon.id && (
+                  <div className="mt-2 rounded-[9px] border border-red-200 bg-red-50 p-2.5 text-[11px] font-semibold normal-case tracking-normal text-red-800">
+                    ¿Eliminar el salón «{salon.label}»? Si algún alumno o asignación lo usa, el sistema no lo permitirá.
+                    <div className="mt-2 flex gap-2">
+                      <button type="button" onClick={() => eliminarSalon(salon.id)} className="rounded-[8px] bg-red-600 px-3 py-1 text-[11px] font-black text-white">
+                        Sí, eliminar
+                      </button>
+                      <button type="button" onClick={() => setEliminarId(null)} className="rounded-[8px] border border-red-200 bg-white px-3 py-1 text-[11px] font-black text-red-700">
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => toggleActive(salon.id)}
+                className={`shrink-0 rounded-[9px] border px-3 py-2 text-[11px] font-black ${salon.active ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-[#eadfc4] bg-black/[0.035] text-monserrat-ink/55"}`}
+              >
+                {salon.active ? "Activo" : "Inactivo"}
+              </button>
+            </div>
+
+            <p className="mt-3 text-[10px] font-black uppercase tracking-[0.1em] text-monserrat-ink/45">Grados que admite</p>
+            <div className="mt-1.5 grid gap-1.5">
+              {niveles.map((nivel) => (
+                <div key={nivel.titulo} className="flex flex-wrap items-center gap-1.5">
+                  <span className="w-[74px] shrink-0 text-[10px] font-bold text-monserrat-ink/40">{nivel.titulo}</span>
+                  {nivel.grados.map((grado) => {
+                    const activo = salon.grados.includes(grado);
+                    return (
+                      <button
+                        key={grado}
+                        type="button"
+                        onClick={() => toggleGrado(salon.id, grado)}
+                        aria-pressed={activo}
+                        className={`rounded-full border px-2.5 py-1 text-[11px] font-black transition ${
+                          activo
+                            ? "border-monserrat-red bg-monserrat-red text-white"
+                            : "border-[#e3d7b8] bg-[#fffdf8] text-monserrat-ink/55 hover:border-monserrat-red/40"
+                        }`}
+                      >
+                        {formatGrado(grado)}
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
           </div>
         ))}
       </div>

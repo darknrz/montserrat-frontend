@@ -3,7 +3,8 @@ import { getAnioActivoCache } from "../../../hooks/useAnioActivo";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { NotaAcademica, UsuarioAcademico } from "../../../types";
 import { monserratApi } from "../../../api/monserrat";
-import { GRADOS_INICIAL, GRADOS_PRIMARIA_SOLO, GRADOS_SECUNDARIA, SALONES, formatGrado, formatSalon, type AcademicoConfig } from "./adminShared";
+import { getSalonLabels, formatGrado, formatSalon, type AcademicoConfig } from "./adminShared";
+import { getGradosActivos } from "./academicoRegistry";
 
 type ReportType = "individual" | "porGrado" | "porNivelAcademico" | "porNivelEducativo" | "general";
 
@@ -173,7 +174,7 @@ export function ReportesTab({
   );
 
   // Todos los grados en formato estandar (Inicial, 1ro Prim ... 5to Sec).
-  const gradosUnicos: string[] = [...GRADOS_INICIAL, ...GRADOS_PRIMARIA_SOLO, ...GRADOS_SECUNDARIA];
+  const gradosUnicos: string[] = getGradosActivos();
 
   const nivelesEducativos = [
     { id: "INICIAL", label: "Inicial" },
@@ -188,7 +189,7 @@ export function ReportesTab({
   };
 
   // "Salón" (antes "Nivel académico"): lista oficial de salones; Ciencias y Letras van separados.
-  const salonesConfigurados = SALONES.map((salon) => ({ id: salon as string, label: salon as string }));
+  const salonesConfigurados = getSalonLabels().map((salon) => ({ id: salon, label: salon }));
   const salonDeAlumno = (a: UsuarioAcademico) => formatSalon(a.grado, a.seccion);
 
   const getAlumnosFiltrados = () => {

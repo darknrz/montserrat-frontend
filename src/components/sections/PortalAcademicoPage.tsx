@@ -14,6 +14,8 @@ import AlumnoAsistencias from "./alumno/AlumnoAsistencias";
 import AlumnoNotas from "./alumno/AlumnoNotas";
 import AlumnoPensionDetalle from "./alumno/AlumnoPensionDetalle";
 import { primerNombre, saludo } from "./alumno/kidTheme";
+import { applyAcademicoConfigToRegistry, type AcademicoConfig } from "./admin/adminShared";
+import { useAcademicoRegistry } from "./admin/academicoRegistry";
 
 type Tab = "perfil" | "cursos" | "asistencia" | "notas" | "pension";
 
@@ -46,6 +48,15 @@ export function PortalAcademicoPage() {
   const [newPassword, setNewPassword] = useState("");
 
   const token = session?.token ?? "";
+  // Refresca los nombres de grados y salones cuando cambia la configuración (registro académico).
+  useAcademicoRegistry();
+  useEffect(() => {
+    if (!token) return;
+    monserratApi
+      .academicoConfiguracion<AcademicoConfig>(token)
+      .then((config) => applyAcademicoConfigToRegistry(config))
+      .catch(() => undefined); // si falla se usan los nombres por defecto
+  }, [token]);
   const isDocente = session?.rol === "DOCENTE";
   const isAlumno = session?.rol === "ALUMNO";
   const kid = isAlumno || isDocente; // mismo estilo amigable para alumno y docente

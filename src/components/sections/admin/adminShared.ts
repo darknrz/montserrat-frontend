@@ -1,3 +1,15 @@
+import {
+  DEFAULT_SALONES,
+  esSalonGrupo,
+  getSalon,
+  getGradoLabel,
+  getGradosDeSalon,
+  getGruposDeGrado,
+  getSalonLabelDeAlumno,
+  getSalones,
+  setAcademicoRegistry,
+  type SalonConfig,
+} from "./academicoRegistry";
 export const TIPOS_SELECCION = ["Ordinario", "Primera Selección", "Ingreso Especial"] as const;
 export type TipoSeleccion = typeof TIPOS_SELECCION[number];
 
@@ -81,6 +93,8 @@ export type AcademicoConfig = {
   minAsistenciaPorcentaje?: number;
   ingresantesModelo?: string;
   nivelesAcademicos?: CatalogItem[];
+  /** Para cada salón (id de nivelesAcademicos), los ids de grado que admite. */
+  salonGrados?: Record<string, string[]>;
 };
 
 // ---------------------------------------------------------------------------
@@ -527,18 +541,8 @@ export const defaultAcademicoConfig: AcademicoConfig = {
     .flatMap(({ nivel, grado }) => SECCIONES.map((seccion) => ({ nivel, grado, seccion, aula: aulaPorGradoSeccion(nivel, grado, seccion), active: true }))),
   minAsistenciaPorcentaje: 70,
   ingresantesModelo: "card-grid",
-  nivelesAcademicos: [
-    { id: "1RO_PRIM", label: "1ro prim", active: true },
-    { id: "2DO_PRIM", label: "2do prim", active: true },
-    { id: "3RO_PRIM", label: "3ro prim", active: true },
-    { id: "4TO_PRIM", label: "4to prim", active: true },
-    { id: "PREFORMATIVO", label: "preformativo", active: true },
-    { id: "CICLADO_I", label: "Ciclado I", active: true },
-    { id: "CICLADO_II", label: "Ciclado II", active: true },
-    { id: "ANUAL", label: "anual", active: true },
-    { id: "LETRAS", label: "Letras", active: true },
-    { id: "CIENCIAS", label: "Ciencias", active: true }
-  ]
+  nivelesAcademicos: DEFAULT_SALONES.map((salon) => ({ id: salon.id, label: salon.label, active: salon.active })),
+  salonGrados: Object.fromEntries(DEFAULT_SALONES.map((salon) => [salon.id, [...salon.grados]]))
 };
 
 // available templates for ingresantes
@@ -599,7 +603,7 @@ export function mergeAcademicoConfig(config: Partial<AcademicoConfig>) {
 
   if (!hasSavedConfig) return defaultAcademicoConfig;
 
-  return {
+  const merged = {
     cursosPrimaria: config.cursosPrimaria ?? legacy.cursos ?? defaultAcademicoConfig.cursosPrimaria,
     competenciasPrimaria: config.competenciasPrimaria ?? defaultAcademicoConfig.competenciasPrimaria,
     competenciasPorCursoPrimaria: config.competenciasPorCursoPrimaria ?? defaultAcademicoConfig.competenciasPorCursoPrimaria,
@@ -626,8 +630,30 @@ export function mergeAcademicoConfig(config: Partial<AcademicoConfig>) {
     ],
     minAsistenciaPorcentaje: config.minAsistenciaPorcentaje ?? defaultAcademicoConfig.minAsistenciaPorcentaje,
     ingresantesModelo: (config as any).ingresantesModelo ?? defaultAcademicoConfig.ingresantesModelo,
-    nivelesAcademicos: config.nivelesAcademicos ?? defaultAcademicoConfig.nivelesAcademicos
-  };
+    nivelesAcademicos: config.nivelesAcademicos ?? defaultAcademicoConfig.nivelesAcademicos,
+    salonGrados: config.salonGrados ?? defaultAcademicoConfig.salonGrados
+  } as AcademicoConfig;
+  applyAcademicoConfigToRegistry(merged);
+  return merged;
+}
+
+/**
+ * Publica en el registro (fuente única de nombres y organización) lo que dice la configuración:
+ * nombres de grados, nombres de salones y qué grados admite cada salón. Llamar cada vez que se carga
+ * o se guarda la configuración, en cualquier portal.
+ */
+export function applyAcademicoConfigToRegistry(config: Partial<AcademicoConfig> | null | undefined) {
+  if (!config) return;
+  const grados = [...(config.gradosInicial ?? []), ...(config.gradosPrimaria ?? []), ...(config.gradosSecundaria ?? [])]
+    .map((g) => ({ id: g.id, label: g.label, active: g.active }));
+  const gradosPorSalon = config.salonGrados ?? {};
+  const salones: SalonConfig[] = (config.nivelesAcademicos ?? []).map((item) => ({
+    id: item.id,
+    label: item.label,
+    active: item.active !== false,
+    grados: Array.isArray(gradosPorSalon[item.id]) ? gradosPorSalon[item.id] : [],
+  }));
+  setAcademicoRegistry({ grados, salones });
 }
 
 export function isAdminTab(value: string | null): value is Tab {
@@ -750,6 +776,9 @@ export function parseBooleanCell(value: unknown) {
 export function getGradosPorNivelAcademico(nivelAcademicoId: string): string[] {
   if (!nivelAcademicoId) return [];
   const cleanId = nivelAcademicoId.toUpperCase().replace(/[^A-Z0-9_]/g, "_");
+  // Primero lo configurado (Configuración → Salones); abajo quedan los ids antiguos (CICLADO, LETRAS_CIENCIAS).
+  const configurados = getGradosDeSalon(cleanId);
+  if (configurados.length > 0) return [...configurados];
   if (cleanId === "PRIMARIA") return [...GRADOS_PRIMARIA_SOLO];
   if (cleanId === "SECUNDARIA") return [...GRADOS_SECUNDARIA];
   if (cleanId.includes("INICIAL")) return ["INICIAL"];
@@ -788,10 +817,13 @@ export const GRUPO_LABELS: Record<string, string> = {
 
 export function getGruposPorGrado(grado: string | undefined | null): string[] {
   if (!grado) return [];
-  return GRUPOS_POR_GRADO[grado] ?? [];
+  return getGruposDeGrado(grado);
 }
 
 export function normalizeGrupo(value: unknown): string {
+  // Id exacto de un salón tipo grupo del registro (incluye los que el admin agregó, aunque lleven dígitos).
+  const idExacto = String(value ?? "").trim().toUpperCase();
+  if (idExacto && esSalonGrupo(idExacto) && getSalon(idExacto)) return idExacto;
   const normalized = String(value ?? "")
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
@@ -800,6 +832,12 @@ export function normalizeGrupo(value: unknown): string {
     .replace(/[^A-Z]+/g, "_")
     .replace(/^_+|_+$/g, "");
   if (!normalized || normalized === "VACIO") return "";
+  // Primero los nombres configurados (un salón renombrado en Configuración también se reconoce al importar).
+  const compacto = (v: string) => v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase().replace(/[^A-Z]+/g, "_").replace(/^_+|_+$/g, "");
+  for (const salon of getSalones()) {
+    if (!esSalonGrupo(salon.id)) continue;
+    if (compacto(salon.label) === normalized || compacto(salon.id) === normalized) return salon.id;
+  }
   if (normalized.includes("CICLADO") && normalized.includes("II")) return "CICLADO_II";
   if (normalized.includes("CICLADO")) return "CICLADO_I";
   if (normalized.includes("LETRAS")) return "LETRAS";
@@ -825,8 +863,7 @@ export const GRADO_SHORT_LABELS: Record<string, string> = {
 
 export function formatGrado(grado?: string | null): string {
   if (!grado) return "";
-  const key = String(grado).toUpperCase();
-  return GRADO_SHORT_LABELS[key] ?? labelFromEnum(String(grado));
+  return getGradoLabel(grado) || labelFromEnum(String(grado));
 }
 
 // Salones oficiales (en este orden).
@@ -839,19 +876,15 @@ const GRUPO_SALON_LABELS: Record<string, string> = {
   CICLADO_I: "CICLADO I", CICLADO_II: "CICLADO II", ANUAL: "ANUAL", LETRAS: "LETRAS", CIENCIAS: "CIENCIAS"
 };
 
-// Salón de un alumno a partir de su grado y grupo (grupo = CICLADO_I, ANUAL, ...).
+// Salón de un alumno a partir de su grado y grupo (grupo = CICLADO_I, ANUAL, ...), con el nombre
+// configurado en Configuración → Salones.
 export function formatSalon(grado?: string | null, grupo?: string | null): string {
-  const g = normalizeGrupo(grupo);
-  if (g) return GRUPO_SALON_LABELS[g];
-  switch (String(grado ?? "").toUpperCase()) {
-    case "INICIAL": return "INICIAL";
-    case "PRIMERO_PRIMARIA": return "PRIMERO PRIMARIA";
-    case "SEGUNDO_PRIMARIA": return "SEGUNDO PRIMARIA";
-    case "TERCERO_PRIMARIA": return "TERCERO PRIMARIA";
-    case "CUARTO_PRIMARIA": return "CUARTO PRIMARIA";
-    case "QUINTO_PRIMARIA": return "PRE FORMATIVO";
-    default: return "";
-  }
+  return getSalonLabelDeAlumno(grado, normalizeGrupo(grupo));
+}
+
+/** Nombres de los salones activos, en orden de la escalera (para filtros y listas). */
+export function getSalonLabels(): string[] {
+  return getSalones().filter((s) => s.active).map((s) => s.label);
 }
 
 // Nombres de personas siempre en mayúsculas (APELLIDOS NOMBRES).

@@ -1,9 +1,11 @@
 import { CheckCircle2, Pencil, Plus, Trash2, X, XCircle } from "lucide-react";
+import { DEFAULT_SALONES, getSalonIdDeAlumno, getSalonLabel, getSalones } from "./academicoRegistry";
 import { useAnioActivo } from "../../../hooks/useAnioActivo";
 import { useEffect, useMemo, useState } from "react";
 import { monserratApi } from "../../../api/monserrat";
 import type { Taller, TallerCatalogo, UsuarioAcademico } from "../../../types";
-import { GRADOS_PRIMARIA, GRADOS_SECUNDARIA, SALONES, formatGrado, formatSalon } from "./adminShared";
+import { formatGrado, formatSalon } from "./adminShared";
+import { getGradosActivos } from "./academicoRegistry";
 
 type TalleresTabProps = {
   usuariosAcademicos: UsuarioAcademico[];
@@ -12,10 +14,35 @@ type TalleresTabProps = {
   labelAcademico: (id: string) => string;
 };
 
-// Destinos a los que se puede aplicar un taller: salones (CICLADO I, ...) o grados completos.
-const tokenSalon = (salon: string) => `SALON:${salon}`;
+// Destinos a los que se puede aplicar un taller: salones o grados completos.
+// El salón se guarda por su ID (SALONID:CICLADO_I) para que sobreviva a un cambio de nombre. Los talleres
+// antiguos guardaron la etiqueta (SALON:CICLADO I): se siguen leyendo y se convierten al editar.
+const tokenSalon = (salonId: string) => `SALONID:${salonId}`;
 const tokenGrado = (grado: string) => `GRADO:${grado}`;
-const ALL_GRADOS: string[] = [...GRADOS_PRIMARIA, ...GRADOS_SECUNDARIA];
+
+/** Id del salón al que apunta un token de destino (nuevo o antiguo), o "" si no es de salón. */
+function salonIdDeToken(token: string): string {
+  if (token.startsWith("SALONID:")) return token.slice(8);
+  if (!token.startsWith("SALON:")) return "";
+  const etiqueta = token.slice(6).trim().toUpperCase();
+  const encontrado = getSalones().find((x) => x.label.trim().toUpperCase() === etiqueta)
+    ?? DEFAULT_SALONES.find((x) => x.label.trim().toUpperCase() === etiqueta);
+  return encontrado?.id ?? "";
+}
+
+/** Convierte los tokens antiguos de salón (por etiqueta) a tokens por id; deja el resto igual. */
+const normalizarDestinos = (destinos: string[]): string[] =>
+  Array.from(new Set(destinos.map((d) => {
+    const id = d.startsWith("SALON:") ? salonIdDeToken(d) : "";
+    return id ? tokenSalon(id) : d;
+  })));
+
+/** Texto de un destino para mostrar (usa los nombres actuales de grados y salones). */
+function etiquetaDeDestino(token: string): string {
+  if (token.startsWith("GRADO:")) return formatGrado(token.slice(6));
+  const id = salonIdDeToken(token);
+  return id ? getSalonLabel(id) || id : token.replace(/^SALON(ID)?:/, "");
+}
 const nivelDe = (a: UsuarioAcademico) => (a.grado === "INICIAL" ? "INICIAL" : a.nivelEducativo ?? "");
 
 const clampMonto = (raw: string) => {
@@ -77,8 +104,8 @@ export function TalleresTab({ usuariosAcademicos, token, setErrorMessage }: Tall
 
   const aplicaA = (taller: TallerCatalogo, alumno: UsuarioAcademico) => {
     if (registroPor.has(`${alumno.dni}|${taller.id}`)) return true;
-    const salon = formatSalon(alumno.grado, alumno.seccion);
-    if (salon && taller.aplicaA.includes(tokenSalon(salon))) return true;
+    const salonId = getSalonIdDeAlumno(alumno.grado, alumno.seccion);
+    if (salonId && taller.aplicaA.some((d) => salonIdDeToken(d) === salonId)) return true;
     return Boolean(alumno.grado && taller.aplicaA.includes(tokenGrado(alumno.grado)));
   };
 
@@ -93,12 +120,12 @@ export function TalleresTab({ usuariosAcademicos, token, setErrorMessage }: Tall
       }
       if (nivelFiltro && nivelDe(a) !== nivelFiltro) return false;
       if (gradoFiltro && a.grado !== gradoFiltro) return false;
-      if (salonFiltro && formatSalon(a.grado, a.seccion) !== salonFiltro) return false;
+      if (salonFiltro && getSalonIdDeAlumno(a.grado, a.seccion) !== salonFiltro) return false;
       return true;
     });
   }, [alumnos, search, nivelFiltro, gradoFiltro, salonFiltro]);
 
-  const gradosOpciones = ALL_GRADOS.filter((g) => {
+  const gradosOpciones = getGradosActivos().filter((g) => {
     if (!nivelFiltro) return true;
     if (nivelFiltro === "INICIAL") return g === "INICIAL";
     if (nivelFiltro === "PRIMARIA") return g.endsWith("_PRIMARIA");
@@ -133,7 +160,7 @@ export function TalleresTab({ usuariosAcademicos, token, setErrorMessage }: Tall
     setEditandoId(t.id);
     setNombre(t.nombre);
     setMonto(String(t.monto));
-    setDestinos(t.aplicaA);
+    setDestinos(normalizarDestinos(t.aplicaA));
     setFormAbierto(true);
   };
 
@@ -253,20 +280,20 @@ export function TalleresTab({ usuariosAcademicos, token, setErrorMessage }: Tall
             <div>
               <p className="text-[10px] font-black uppercase tracking-wide text-monserrat-ink/40">Salones que llevan este taller</p>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {SALONES.map((s) => {
-                  const activo = destinos.includes(tokenSalon(s));
+                {getSalones().filter((x) => x.active).map((salon) => {
+                  const activo = destinos.includes(tokenSalon(salon.id));
                   return (
                     <button
-                      key={s}
+                      key={salon.id}
                       type="button"
-                      onClick={() => toggleDestino(tokenSalon(s))}
+                      onClick={() => toggleDestino(tokenSalon(salon.id))}
                       className={`rounded-full border px-3 py-1 text-[11px] font-black transition ${
                         activo
                           ? "border-monserrat-red/30 bg-monserrat-red text-white"
                           : "border-[#d8a842]/35 bg-white text-monserrat-ink/50 hover:bg-monserrat-cream/40"
                       }`}
                     >
-                      {s}
+                      {salon.label}
                     </button>
                   );
                 })}
@@ -275,7 +302,7 @@ export function TalleresTab({ usuariosAcademicos, token, setErrorMessage }: Tall
                 O grados completos
               </p>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {ALL_GRADOS.map((g) => {
+                {getGradosActivos().map((g) => {
                   const activo = destinos.includes(tokenGrado(g));
                   return (
                     <button
@@ -319,7 +346,7 @@ export function TalleresTab({ usuariosAcademicos, token, setErrorMessage }: Tall
                   <p className="max-w-[260px] text-[10px] font-semibold text-monserrat-ink/40">
                     {t.aplicaA.length === 0
                       ? "Sin salones asignados"
-                      : t.aplicaA.map((d) => (d.startsWith("GRADO:") ? formatGrado(d.slice(6)) : d.slice(6))).join(", ")}
+                      : t.aplicaA.map(etiquetaDeDestino).join(", ")}
                   </p>
                 </div>
                 <button type="button" onClick={() => editar(t)} aria-label="Editar taller" className="text-monserrat-ink/35 hover:text-monserrat-ink">
@@ -366,9 +393,9 @@ export function TalleresTab({ usuariosAcademicos, token, setErrorMessage }: Tall
           </select>
           <select value={salonFiltro} onChange={(e) => setSalonFiltro(e.target.value)} className="admin-input">
             <option value="">Todos los salones</option>
-            {SALONES.map((s) => (
-              <option key={s} value={s}>
-                {s}
+            {getSalones().filter((x) => x.active).map((salon) => (
+              <option key={salon.id} value={salon.id}>
+                {salon.label}
               </option>
             ))}
           </select>

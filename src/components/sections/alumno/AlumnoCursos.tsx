@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { formatGrado, formatSalon } from "../admin/adminShared";
 import { BookOpen, GraduationCap, Layers, UserRound, Users2 } from "lucide-react";
 import { monserratApi } from "../../../api/monserrat";
 import type { AsignacionAcademica } from "../../../types";
@@ -65,8 +66,8 @@ export function AlumnoCursos({ token }: { token: string }) {
     if (!asignaciones.length) return null;
     const { grado, seccion, nivelEducativo } = asignaciones[0];
     return {
-      grado: grado ? labelFromEnum(grado.replace(/_PRIMARIA|_SECUNDARIA/g, "")) : "-",
-      seccion: seccion || "-",
+      grado: formatGrado(grado) || "-",
+      seccion: formatSalon(grado, seccion) || "-",
       nivel: nivelEducativo ? labelFromEnum(nivelEducativo) : "-"
     };
   }, [asignaciones]);
@@ -87,7 +88,7 @@ export function AlumnoCursos({ token }: { token: string }) {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <InfoChip index={0} icon={<GraduationCap size={26} />} label="Nivel" value={grupo?.nivel ?? "Sin datos"} />
         <InfoChip index={1} icon={<Layers size={26} />} label="Grado" value={grupo?.grado ?? "Sin datos"} />
-        <InfoChip index={2} icon={<Users2 size={26} />} label="Sección" value={grupo?.seccion ?? "Sin datos"} />
+        <InfoChip index={2} icon={<Users2 size={26} />} label="Salón" value={grupo?.seccion ?? "Sin datos"} />
         <InfoChip index={3} icon={<BookOpen size={26} />} label="Cursos" value={String(cursos.length)} />
       </div>
 

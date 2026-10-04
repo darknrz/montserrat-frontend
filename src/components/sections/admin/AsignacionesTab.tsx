@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { getSalonLabel } from "./academicoRegistry";
 import type { FormEvent } from "react";
 import { Plus } from "lucide-react";
 import { monserratApi } from "../../../api/monserrat";
@@ -21,7 +22,6 @@ import {
   formatSalon,
   type AcademicoConfig,
   getGruposPorGrado,
-  GRUPO_LABELS,
   normalizeDocentesPorCompetencia,
 } from "./adminShared";
 
@@ -47,18 +47,11 @@ const emptyAsignacion = {
   curso: "MATEMATICA",
   nivelEducativo: "PRIMARIA",
   grado: "PRIMERO_PRIMARIA",
-  seccion: "A",
+  seccion: undefined as string | undefined, // sin grupo: el salón es el propio grado
   activo: true,
 };
 
 const asignacionesPanelBodyClass = "max-h-[calc(100vh-220px)]";
-
-// Salón(es) del grado en formato estándar: grupos (Ciclado, Anual, Letras...) o el salón propio del grado.
-function detalleSalonGrado(gradoId: string): string {
-  const grupos = getGruposPorGrado(gradoId);
-  if (grupos.length > 0) return grupos.map((g) => GRUPO_LABELS[g] ?? g).join(" · ");
-  return formatSalon(gradoId, null) || "—";
-}
 
 export function AsignacionesTab({
   usuariosAcademicos,
@@ -100,6 +93,24 @@ export function AsignacionesTab({
     }
   }, [gruposDelGradoActual, grupoSeleccionado]);
 
+  // La sección del formulario es el salón elegido (grupo) o ninguna si el grado no tiene grupos.
+  // Columna SALÓN: los grupos del grado (Ciclado, Anual, Letras…) o, si el grado no tiene grupos, su salón propio
+  // (ej. 1ro Prim → PRIMERO PRIMARIA). Solo muestra el nombre del salón.
+  const salonPropioActual = formatSalon(asignacionAcademicaForm.grado, null);
+  const mostrarPanelSalon = gruposDelGradoActual.length > 0 || Boolean(salonPropioActual);
+  const filasSalon =
+    gruposDelGradoActual.length > 0
+      ? gruposDelGradoActual.map((g) => ({ id: g, title: getSalonLabel(g) || g, detail: "", raw: g }))
+      : [{ id: "__PROPIO__", title: salonPropioActual, detail: "", raw: undefined }];
+  const seleccionSalon = gruposDelGradoActual.length > 0 ? grupoSeleccionado : "__PROPIO__";
+
+  useEffect(() => {
+    const seccionDeseada = gruposDelGradoActual.length > 0 ? grupoSeleccionado || undefined : undefined;
+    setAsignacionAcademicaForm((prev) =>
+      (prev.seccion ?? "") === (seccionDeseada ?? "") ? prev : { ...prev, seccion: seccionDeseada }
+    );
+  }, [gruposDelGradoActual, grupoSeleccionado]);
+
   const claveEfectiva = (curso: string, competencia: string) =>
     gruposDelGradoActual.length > 0 && grupoSeleccionado
       ? matrixKeyConGrupo(asignacionAcademicaForm.grado ?? "", grupoSeleccionado, curso, competencia)
@@ -110,7 +121,7 @@ export function AsignacionesTab({
       (s) =>
         s.nivel === asignacionAcademicaForm.nivelEducativo &&
         s.grado === asignacionAcademicaForm.grado &&
-        s.seccion === asignacionAcademicaForm.seccion
+        (s.seccion ?? "") === (asignacionAcademicaForm.seccion ?? "")
     );
     if (matchingSalon) {
       setAulaNumero(matchingSalon.aula);
@@ -159,7 +170,7 @@ export function AsignacionesTab({
         (u) =>
           u.nivelEducativo === asignacionAcademicaForm.nivelEducativo &&
           u.grado === asignacionAcademicaForm.grado &&
-          u.seccion === asignacionAcademicaForm.seccion
+          (u.seccion ?? "") === (asignacionAcademicaForm.seccion ?? "")
       ),
     [alumnos, asignacionAcademicaForm.grado, asignacionAcademicaForm.nivelEducativo, asignacionAcademicaForm.seccion]
   );
@@ -174,7 +185,7 @@ export function AsignacionesTab({
         (a) =>
           a.nivelEducativo === asignacionAcademicaForm.nivelEducativo &&
           a.grado === asignacionAcademicaForm.grado &&
-          a.seccion === asignacionAcademicaForm.seccion
+          (a.seccion ?? "") === (asignacionAcademicaForm.seccion ?? "")
       ),
     [asignacionesAcademicas, asignacionAcademicaForm.grado, asignacionAcademicaForm.nivelEducativo, asignacionAcademicaForm.seccion]
   );
@@ -324,7 +335,7 @@ export function AsignacionesTab({
 
   const autocompletarPorGradoYSeccion = (grado: string, seccion: string, nivel: string) => {
     const matchingSalon = academicoConfig.salones.find(
-      (s) => s.nivel === nivel && s.grado === grado && s.seccion === seccion
+      (s) => s.nivel === nivel && s.grado === grado && (s.seccion ?? "") === (seccion ?? "")
     );
     const aula = matchingSalon ? matchingSalon.aula : aulaPorGradoSeccion(nivel, grado, seccion);
     setAulaNumero(aula);
@@ -345,7 +356,7 @@ export function AsignacionesTab({
         (a) =>
           a.nivelEducativo === "SECUNDARIA" &&
           a.grado === grado &&
-          a.seccion === seccion &&
+          (a.seccion ?? "") === (seccion ?? "") &&
           a.curso === curso &&
           a.activo
       );
@@ -354,7 +365,7 @@ export function AsignacionesTab({
         (a) =>
           a.nivelEducativo === "SECUNDARIA" &&
           a.grado === grado &&
-          a.seccion === seccion &&
+          (a.seccion ?? "") === (seccion ?? "") &&
           a.activo
       );
 
@@ -398,7 +409,7 @@ export function AsignacionesTab({
             curso: asignacionAcademicaForm.curso,
             nivelEducativo,
             grado: asignacionAcademicaForm.grado ?? "",
-            seccion: asignacionAcademicaForm.seccion ?? "",
+            seccion: asignacionAcademicaForm.seccion || undefined, // sin salón en los grados sin grupo
             activo: asignacionAcademicaForm.activo,
           },
           token
@@ -410,7 +421,7 @@ export function AsignacionesTab({
             curso: asignacionAcademicaForm.curso,
             nivelEducativo,
             grado: asignacionAcademicaForm.grado ?? "",
-            seccion: asignacionAcademicaForm.seccion ?? "",
+            seccion: asignacionAcademicaForm.seccion || undefined, // sin salón en los grados sin grupo
             activo: asignacionAcademicaForm.activo,
           },
           token
@@ -427,7 +438,7 @@ export function AsignacionesTab({
         }
         if (
           s.grado === asignacionAcademicaForm.grado &&
-          s.seccion === asignacionAcademicaForm.seccion &&
+          (s.seccion ?? "") === (asignacionAcademicaForm.seccion ?? "") &&
           s.nivel === nivelEducativo
         ) {
           return { ...s, grado: "", seccion: "" };
@@ -585,7 +596,7 @@ export function AsignacionesTab({
   };
 
   const handleGradoSelect = (gradoId: string) => {
-    const seccion = "A";
+    const seccion: string | undefined = getGruposPorGrado(gradoId)[0];
     const nivel = esInicial ? "INICIAL" : "PRIMARIA";
     setAsignacionAcademicaForm({
       ...asignacionAcademicaForm,
@@ -593,11 +604,11 @@ export function AsignacionesTab({
       grado: gradoId,
       seccion,
     });
-    setAulaNumero(aulaPorGradoSeccion(nivel, gradoId, seccion));
+    setAulaNumero(aulaPorGradoSeccion(nivel, gradoId, seccion ?? "A"));
   };
 
   const handleGradoSelectSecundaria = (gradoId: string) => {
-    const seccion = "A";
+    const seccion: string | undefined = getGruposPorGrado(gradoId)[0];
     const nivel = "SECUNDARIA";
     const curso = asignacionAcademicaForm.curso || cursosActivosPorNivel("SECUNDARIA")[0] || "MATEMATICA";
     setAsignacionAcademicaForm({
@@ -607,7 +618,7 @@ export function AsignacionesTab({
       seccion,
       curso,
     });
-    setAulaNumero(aulaPorGradoSeccion(nivel, gradoId, seccion));
+    setAulaNumero(aulaPorGradoSeccion(nivel, gradoId, seccion ?? "A"));
   };
 
   const handleAreaSelect = (curso: string) => {
@@ -622,7 +633,7 @@ export function AsignacionesTab({
       curso: item.curso ?? "MATEMATICA",
       nivelEducativo: item.nivelEducativo ?? "PRIMARIA",
       grado: item.grado ?? "PRIMERO_PRIMARIA",
-      seccion: item.seccion ?? "A",
+      seccion: item.seccion ?? undefined,
       activo: item.activo ?? true,
     });
   };
@@ -674,7 +685,7 @@ export function AsignacionesTab({
         <div className="grid gap-4">
 
           {esSecundaria ? (
-            <div className={`grid gap-4 ${gruposDelGradoActual.length > 0 ? "lg:grid-cols-[1fr_1fr_1fr_2fr]" : "lg:grid-cols-[1fr_1fr_2fr]"}`}>
+            <div className={`grid gap-4 ${mostrarPanelSalon ? "lg:grid-cols-[1fr_1fr_1fr_2fr]" : "lg:grid-cols-[1fr_1fr_2fr]"}`}>
               <RosterPanel
                 title="Grados"
                 empty="No hay grados activos"
@@ -683,20 +694,22 @@ export function AsignacionesTab({
                   .map((grado) => ({
                     id: grado.id,
                     title: formatGrado(grado.id),
-                    detail: detalleSalonGrado(grado.id),
+                    detail: "",
                     raw: grado.id,
                   }))}
                 selectedId={asignacionAcademicaForm.grado}
                 onSelect={(grado) => handleGradoSelectSecundaria(grado)}
                 bodyClassName={asignacionesPanelBodyClass}
               />
-              {gruposDelGradoActual.length > 0 && (
+              {mostrarPanelSalon && (
                 <RosterPanel
                   title="Salón"
                   empty="Sin salones"
-                  rows={gruposDelGradoActual.map((g) => ({ id: g, title: GRUPO_LABELS[g] ?? g, detail: g, raw: g }))}
-                  selectedId={grupoSeleccionado}
-                  onSelect={(grupo) => setGrupoSeleccionado(grupo)}
+                  rows={filasSalon}
+                  selectedId={seleccionSalon}
+                  onSelect={(grupo) => {
+                    if (gruposDelGradoActual.length > 0) setGrupoSeleccionado(grupo);
+                  }}
                   bodyClassName={asignacionesPanelBodyClass}
                 />
               )}
@@ -731,7 +744,7 @@ export function AsignacionesTab({
               />
             </div>
           ) : (
-            <div className={`grid gap-4 ${gruposDelGradoActual.length > 0 ? "lg:grid-cols-[1fr_1fr_1fr_2fr]" : "lg:grid-cols-[1fr_1fr_2fr]"}`}>
+            <div className={`grid gap-4 ${mostrarPanelSalon ? "lg:grid-cols-[1fr_1fr_1fr_2fr]" : "lg:grid-cols-[1fr_1fr_2fr]"}`}>
               <RosterPanel
                 title="Grados"
                 empty="No hay grados activos"
@@ -740,20 +753,22 @@ export function AsignacionesTab({
                   .map((grado) => ({
                     id: grado.id,
                     title: formatGrado(grado.id),
-                    detail: detalleSalonGrado(grado.id),
+                    detail: "",
                     raw: grado.id,
                   }))}
                 selectedId={asignacionAcademicaForm.grado}
                 onSelect={(grado) => handleGradoSelect(grado)}
                 bodyClassName={asignacionesPanelBodyClass}
               />
-              {gruposDelGradoActual.length > 0 && (
+              {mostrarPanelSalon && (
                 <RosterPanel
                   title="Salón"
                   empty="Sin salones"
-                  rows={gruposDelGradoActual.map((g) => ({ id: g, title: GRUPO_LABELS[g] ?? g, detail: g, raw: g }))}
-                  selectedId={grupoSeleccionado}
-                  onSelect={(grupo) => setGrupoSeleccionado(grupo)}
+                  rows={filasSalon}
+                  selectedId={seleccionSalon}
+                  onSelect={(grupo) => {
+                    if (gruposDelGradoActual.length > 0) setGrupoSeleccionado(grupo);
+                  }}
                   bodyClassName={asignacionesPanelBodyClass}
                 />
               )}
